@@ -16,6 +16,20 @@ class Brain:
         self.order = int(row[0])
         self.tokenizer = tokenizer.MegaHALTokenizer()
 
+    def get_learn_contexts(self, words):
+        # Return the contexts to learn in a set of words, i.e. any string
+        # of tokens as long as our current Markov chain order
+
+        ret = []
+
+        if len(words) < self.order:
+            return ret
+
+        for i in xrange(len(words)-self.order+1):
+            ret.append(words[i:i+self.order])
+
+        return ret
+
     def learn(self, text):
         words = self._split(text)
 
