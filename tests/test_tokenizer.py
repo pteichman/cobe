@@ -15,6 +15,14 @@ class testMegaHALTokenizer(unittest.TestCase):
         self.assertEquals(words[0], "HI")
         self.assertEquals(words[1], ".")
 
+    def testSplitComma(self):
+        words = self.tokenizer.split("hi, hal")
+        self.assertEquals(len(words), 4)
+        self.assertEquals(words[0], "HI")
+        self.assertEquals(words[1], ", ")
+        self.assertEquals(words[2], "HAL")
+        self.assertEquals(words[3], ".")
+
     def testSplitImplicitStop(self):
         words = self.tokenizer.split("hi")
         self.assertEquals(len(words), 2)
