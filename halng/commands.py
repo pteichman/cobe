@@ -1,7 +1,7 @@
 import logging
 import os
 
-import brain
+from brain import Brain
 
 from cmdparse import Command
 
@@ -24,8 +24,7 @@ class InitCommand(Command):
                 log.error("%s already exists!", filename)
                 return
 
-        b = brain.Brain(filename)
-        b.init(order)
+        Brain.init(filename, options.order)
 
 class CloneCommand(Command):
     def __init__(self):
@@ -42,7 +41,5 @@ class CloneCommand(Command):
 
         megahal_brain = args[0]
 
-        b = brain.Brain("hal.brain")
-        b.init()
+        Brain.init("hal.brain")
         b.clone(megahal_brain)
-
