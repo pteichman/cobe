@@ -17,6 +17,7 @@ class testInit(unittest.TestCase):
 
         brain = Brain(TEST_BRAIN_FILE)
         self.failUnless(brain.order, "missing brain order after init")
+        self.failUnless(brain.end_token, "missing brain end_token after init")
 
     def testInitWithOrder(self):
         order = 2
@@ -30,34 +31,11 @@ class testLearn(unittest.TestCase):
         if os.path.exists(TEST_BRAIN_FILE):
             os.remove(TEST_BRAIN_FILE)
 
-    def test2ndOrderContexts(self):
+    def testLearn(self):
         Brain.init(TEST_BRAIN_FILE, order=2)
         brain = Brain(TEST_BRAIN_FILE)
 
-        tokenizer = MegaHALTokenizer()
-
-        words = tokenizer.split(".")
-        contexts = brain.get_learn_contexts(words)
-        self.assertEqual(0, len(contexts))
-
-        words = tokenizer.split("Hi.")
-        contexts = brain.get_learn_contexts(words)
-        self.assertEqual(1, len(contexts))
-        self.assertEqual(["HI", "."], contexts[0])
-
-        words = tokenizer.split("Hi Hal.")
-        contexts = brain.get_learn_contexts(words)
-        self.assertEqual(3, len(contexts))
-        self.assertEqual(["HI", " "], contexts[0])
-        self.assertEqual([" ", "HAL"], contexts[1])
-        self.assertEqual(["HAL", "."], contexts[2])
-
-        words = tokenizer.split("Hi, Hal.")
-        contexts = brain.get_learn_contexts(words)
-        self.assertEqual(3, len(contexts))
-        self.assertEqual(["HI", ", "], contexts[0])
-        self.assertEqual([", ", "HAL"], contexts[1])
-        self.assertEqual(["HAL", "."], contexts[2])
+        brain.learn("this is a test")
 
 if __name__ == '__main__':
     unittest.main()
