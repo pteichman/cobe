@@ -43,3 +43,20 @@ class CloneCommand(Command):
 
         Brain.init("hal.brain")
         b.clone(megahal_brain)
+
+class LearnCommand(Command):
+    def __init__(self):
+        Command.__init__(self, "learn", summary="Learn a file of text")
+
+    def run(self, options, args):
+        if len(args) != 1:
+            log.error("usage: learn <text file>")
+            return
+
+        filename = args[0]
+
+        b = Brain("hal.brain")
+
+        fd = open(filename)
+        for line in fd.xreadlines():
+            b.learn(line.strip())
