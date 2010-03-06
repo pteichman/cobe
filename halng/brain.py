@@ -25,16 +25,16 @@ class Brain:
 
         self.tokenizer = tokenizer.MegaHALTokenizer()
 
-    def learn(self, text):
+    def learn(self, text, commit=True):
         tokens = self.tokenizer.split(text.decode("utf-8"))
 
         if len(tokens) < self.order:
             log.debug("Input too short to learn: %s", text)
             return
 
-        self._learn_tokens(tokens)
+        self._learn_tokens(tokens, commit)
 
-    def _learn_tokens(self, tokens):
+    def _learn_tokens(self, tokens, commit=True):
         db = self._db
         c = db.cursor()
 
@@ -68,7 +68,8 @@ class Brain:
                 db.add_or_inc_link(_NEXT_TOKEN_TABLE, expr_id,
                                    self._end_token_id, c=c)
 
-        db.commit()
+        if commit:
+            db.commit()
 
     def reply(self, text):
         tokens = self.tokenizer.split(text.decode("utf-8"))

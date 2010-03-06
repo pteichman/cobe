@@ -78,7 +78,7 @@ class LearnIrcLogCommand(Command):
 
             msg = self._parse_irc_message(line.strip())
             if msg:
-                b.learn(msg)
+                b.learn(msg, commit=((count % 100) == 0))
 
         sys.stdout.write("\r100%\n")
         sys.stdout.flush()
