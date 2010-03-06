@@ -6,7 +6,6 @@ import random
 import re
 import sqlite3
 
-import megahal
 import tokenizer
 
 log = logging.getLogger("hal")
@@ -256,16 +255,6 @@ CREATE INDEX prev_token_expr_id ON prev_token (expr_id)""")
         db.commit()
         c.close()
         db.close()
-
-    def clone(self, megahal_brain):
-        log.info("Cloning a MegaHAL brain: %s", megahal_brain)
-
-        conn = sqlite3.connect(self.filename)
-
-        b = megahal.Brain(megahal_brain)
-        b.clone(conn)
-
-        conn.close()
 
 class Db:
     """Database functions to support a Hal brain."""

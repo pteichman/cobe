@@ -1,3 +1,5 @@
+# Copyright (C) 2010 Peter Teichman
+
 import logging
 import os
 import re
@@ -28,24 +30,6 @@ class InitCommand(Command):
                 return
 
         Brain.init(filename, options.order)
-
-class CloneCommand(Command):
-    def __init__(self):
-        Command.__init__(self, "clone", summary="Clone a MegaHAL brain")
-
-    def run(self, options, args):
-        if len(args) != 1:
-            log.error("usage: clone <MegaHAL brain>")
-            return
-
-        if os.path.exists("hal.brain"):
-            log.error("hal.brain already exists")
-            return
-
-        megahal_brain = args[0]
-
-        Brain.init("hal.brain")
-        b.clone(megahal_brain)
 
 class LearnCommand(Command):
     def __init__(self):

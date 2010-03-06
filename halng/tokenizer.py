@@ -1,3 +1,5 @@
+# Copyright (C) 2010 Peter Teichman
+
 import re
 
 class MegaHALTokenizer:
