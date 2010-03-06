@@ -1,5 +1,7 @@
 import logging
 import os
+import readline
+import sys
 
 from brain import Brain
 
@@ -60,3 +62,20 @@ class LearnCommand(Command):
         fd = open(filename)
         for line in fd.xreadlines():
             b.learn(line.strip())
+
+class ConsoleCommand(Command):
+    def __init__(self):
+        Command.__init__(self, "console", summary="Speak with Hal.")
+
+    def run(self, options, args):
+        b = Brain("hal.brain")
+
+        while True:
+            try:
+                cmd = raw_input("> ")
+            except EOFError:
+                print
+                sys.exit(0)
+
+            b.learn(cmd)
+            print b.reply(cmd).capitalize()
