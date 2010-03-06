@@ -154,12 +154,12 @@ class Brain:
         for token in tokens:
             token_id = db.get_token_id(token, c=c)
             if token_id is None:
-                if re.search("\s", token):
-                    is_whitespace = True
+                if re.search("\w", token):
+                    is_word = True
                 else:
-                    is_whitespace = False
+                    is_word = False
 
-                token_id = db.insert_token(token, is_whitespace, c=c)
+                token_id = db.insert_token(token, is_word, c=c)
 
             token_ids.append(token_id)
 
@@ -264,12 +264,12 @@ class Db:
         q = "SELECT count,%s FROM expr WHERE id = ?" % self._all_tokens
         return c.execute(q, (expr_id,)).fetchone()
 
-    def insert_token(self, token, is_whitespace, c=None):
+    def insert_token(self, token, is_word, c=None):
         if c is None:
             c = self.cursor()
 
-        q = "INSERT INTO tokens (text, is_whitespace) VALUES (?, ?)"
-        c.execute(q, (token, is_whitespace))
+        q = "INSERT INTO tokens (text, is_word) VALUES (?, ?)"
+        c.execute(q, (token, is_word))
         return c.lastrowid
 
     def insert_expr(self, token_ids, c=None):
@@ -390,7 +390,7 @@ CREATE TABLE info (
 CREATE TABLE tokens (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     text TEXT UNIQUE NOT NULL,
-    is_whitespace INTEGER NOT NULL)""")
+    is_word INTEGER NOT NULL)""")
 
         tokens = []
         for i in xrange(order):
