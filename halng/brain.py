@@ -425,7 +425,7 @@ class Db:
 
         while next_token_id != self._end_token_id:
             chain.append((next_token_id,
-                          float(next_token_count) / next_expr_count))
+                          float(next_token_count) / float(next_expr_count)))
 
             if table == _NEXT_TOKEN_TABLE:
                 next_token_ids = list(next_token_ids[1:])
