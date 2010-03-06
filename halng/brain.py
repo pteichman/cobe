@@ -166,18 +166,13 @@ class Brain:
         return token_ids
 
     def _get_or_register_expr(self, c, token_ids):
-        where = ["token%d_id = ?" % i for i in xrange(len(token_ids))]
-        where = " AND ".join(where)
+        db = self._db
+        expr_id = db.get_expr_by_token_ids(token_ids, c=c)
 
-        row = c.execute("SELECT id FROM expr WHERE %s" % where, token_ids).fetchone()
-        if row is None:
-            cols = ",".join(["token%d_id" % i for i in xrange(len(token_ids))])
-            params = ",".join(["?" for i in xrange(len(token_ids))])
-            row = c.execute("INSERT INTO expr (count,%s) VALUES (0,%s)" %
-                            (cols, params), token_ids)
-            return c.lastrowid
-        else:
-            return row[0]
+        if expr_id is None:
+            expr_id = db.insert_expr(token_ids, c=c)
+
+        return expr_id
 
     @staticmethod
     def init(filename, order=5, create_indexes=True):
@@ -270,6 +265,7 @@ class Db:
                                          for i in xrange(self._order)])
             self._all_token_args = " AND ".join(["token%d_id = ?" % i
                                                  for i in xrange(self._order)])
+            self._all_token_q = ",".join(["?" for i in xrange(self._order)])
 
     def cursor(self):
         return self._conn.cursor()
@@ -345,6 +341,16 @@ class Db:
         c.execute(q, (token, is_whitespace))
         return c.lastrowid
 
+    def insert_expr(self, token_ids, c=None):
+        if c is None:
+            c = self.cursor()
+
+        q = "INSERT INTO expr (count,%s) VALUES (0,%s)" % (self._all_tokens,
+                                                           self._all_token_q)
+
+        c.execute(q, token_ids)
+        return c.lastrowid
+
     def inc_expr_count(self, expr_id, c=None):
         if c is None:
             c = self.cursor()
@@ -383,7 +389,14 @@ class Db:
         if row:
             return int(row[0])
 
-    def _get_expr_by_token_ids(self, token_ids, c):
+    def get_expr_by_token_ids(self, token_ids, c):
+        q = "SELECT id FROM expr WHERE %s" % self._all_token_args
+
+        row = c.execute(q, token_ids).fetchone()
+        if row:
+            return int(row[0])
+
+    def _get_expr_and_count_by_token_ids(self, token_ids, c):
         q = "SELECT id, count FROM expr WHERE %s" % self._all_token_args
 
         row = c.execute(q, token_ids).fetchone()
@@ -425,7 +438,7 @@ class Db:
                 new_next_token_ids.extend(next_token_ids[:-1])
                 next_token_ids = new_next_token_ids
 
-            next_expr_id, next_expr_count = self._get_expr_by_token_ids(next_token_ids, c)
+            next_expr_id, next_expr_count = self._get_expr_and_count_by_token_ids(next_token_ids, c)
 
             row = c.execute(q, (next_expr_id,)).fetchone()
             next_token_id, next_token_count = row
