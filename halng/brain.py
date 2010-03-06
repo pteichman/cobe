@@ -77,7 +77,7 @@ class Brain:
         db = self._db
         c = db.cursor()
 
-        token_ids = self._get_known_tokens(tokens, c)
+        token_ids = self._get_known_word_tokens(tokens, c)
 
         best_score = 0.
         best_reply = None
@@ -134,13 +134,13 @@ class Brain:
 
         return reply, score
 
-    def _get_known_tokens(self, tokens, c):
+    def _get_known_word_tokens(self, tokens, c):
         db = self._db
 
         token_ids = []
 
         for token in tokens:
-            token_id = db.get_token_id(token, c=c)
+            token_id = db.get_word_token_id(token, c=c)
             if token_id is not None:
                 token_ids.append(token_id)
 
@@ -239,6 +239,15 @@ class Db:
             c = self.cursor()
 
         q = "SELECT id FROM tokens WHERE text = ?"
+        row = c.execute(q, (token,)).fetchone()
+        if row:
+            return int(row[0])
+
+    def get_word_token_id(self, token, c=None):
+        if c is None:
+            c = self.cursor()
+
+        q = "SELECT id FROM tokens WHERE text = ? AND is_word = 1"
         row = c.execute(q, (token,)).fetchone()
         if row:
             return int(row[0])
