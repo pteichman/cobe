@@ -89,6 +89,9 @@ class Brain:
                 best_score = score
                 best_reply = reply
 
+        if best_reply is None:
+            return "I don't know enough to answer you yet!"
+
         # look up the words for these tokens
         text = []
         for token_id in best_reply:
@@ -177,7 +180,7 @@ class Brain:
             return row[0]
 
     @staticmethod
-    def init(filename, order=5):
+    def init(filename, order=5, create_indexes=True):
         """Initialize a brain. This brain's file must not already exist."""
 
         log.info("Initializing a hal brain.")
@@ -231,6 +234,24 @@ CREATE TABLE prev_token (
 
         # save the order of this brain
         db.set_info_text("order", str(order), c=c)
+
+        if create_indexes:
+            c.execute("""
+CREATE INDEX tokens_text on tokens (text)""")
+
+            for i in xrange(order):
+                c.execute("""
+CREATE INDEX expr_token%d_id on expr (token%d_id)""" % (i, i))
+
+            token_ids = ",".join(["token%d_id" % i for i in xrange(order)])
+            c.execute("""
+CREATE INDEX expr_token_ids on expr (%s)""" % token_ids)
+
+            c.execute("""
+CREATE INDEX next_token_expr_id ON next_token (expr_id)""")
+
+            c.execute("""
+CREATE INDEX prev_token_expr_id ON prev_token (expr_id)""")
 
         db.commit()
         c.close()
