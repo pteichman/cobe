@@ -83,7 +83,7 @@ class Brain:
         best_reply = None
 
         for i in xrange(100):
-            (reply, score) = self._generate_reply(token_ids)
+            reply, score = self._generate_reply(token_ids)
 
             if score > best_score:
                 best_score = score
@@ -99,24 +99,34 @@ class Brain:
 
         return "".join(text)
 
-    def _babble(self):
-        return "I don't know enough to reply to that!"
+    def _babble(self, c):
+        db = self._db
+
+        token_id = None
+        expr_id = None
+
+        while expr_id is None:
+            token_id = db.get_random_token(c=c)
+            expr_id = db.get_random_expr(token_id, c=c)
+
+        return token_id, expr_id
 
     def _generate_reply(self, token_ids):
         # generate a reply containing one of token_ids
         db = self._db
+        c = db.cursor()
 
-        if len(token_ids) == 0:
-            return self._babble()
-
-        pivot_token_id = random.choice(token_ids)
-        pivot_expr_id = db.get_random_expr(pivot_token_id)
-        while pivot_expr_id is None:
+        if len(token_ids) > 0:
             pivot_token_id = random.choice(token_ids)
-            pivot_expr_id = db.get_random_expr(pivot_token_id)
+            pivot_expr_id = db.get_random_expr(pivot_token_id, c=c)
+            while pivot_expr_id is None:
+                pivot_token_id = random.choice(token_ids)
+                pivot_expr_id = db.get_random_expr(pivot_token_id, c=c)
+        else:
+            pivot_token_id, pivot_expr_id = self._babble(c)
 
-        next_token_ids = db.follow_chain(_NEXT_TOKEN_TABLE, pivot_expr_id)
-        prev_token_ids = db.follow_chain(_PREV_TOKEN_TABLE, pivot_expr_id)
+        next_token_ids = db.follow_chain(_NEXT_TOKEN_TABLE, pivot_expr_id, c=c)
+        prev_token_ids = db.follow_chain(_PREV_TOKEN_TABLE, pivot_expr_id, c=c)
         prev_token_ids.reverse()
 
         # strip the original expr from the prev reply
@@ -240,6 +250,15 @@ class Db:
 
         q = "SELECT id FROM tokens WHERE text = ?"
         row = c.execute(q, (token,)).fetchone()
+        if row:
+            return int(row[0])
+
+    def get_random_token(self, c=None):
+        if c is None:
+            c = self.cursor()
+
+        q = "SELECT id FROM tokens ORDER BY RANDOM()"
+        row = c.execute(q).fetchone()
         if row:
             return int(row[0])
 
