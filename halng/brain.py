@@ -104,7 +104,6 @@ class Brain:
 
     def _generate_reply(self, token_ids):
         # generate a reply containing one of token_ids
-
         db = self._db
 
         if len(token_ids) == 0:
