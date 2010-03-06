@@ -199,7 +199,7 @@ CREATE TABLE info (
         c.execute("""
 CREATE TABLE tokens (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    text TEXT NOT NULL,
+    text TEXT UNIQUE NOT NULL,
     is_whitespace INTEGER NOT NULL)""")
 
         tokens = []
