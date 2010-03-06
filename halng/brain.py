@@ -181,76 +181,7 @@ class Brain:
         log.info("Initializing a hal brain.")
 
         db = Db(sqlite3.connect(filename))
-
-        c = db.cursor()
-
-        log.debug("Creating table: info")
-        c.execute("""
-CREATE TABLE info (
-    attribute TEXT NOT NULL PRIMARY KEY,
-    text TEXT NOT NULL)""")
-
-        log.debug("Creating table: tokens")
-        c.execute("""
-CREATE TABLE tokens (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    text TEXT UNIQUE NOT NULL,
-    is_whitespace INTEGER NOT NULL)""")
-
-        tokens = []
-        for i in xrange(order):
-            tokens.append("token%d_id INTEGER NOT NULL REFERENCES token(id)" % i)
-
-        log.debug("Creating table: expr")
-        c.execute("""
-CREATE TABLE expr (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    count INTEGER NOT NULL,
-    %s)""" % ',\n    '.join(tokens))
-
-        log.debug("Creating table: next_token")
-        c.execute("""
-CREATE TABLE next_token (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    expr_id INTEGER NOT NULL REFERENCES expr (id),
-    token_id INTEGER NOT NULL REFERENCES token (id),
-    count INTEGER NOT NULL)""")
-
-        log.debug("Creating table: prev_token")
-        c.execute("""
-CREATE TABLE prev_token (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    expr_id INTEGER NOT NULL REFERENCES expr (id),
-    token_id INTEGER NOT NULL REFERENCES token (id),
-    count INTEGER NOT NULL)""")
-
-        # create a token for the end of a chain
-        db.insert_token(_END_TOKEN_TEXT, 0, c=c)
-
-        # save the order of this brain
-        db.set_info_text("order", str(order), c=c)
-
-        if create_indexes:
-            c.execute("""
-CREATE INDEX tokens_text on tokens (text)""")
-
-            for i in xrange(order):
-                c.execute("""
-CREATE INDEX expr_token%d_id on expr (token%d_id)""" % (i, i))
-
-            token_ids = ",".join(["token%d_id" % i for i in xrange(order)])
-            c.execute("""
-CREATE INDEX expr_token_ids on expr (%s)""" % token_ids)
-
-            c.execute("""
-CREATE INDEX next_token_expr_id ON next_token (expr_id)""")
-
-            c.execute("""
-CREATE INDEX prev_token_expr_id ON prev_token (expr_id)""")
-
-        db.commit()
-        c.close()
-        db.close()
+        db.init(order, create_indexes)
 
 class Db:
     """Database functions to support a Hal brain."""
@@ -444,3 +375,74 @@ class Db:
             next_token_id, next_token_count = row
 
         return chain
+
+    def init(self, order, create_indexes):
+        c = self.cursor()
+
+        log.debug("Creating table: info")
+        c.execute("""
+CREATE TABLE info (
+    attribute TEXT NOT NULL PRIMARY KEY,
+    text TEXT NOT NULL)""")
+
+        log.debug("Creating table: tokens")
+        c.execute("""
+CREATE TABLE tokens (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    text TEXT UNIQUE NOT NULL,
+    is_whitespace INTEGER NOT NULL)""")
+
+        tokens = []
+        for i in xrange(order):
+            tokens.append("token%d_id INTEGER NOT NULL REFERENCES token(id)" % i)
+
+        log.debug("Creating table: expr")
+        c.execute("""
+CREATE TABLE expr (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    count INTEGER NOT NULL,
+    %s)""" % ',\n    '.join(tokens))
+
+        log.debug("Creating table: next_token")
+        c.execute("""
+CREATE TABLE next_token (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    expr_id INTEGER NOT NULL REFERENCES expr (id),
+    token_id INTEGER NOT NULL REFERENCES token (id),
+    count INTEGER NOT NULL)""")
+
+        log.debug("Creating table: prev_token")
+        c.execute("""
+CREATE TABLE prev_token (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    expr_id INTEGER NOT NULL REFERENCES expr (id),
+    token_id INTEGER NOT NULL REFERENCES token (id),
+    count INTEGER NOT NULL)""")
+
+        # create a token for the end of a chain
+        self.insert_token(_END_TOKEN_TEXT, 0, c=c)
+
+        # save the order of this brain
+        self.set_info_text("order", str(order), c=c)
+
+        if create_indexes:
+            c.execute("""
+CREATE INDEX tokens_text on tokens (text)""")
+
+            for i in xrange(order):
+                c.execute("""
+CREATE INDEX expr_token%d_id on expr (token%d_id)""" % (i, i))
+
+            token_ids = ",".join(["token%d_id" % i for i in xrange(order)])
+            c.execute("""
+CREATE INDEX expr_token_ids on expr (%s)""" % token_ids)
+
+            c.execute("""
+CREATE INDEX next_token_expr_id ON next_token (expr_id)""")
+
+            c.execute("""
+CREATE INDEX prev_token_expr_id ON prev_token (expr_id)""")
+
+        self.commit()
+        c.close()
+        self.close()
