@@ -8,6 +8,8 @@ import sys
 parser = cmdparse.CommandParser()
 parser.add_option("", "--debug", action="store_true",
                   help="enable debugging output")
+parser.add_option("", "--profile", action="store_true",
+                  help="enable profiling output")
 
 parser.add_commands(halng.commands)
 
@@ -24,12 +26,18 @@ if __name__ == "__main__":
     else:
         logging.root.setLevel(logging.INFO)
 
+    if options.profile:
+        import cProfile
+
     if command is None:
         parser.print_help()
         sys.exit(1)
 
     try:
-        command.run(options, args)
+        if options.profile:
+            cProfile.run("command.run(options, args)", "hal.pstats")
+        else:
+            command.run(options, args)
     except KeyboardInterrupt:
         print
         sys.exit(1)
