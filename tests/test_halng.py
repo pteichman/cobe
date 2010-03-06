@@ -45,14 +45,13 @@ class testReply(unittest.TestCase):
             os.remove(TEST_BRAIN_FILE)
 
         Brain.init(TEST_BRAIN_FILE, order=2)
-        self._brain = brain = Brain(TEST_BRAIN_FILE)
-
-        brain.learn("this is a test")
-        brain.learn("this is also a test")
-        brain.learn("this is a pretty great test thing")
+        self._brain = Brain(TEST_BRAIN_FILE)
 
     def testReply(self):
-        self._brain.reply("this is a test")
+        brain = self._brain
+
+        brain.learn("this is a test")
+        brain.reply("this is a test")
 
 if __name__ == '__main__':
     unittest.main()
