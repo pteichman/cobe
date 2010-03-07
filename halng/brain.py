@@ -254,7 +254,7 @@ class Db:
         if c is None:
             c = self.cursor()
 
-        q = "SELECT id FROM tokens ORDER BY RANDOM()"
+        q = "SELECT id FROM tokens ORDER BY RANDOM() LIMIT 1"
         row = c.execute(q).fetchone()
         if row:
             return int(row[0])
