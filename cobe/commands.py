@@ -53,6 +53,9 @@ class LearnCommand(Command):
 class LearnIrcLogCommand(Command):
     def __init__(self):
         Command.__init__(self, "learn-irc-log", summary="Learn an irc log")
+        self.add_option("-i", "--ignore-nick",
+                        action="append", dest="ignored_nicks",
+                        help="Ignore an IRC nick (can be specified multiple times)")
 
     def run(self, options, args):
         if len(args) != 1:
@@ -78,20 +81,24 @@ class LearnIrcLogCommand(Command):
                 sys.stdout.write("\r%.0f%%" % complete)
                 sys.stdout.flush()
 
-            msg = self._parse_irc_message(line.strip())
+            msg = self._parse_irc_message(line.strip(), options.ignored_nicks)
             if msg:
                 b.learn(msg, commit=((count % 100) == 0))
 
         sys.stdout.write("\r100%\n")
         sys.stdout.flush()
 
-    def _parse_irc_message(self, msg):
+    def _parse_irc_message(self, msg, ignored_nicks=None):
         # only match lines of the form "HH:MM <nick> message"
-        match = re.match("\d+:\d+\s+<\S+>\s+(.*)", msg)
+        match = re.match("\d+:\d+\s+<(.+?)>\s+(.*)", msg)
         if not match:
             return None
 
-        msg = match.group(1)
+        nick = match.group(1)
+        msg = match.group(2)
+
+        if ignored_nicks is not None and nick in ignored_nicks:
+            return None
 
         # strip "username: " at the beginning of messages
         msg = re.sub("^\S+[,:]\s+", "", msg)
