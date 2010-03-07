@@ -79,13 +79,13 @@ class Brain:
 
         token_ids = self._get_known_word_tokens(tokens, c)
 
-        best_score = 0.
+        best_score = None
         best_reply = None
 
-        for i in xrange(100):
+        for i in xrange(5):
             reply, score = self._generate_reply(token_ids)
 
-            if score > best_score:
+            if not best_score or score > best_score:
                 best_score = score
                 best_reply = reply
 
@@ -138,6 +138,13 @@ class Brain:
         for token in all_tokens:
             reply.append(token[0])
             score = score - math.log(token[1], 2)
+
+        # prefer smaller replies?
+        n_tokens = len(reply)
+        if n_tokens >= 8:
+            score = score / math.sqrt(n_tokens-1)
+        elif n_tokens >= 16:
+            score = score / n_tokens
 
         return reply, score
 
