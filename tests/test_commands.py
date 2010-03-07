@@ -24,5 +24,11 @@ class testIrcLogParsing(unittest.TestCase):
 
         self.assertEqual("bar baz", cmd._parse_irc_message(msg))
 
+    def testIgnoredNickPubmsg(self):
+        msg = "12:00 <foo> bar baz"
+        cmd = self.command
+
+        self.assertEqual(None, cmd._parse_irc_message(msg, ["foo"]))
+
 if __name__ == '__main__':
     unittest.main()
