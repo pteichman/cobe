@@ -119,9 +119,6 @@ class Brain:
         if len(token_ids) > 0:
             pivot_token_id = random.choice(token_ids)
             pivot_expr_id = db.get_random_expr(pivot_token_id, c=c)
-            while pivot_expr_id is None:
-                pivot_token_id = random.choice(token_ids)
-                pivot_expr_id = db.get_random_expr(pivot_token_id, c=c)
         else:
             pivot_token_id, pivot_expr_id = self._babble(c)
 
@@ -342,10 +339,17 @@ class Db:
         if c is None:
             c = self.cursor()
 
-        q = "SELECT id FROM expr WHERE token0_id = ? ORDER BY RANDOM()"
-        row = c.execute(q, (token_id,)).fetchone()
-        if row:
-            return int(row[0])
+        # try looking for the token in a random spot in the exprs
+        positions = range(self._order)
+        random.shuffle(positions)
+
+        for pos in positions:
+            q = "SELECT id FROM expr WHERE token%d_id = ? ORDER BY RANDOM()" \
+                % pos
+
+            row = c.execute(q, (token_id,)).fetchone()
+            if row:
+                return int(row[0])
 
     def get_expr_by_token_ids(self, token_ids, c):
         q = "SELECT id FROM expr WHERE %s" % self._all_token_args
