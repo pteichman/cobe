@@ -5,10 +5,10 @@ use_setuptools()
 
 from setuptools import setup, find_packages
 setup(
-    name = "halng",
+    name = "cobe",
     version = "0.5",
     author = "Peter Teichman",
     license = "MIT",
     packages = find_packages(exclude=["tests"]),
-    test_suite = "tests.halng_suite",
+    test_suite = "tests.cobe_suite",
 )
