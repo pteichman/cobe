@@ -1,6 +1,5 @@
 import bisect
 import logging
-import re
 import struct
 
 log = logging.getLogger("cobe")
@@ -13,7 +12,7 @@ class Brain:
     node_struct = struct.Struct("=HLHH")
     dict_len_struct = struct.Struct("=L")
     word_len_struct = struct.Struct("=B")
-    
+
     def __init__(self, filename):
         fd = open(filename)
 
@@ -60,7 +59,7 @@ class Brain:
                 tree.append(subtree)
 
         node.append(tree)
-        
+
         return node
 
     def __read_dictionary(self, fd):
@@ -98,10 +97,3 @@ class Dictionary:
 
         # return the symbol for this word
         return t[1]
-
-    def get_symbol(self, word):
-        words = self.dictionary
-        index = self.__binary_search(words, word, 0, len(words))
-
-        if index >= 0:
-            return words[index][1]
