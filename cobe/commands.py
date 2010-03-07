@@ -19,7 +19,7 @@ class InitCommand(Command):
     def __init__(self):
         Command.__init__(self, "init", summary="Initialize a new brain")
 
-        self.add_option("", "--force", action="store_true") 
+        self.add_option("", "--force", action="store_true")
         self.add_option("", "--order", type="int", default=5)
 
     def run(self, options, args):
