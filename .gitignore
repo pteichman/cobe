@@ -1,3 +1,4 @@
 *.brain
 *.pyc
+cobe.egg-info
 cobe.pstats
