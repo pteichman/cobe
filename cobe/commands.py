@@ -5,6 +5,7 @@ import os
 import re
 import readline
 import sys
+import time
 
 from brain import Brain
 
@@ -33,6 +34,19 @@ class InitCommand(Command):
 
         Brain.init(filename, options.order)
 
+def progress_generator(filename):
+    s = os.stat(filename)
+    size_left = s.st_size
+
+    fd = open(filename)
+    for line in fd.xreadlines():
+        size_left = size_left - len(line)
+        progress = 100 * (1. - (float(size_left) / float(s.st_size)))
+
+        yield line, progress
+
+    fd.close()
+
 class LearnCommand(Command):
     def __init__(self):
         Command.__init__(self, "learn", summary="Learn a file of text")
@@ -42,13 +56,27 @@ class LearnCommand(Command):
             log.error("usage: learn <text file>")
             return
 
-        filename = args[0]
-
         b = Brain(_DEFAULT_BRAIN_FILENAME)
 
-        fd = open(filename)
-        for line in fd.xreadlines():
-            b.learn(line.strip())
+        for filename in args:
+            now = time.time()
+            print filename
+
+            count = 0
+            for line, progress in progress_generator(filename):
+                show_progress = ((count % 100) == 0)
+
+                if show_progress:
+                    elapsed = time.time() - now
+                    sys.stdout.write("\r%.0f%% (%d/s)" % (progress,
+                                                          count/elapsed))
+                    sys.stdout.flush()
+
+                b.learn(line.strip(), commit=show_progress)
+                count = count + 1
+
+            elapsed = time.time() - now
+            print "\r100%% (%d/s)" % (count/elapsed)
 
 class LearnIrcLogCommand(Command):
     def __init__(self):
@@ -62,31 +90,30 @@ class LearnIrcLogCommand(Command):
             log.error("usage: learn-irc-log <irc log file>")
             return
 
-        filename = args[0]
-
         b = Brain(_DEFAULT_BRAIN_FILENAME)
 
-        s = os.stat(filename)
-        size_left = s.st_size
+        for filename in args:
+            now = time.time()
+            print filename
 
-        count = 0
+            count = 0
+            for line, progress in progress_generator(filename):
+                show_progress = ((count % 100) == 0)
 
-        fd = open(filename)
-        for line in fd.xreadlines():
-            size_left = size_left - len(line)
+                if show_progress:
+                    elapsed = time.time() - now
+                    sys.stdout.write("\r%.0f%% (%d/s)" % (progress,
+                                                          count/elapsed))
+                    sys.stdout.flush()
 
-            count = count + 1
-            if (count % 100) == 0:
-                complete = 100 * (1. - float(size_left) / float(s.st_size))
-                sys.stdout.write("\r%.0f%%" % complete)
-                sys.stdout.flush()
+                msg = self._parse_irc_message(line.strip(),
+                                              options.ignored_nicks)
+                if msg:
+                    b.learn(msg, commit=show_progress)
+                    count = count + 1
 
-            msg = self._parse_irc_message(line.strip(), options.ignored_nicks)
-            if msg:
-                b.learn(msg, commit=((count % 100) == 0))
-
-        sys.stdout.write("\r100%\n")
-        sys.stdout.flush()
+            elapsed = time.time() - now
+            print "\r100%% (%d/s)" % (count/elapsed)
 
     def _parse_irc_message(self, msg, ignored_nicks=None):
         # only match lines of the form "HH:MM <nick> message"
