@@ -4,8 +4,6 @@ import re
 import struct
 
 log = logging.getLogger("cobe")
-#log.setLevel(logging.DEBUG)
-
 log.addHandler(logging.StreamHandler())
 
 class Brain:
@@ -107,18 +105,3 @@ class Dictionary:
 
         if index >= 0:
             return words[index][1]
-
-
-class Hal:
-    def __init__(self, brain):
-        self._brain = brain
-    
-    def split(self, phrase):
-        # add ending punctuation if it is missing
-        if phrase[-1] not in ".!?":
-            phrase = phrase + "."
-
-        # megahal traditionally considers [a-z0-9] as word characters.
-        # Let's see what happens if we add [_']
-        words = re.findall("([\w']+|[^\w']+)", phrase.upper())
-        return words
