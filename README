@@ -1,4 +1,5 @@
-Cobe is a database backed, Python port of MegaHAL.
+COBE stands for Code of Business Ethics. Cobe is a database backed,
+Python port of MegaHAL.
 
 It has been inspired by the success of Hailo:
 http://blogs.perl.org/users/aevar_arnfjor_bjarmason/2010/01/hailo-a-perl-rewrite-of-megahal.html
