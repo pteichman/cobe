@@ -1,6 +1,6 @@
 import unittest
 
-from halng.tokenizer import MegaHALTokenizer
+from cobe.tokenizer import MegaHALTokenizer
 
 class testMegaHALTokenizer(unittest.TestCase):
     def setUp(self):
@@ -16,11 +16,11 @@ class testMegaHALTokenizer(unittest.TestCase):
         self.assertEquals(words[1], ".")
 
     def testSplitComma(self):
-        words = self.tokenizer.split("hi, hal")
+        words = self.tokenizer.split("hi, cobe")
         self.assertEquals(len(words), 4)
         self.assertEquals(words[0], "HI")
         self.assertEquals(words[1], ", ")
-        self.assertEquals(words[2], "HAL")
+        self.assertEquals(words[2], "COBE")
         self.assertEquals(words[3], ".")
 
     def testSplitImplicitStop(self):

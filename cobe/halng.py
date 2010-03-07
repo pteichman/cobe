@@ -3,7 +3,7 @@ import logging
 import re
 import struct
 
-log = logging.getLogger("halng")
+log = logging.getLogger("cobe")
 #log.setLevel(logging.DEBUG)
 
 log.addHandler(logging.StreamHandler())

@@ -1,6 +1,6 @@
 import unittest
 
-from halng.commands import LearnIrcLogCommand
+from cobe.commands import LearnIrcLogCommand
 
 class testIrcLogParsing(unittest.TestCase):
     def setUp(self):

@@ -1,9 +1,9 @@
-from halng.brain import Brain
-from halng.tokenizer import MegaHALTokenizer
+from cobe.brain import Brain
+from cobe.tokenizer import MegaHALTokenizer
 import os
 import unittest
 
-TEST_BRAIN_FILE = "hal.test_halng.brain"
+TEST_BRAIN_FILE = "test_cobe.brain"
 
 class testInit(unittest.TestCase):
     def setUp(self):

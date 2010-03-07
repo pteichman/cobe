@@ -8,7 +8,7 @@ import sqlite3
 
 import tokenizer
 
-log = logging.getLogger("hal")
+log = logging.getLogger("cobe")
 
 # use an empty string to denote the start/end of a chain
 _END_TOKEN_TEXT = ""
@@ -184,13 +184,13 @@ class Brain:
     def init(filename, order=5, create_indexes=True):
         """Initialize a brain. This brain's file must not already exist."""
 
-        log.info("Initializing a hal brain.")
+        log.info("Initializing a cobe brain.")
 
         db = Db(sqlite3.connect(filename))
         db.init(order, create_indexes)
 
 class Db:
-    """Database functions to support a Hal brain."""
+    """Database functions to support a Cobe brain."""
     def __init__(self, conn):
         self._conn = conn
 
