@@ -10,6 +10,8 @@ from brain import Brain
 
 from cmdparse import Command
 
+_DEFAULT_BRAIN_FILENAME = "cobe.brain"
+
 log = logging.getLogger("cobe")
 
 class InitCommand(Command):
@@ -20,7 +22,7 @@ class InitCommand(Command):
         self.add_option("", "--order", type="int", default=5)
 
     def run(self, options, args):
-        filename = "cobe.brain"
+        filename = _DEFAULT_BRAIN_FILENAME
 
         if os.path.exists(filename):
             if options.force:
@@ -42,7 +44,7 @@ class LearnCommand(Command):
 
         filename = args[0]
 
-        b = Brain("cobe.brain")
+        b = Brain(_DEFAULT_BRAIN_FILENAME)
 
         fd = open(filename)
         for line in fd.xreadlines():
@@ -59,7 +61,7 @@ class LearnIrcLogCommand(Command):
 
         filename = args[0]
 
-        b = Brain("cobe.brain")
+        b = Brain(_DEFAULT_BRAIN_FILENAME)
 
         s = os.stat(filename)
         size_left = s.st_size
@@ -105,7 +107,7 @@ class ConsoleCommand(Command):
         Command.__init__(self, "console", summary="Speak with Cobe.")
 
     def run(self, options, args):
-        b = Brain("cobe.brain")
+        b = Brain(_DEFAULT_BRAIN_FILENAME)
 
         while True:
             try:
