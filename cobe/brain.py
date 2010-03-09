@@ -97,7 +97,7 @@ class Brain:
         for token_id in best_reply:
             text.append(db.get_token_text(token_id))
 
-        return "".join(text).capitalize()
+        return self.tokenizer.join(text)
 
     def _babble(self, c):
         db = self._db

@@ -15,3 +15,6 @@ class MegaHALTokenizer:
         # Let's see what happens if we add [_']
         words = re.findall("([\w']+|[^\w']+)", phrase.upper(), re.UNICODE)
         return words
+
+    def join(self, words):
+        return "".join(words).capitalize()
