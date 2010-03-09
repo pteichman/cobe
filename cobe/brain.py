@@ -269,8 +269,17 @@ class Db:
         if c is None:
             c = self.cursor()
 
-        q = "SELECT id FROM tokens ORDER BY RANDOM() LIMIT 1"
+        # get the count of tokens
+        q = "SELECT MAX(id) from tokens"
         row = c.execute(q).fetchone()
+        if not row:
+            return None
+
+        count = int(row[0])
+        offset = random.randint(0, count-1)
+
+        q = "SELECT id FROM tokens LIMIT 1 OFFSET ?"
+        row = c.execute(q, (offset,)).fetchone()
         if row:
             return int(row[0])
 
