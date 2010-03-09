@@ -372,7 +372,12 @@ class Db:
             row = c.execute(q, (token_id,)).fetchone()
             count = row[0]
 
-            offset = random.randint(0, count-1)
+            if count == 0:
+                continue
+            elif count == 1:
+                offset = 0
+            else:
+                offset = random.randint(0, count-1)
 
             q = "SELECT id FROM expr WHERE token%d_id = ? LIMIT 1 OFFSET ?" \
                 % pos
