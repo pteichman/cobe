@@ -18,6 +18,12 @@ class testIrcLogParsing(unittest.TestCase):
 
         self.assertEqual("bar baz", cmd._parse_irc_message(msg))
 
+    def testNormalPubmsgWithSpaces(self):
+        msg = "12:00 < foo> bar baz"
+        cmd = self.command
+
+        self.assertEqual("bar baz", cmd._parse_irc_message(msg))
+
     def testKibotQuotePubmsg(self):
         msg = "12:00 <foo> \"bar baz\" --user, 01-oct-09"
         cmd = self.command
