@@ -62,6 +62,8 @@ class LearnCommand(Command):
             now = time.time()
             print filename
 
+            b.start_batch_learning()
+
             count = 0
             for line, progress in progress_generator(filename):
                 show_progress = ((count % 100) == 0)
@@ -75,6 +77,7 @@ class LearnCommand(Command):
                 b.learn(line.strip(), commit=show_progress)
                 count = count + 1
 
+            b.stop_batch_learning()
             elapsed = time.time() - now
             print "\r100%% (%d/s)" % (count/elapsed)
 
@@ -96,6 +99,8 @@ class LearnIrcLogCommand(Command):
             now = time.time()
             print filename
 
+            b.start_batch_learning()
+
             count = 0
             for line, progress in progress_generator(filename):
                 show_progress = ((count % 100) == 0)
@@ -112,6 +117,7 @@ class LearnIrcLogCommand(Command):
                     b.learn(msg, commit=show_progress)
                     count = count + 1
 
+            b.stop_batch_learning()
             elapsed = time.time() - now
             print "\r100%% (%d/s)" % (count/elapsed)
 

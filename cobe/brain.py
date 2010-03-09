@@ -22,8 +22,16 @@ class Brain:
         self.order = int(db.get_info_text("order"))
 
         self._end_token_id = db.get_token_id(_END_TOKEN_TEXT)
+        self._learning = False
 
         self.tokenizer = tokenizer.CobeTokenizer()
+
+    def start_batch_learning(self):
+        self._learning = True
+
+    def stop_batch_learning(self):
+        self._learning = False
+        self._db.commit()
 
     def learn(self, text, commit=True):
         tokens = self.tokenizer.split(text.decode("utf-8"))
@@ -68,7 +76,7 @@ class Brain:
                 db.add_or_inc_link(_NEXT_TOKEN_TABLE, expr_id,
                                    self._end_token_id, c=c)
 
-        if commit:
+        if not self._learning:
             db.commit()
 
     def reply(self, text):
