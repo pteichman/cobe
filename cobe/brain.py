@@ -368,10 +368,16 @@ class Db:
         random.shuffle(positions)
 
         for pos in positions:
-            q = "SELECT id FROM expr WHERE token%d_id = ? ORDER BY RANDOM()" \
+            q = "SELECT count(id) FROM expr WHERE token%d_id = ?" % pos
+            row = c.execute(q, (token_id,)).fetchone()
+            count = row[0]
+
+            offset = random.randint(0, count-1)
+
+            q = "SELECT id FROM expr WHERE token%d_id = ? LIMIT 1 OFFSET ?" \
                 % pos
 
-            row = c.execute(q, (token_id,)).fetchone()
+            row = c.execute(q, (token_id, offset)).fetchone()
             if row:
                 return int(row[0])
 
