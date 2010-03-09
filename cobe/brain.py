@@ -33,16 +33,16 @@ class Brain:
         self._learning = False
         self._db.commit()
 
-    def learn(self, text, commit=True):
+    def learn(self, text):
         tokens = self.tokenizer.split(text.decode("utf-8"))
 
         if len(tokens) < self.order:
             log.debug("Input too short to learn: %s", text)
             return
 
-        self._learn_tokens(tokens, commit)
+        self._learn_tokens(tokens)
 
-    def _learn_tokens(self, tokens, commit=True):
+    def _learn_tokens(self, tokens):
         db = self._db
         c = db.cursor()
 

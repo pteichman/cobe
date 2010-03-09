@@ -74,7 +74,7 @@ class LearnCommand(Command):
                                                           count/elapsed))
                     sys.stdout.flush()
 
-                b.learn(line.strip(), commit=show_progress)
+                b.learn(line.strip())
                 count = count + 1
 
             b.stop_batch_learning()
@@ -114,7 +114,7 @@ class LearnIrcLogCommand(Command):
                 msg = self._parse_irc_message(line.strip(),
                                               options.ignored_nicks)
                 if msg:
-                    b.learn(msg, commit=show_progress)
+                    b.learn(msg)
                     count = count + 1
 
             b.stop_batch_learning()
