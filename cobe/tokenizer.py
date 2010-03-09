@@ -18,3 +18,11 @@ class MegaHALTokenizer:
 
     def join(self, words):
         return "".join(words).capitalize()
+
+class CobeTokenizer:
+    def split(self, phrase):
+        if len(phrase) == 0:
+            return []
+
+        words = re.findall("(http:\S+|[\w']+|[^\w']+)", phrase, re.UNICODE)
+        return words
