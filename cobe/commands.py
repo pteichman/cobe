@@ -52,7 +52,7 @@ class LearnCommand(Command):
         Command.__init__(self, "learn", summary="Learn a file of text")
 
     def run(self, options, args):
-        if len(args) != 1:
+        if len(args) == 0:
             log.error("usage: learn <text file>")
             return
 
@@ -86,7 +86,7 @@ class LearnIrcLogCommand(Command):
                         help="Ignore an IRC nick (can be specified multiple times)")
 
     def run(self, options, args):
-        if len(args) != 1:
+        if len(args) == 0:
             log.error("usage: learn-irc-log <irc log file>")
             return
 
