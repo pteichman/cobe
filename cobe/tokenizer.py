@@ -26,3 +26,6 @@ class CobeTokenizer:
 
         words = re.findall("(http:\S+|[\w']+|[^\w']+)", phrase, re.UNICODE)
         return words
+
+    def join(self, words):
+        return "".join(words)

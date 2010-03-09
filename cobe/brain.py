@@ -23,7 +23,7 @@ class Brain:
 
         self._end_token_id = db.get_token_id(_END_TOKEN_TEXT)
 
-        self.tokenizer = tokenizer.MegaHALTokenizer()
+        self.tokenizer = tokenizer.CobeTokenizer()
 
     def learn(self, text, commit=True):
         tokens = self.tokenizer.split(text.decode("utf-8"))
