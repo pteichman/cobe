@@ -137,10 +137,9 @@ class Brain:
         # strip the original expr from the prev reply
         prev_token_ids = prev_token_ids[:-self.order]
 
-        all_tokens = prev_token_ids
-        all_tokens.extend(next_token_ids)
+        reply = prev_token_ids
+        reply.extend(next_token_ids)
 
-        reply = [token[0] for token in all_tokens]
         score = self._evaluate_reply(token_ids, reply, c)
 
         return reply, score
@@ -453,17 +452,16 @@ class Db:
         next_expr_count = expr_info[0]
         next_token_ids = expr_info[1:]
 
-        chain = [(token_id, 1.0) for token_id in next_token_ids]
+        chain = list(next_token_ids)
 
         # pick a random next_token given the things in expr_id
-        q = "SELECT token_id, count FROM %s WHERE expr_id = ? ORDER BY RANDOM()" % table
+        q = "SELECT token_id FROM %s WHERE expr_id = ? ORDER BY RANDOM()" % table
 
         row = c.execute(q, (expr_id,)).fetchone()
-        next_token_id, next_token_count = row
+        next_token_id, = row
 
         while next_token_id != self._end_token_id:
-            chain.append((next_token_id,
-                          float(next_token_count) / float(next_expr_count)))
+            chain.append(next_token_id)
 
             if table == _NEXT_TOKEN_TABLE:
                 next_token_ids = list(next_token_ids[1:])
@@ -476,7 +474,7 @@ class Db:
             next_expr_id, next_expr_count = self._get_expr_and_count_by_token_ids(next_token_ids, c)
 
             row = c.execute(q, (next_expr_id,)).fetchone()
-            next_token_id, next_token_count = row
+            next_token_id, = row
 
         return chain
 
