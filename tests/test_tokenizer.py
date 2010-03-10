@@ -52,5 +52,8 @@ class testCobeTokenizer(unittest.TestCase):
         words = self.tokenizer.split("testing :    (")
         self.assertEquals(words, ["testing", " :    ("])
 
+        words = self.tokenizer.split("testing          :    (")
+        self.assertEquals(words, ["testing", " :    ("])
+
 if __name__ == '__main__':
     unittest.main()
