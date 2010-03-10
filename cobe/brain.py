@@ -140,21 +140,40 @@ class Brain:
         all_tokens = prev_token_ids
         all_tokens.extend(next_token_ids)
 
-        reply = []
+        reply = [token[0] for token in all_tokens]
+        score = self._evaluate_reply(token_ids, reply, c)
+
+        return reply, score
+
+    def _evaluate_reply(self, input_tokens, output_tokens, c):
+        if len(output_tokens) == 0:
+            return 0.
+
+        db = self._db
+
         score = 0.
 
-        for token in all_tokens:
-            reply.append(token[0])
-            score = score - math.log(token[1], 2)
+        # evaluate forward probabilities
+        for output_idx in xrange(self.order, len(output_tokens)):
+            output_token = output_tokens[output_idx]
+            if output_token in input_tokens:
+                expr = output_tokens[output_idx-self.order:output_idx]
 
-        # prefer smaller replies?
-        n_tokens = len(reply)
+                p = db.get_expr_token_probability(_NEXT_TOKEN_TABLE, expr,
+                                                  output_token, c)
+                if p > 0:
+                    score = score - math.log(p, 2)
+
+        # FIXME: evaluate reverse probabilities
+
+        # prefer smaller replies
+        n_tokens = len(output_tokens)
         if n_tokens >= 8:
             score = score / math.sqrt(n_tokens-1)
         elif n_tokens >= 16:
             score = score / n_tokens
 
-        return reply, score
+        return score
 
     def _get_known_word_tokens(self, tokens, c):
         db = self._db
@@ -393,6 +412,25 @@ class Db:
         if row:
             return int(row[0])
 
+    def _get_expr_token_count(self, table, expr_id, token_id, c):
+        q = "SELECT count FROM %s WHERE expr_id = ? AND token_id = ?" % table
+
+        row = c.execute(q, (expr_id, token_id)).fetchone()
+        if row:
+            return int(row[0])
+
+    def get_expr_token_probability(self, table, expr, token_id, c=None):
+        if c is None:
+            c = self.cursor()
+
+        expr_id, expr_count = self._get_expr_and_count_by_token_ids(expr, c)
+        token_count = self._get_expr_token_count(table, expr_id, token_id, c)
+
+        if token_count is None:
+            return 0.
+
+        return float(token_count) / float(expr_count)
+
     def _get_expr_and_count_by_token_ids(self, token_ids, c):
         q = "SELECT id, count FROM expr WHERE %s" % self._all_token_args
 
@@ -403,7 +441,7 @@ class Db:
     def _get_expr_count(self, expr_id, c):
         q = "SELECT count FROM expr WHERE id = ?"
 
-        row = c.execute(q, expr_id).fetchone()
+        row = c.execute(q, (expr_id,)).fetchone()
         if row:
             return int(row[0])
 
