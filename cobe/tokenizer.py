@@ -25,6 +25,14 @@ class CobeTokenizer:
             return []
 
         words = re.findall("(http:\S+|[\w']+|[^\w']+)", phrase, re.UNICODE)
+
+        # Turn any runs of multiple spaces at the beginning or end of
+        # the token into a single space. This discourages extra spaces
+        # between words, but preserves whitespace between punctuation
+        # characters.
+        for i in xrange(len(words)):
+            words[i] = re.sub(r"(^  +|  +$)", " ", words[i])
+
         return words
 
     def join(self, words):
