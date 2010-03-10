@@ -444,6 +444,11 @@ class Db:
         if row:
             return int(row[0])
 
+    def _get_random_next_token(self, table, expr_id, c):
+        q = "SELECT token_id FROM %s WHERE expr_id = ? ORDER BY RANDOM()" % table
+        row = c.execute(q, (expr_id,)).fetchone()
+        return row[0]
+
     def follow_chain(self, table, expr_id, c=None):
         if c is None:
             c = self.cursor()
@@ -455,10 +460,7 @@ class Db:
         chain = list(next_token_ids)
 
         # pick a random next_token given the things in expr_id
-        q = "SELECT token_id FROM %s WHERE expr_id = ? ORDER BY RANDOM()" % table
-
-        row = c.execute(q, (expr_id,)).fetchone()
-        next_token_id, = row
+        next_token_id = self._get_random_next_token(table, expr_id, c)
 
         while next_token_id != self._end_token_id:
             chain.append(next_token_id)
@@ -473,8 +475,7 @@ class Db:
 
             next_expr_id, next_expr_count = self._get_expr_and_count_by_token_ids(next_token_ids, c)
 
-            row = c.execute(q, (next_expr_id,)).fetchone()
-            next_token_id, = row
+            next_token_id = self._get_random_next_token(table, next_expr_id, c)
 
         return chain
 
