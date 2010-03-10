@@ -5,6 +5,7 @@ import math
 import random
 import re
 import sqlite3
+import time
 
 import tokenizer
 
@@ -90,12 +91,18 @@ class Brain:
         best_score = None
         best_reply = None
 
-        for i in xrange(5):
+        # loop for one second
+        end = time.time() + 1
+
+        while True:
             reply, score = self._generate_reply(token_ids)
 
             if not best_score or score > best_score:
                 best_score = score
                 best_reply = reply
+
+            if time.time() > end:
+                break
 
         if best_reply is None:
             return "I don't know enough to answer you yet!"
