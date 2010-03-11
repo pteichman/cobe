@@ -186,9 +186,10 @@ class Brain:
         db = self._db
 
         token_ids = []
+        memo = {}
 
         for token in tokens:
-            token_id = db.get_word_token_id(token, c=c)
+            token_id = memo.setdefault(token, db.get_word_token_id(token, c=c))
             if token_id is not None:
                 token_ids.append(token_id)
 
