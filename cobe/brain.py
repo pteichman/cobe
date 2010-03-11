@@ -199,8 +199,9 @@ class Brain:
         db = self._db
 
         token_ids = []
+        memo = {}
         for token in tokens:
-            token_id = db.get_token_id(token, c=c)
+            token_id = memo.setdefault(token, db.get_token_id(token, c=c))
             if token_id is None:
                 if re.search("\w", token):
                     is_word = True
@@ -208,6 +209,7 @@ class Brain:
                     is_word = False
 
                 token_id = db.insert_token(token, is_word, c=c)
+                memo[token] = token_id
 
             token_ids.append(token_id)
 
