@@ -109,8 +109,9 @@ class Brain:
 
         # look up the words for these tokens
         text = []
+        memo = {}
         for token_id in best_reply:
-            text.append(db.get_token_text(token_id))
+            text.append(memo.setdefault(token_id, db.get_token_text(token_id)))
 
         return self.tokenizer.join(text)
 
