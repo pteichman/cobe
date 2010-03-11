@@ -301,12 +301,9 @@ class Db:
             return None
 
         count = int(row[0])
-        offset = random.randint(0, count-1)
 
-        q = "SELECT id FROM tokens LIMIT 1 OFFSET ?"
-        row = c.execute(q, (offset,)).fetchone()
-        if row:
-            return int(row[0])
+        # start at id 1 to avoid end_token
+        return random.randint(1, count-1)
 
     def get_word_token_id(self, token, c=None):
         if c is None:
