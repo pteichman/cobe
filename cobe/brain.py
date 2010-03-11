@@ -94,15 +94,12 @@ class Brain:
         # loop for one second
         end = time.time() + 1
 
-        while True:
+        while best_reply is None or time.time() < end:
             reply, score = self._generate_reply(token_ids)
 
             if not best_score or score > best_score:
                 best_score = score
                 best_reply = reply
-
-            if time.time() > end:
-                break
 
         if best_reply is None:
             return "I don't know enough to answer you yet!"
