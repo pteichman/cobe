@@ -545,10 +545,10 @@ CREATE INDEX expr_token%d_id on expr (token%d_id)""" % (i, i))
 CREATE INDEX expr_token_ids on expr (%s)""" % token_ids)
 
             c.execute("""
-CREATE INDEX next_token_expr_id ON next_token (expr_id)""")
+CREATE INDEX next_token_expr_id ON next_token (expr_id, token_id)""")
 
             c.execute("""
-CREATE INDEX prev_token_expr_id ON prev_token (expr_id)""")
+CREATE INDEX prev_token_expr_id ON prev_token (expr_id, token_id)""")
 
         self.commit()
         c.close()
