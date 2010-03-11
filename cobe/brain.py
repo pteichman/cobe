@@ -450,8 +450,13 @@ class Db:
             return int(row[0])
 
     def _get_random_next_token(self, table, expr_id, c):
-        q = "SELECT token_id FROM %s WHERE expr_id = ? ORDER BY RANDOM()" % table
+        # try to limit the table sort to 1/10 the available data
+        q = "SELECT token_id FROM %s WHERE expr_id = ? AND RANDOM()>0.9 ORDER BY RANDOM()" % table
         row = c.execute(q, (expr_id,)).fetchone()
+        if row is None:
+            q = "SELECT token_id FROM %s WHERE expr_id = ? ORDER BY RANDOM()" % table
+            row = c.execute(q, (expr_id,)).fetchone()
+
         return row[0]
 
     def follow_chain(self, table, expr_id, c=None):
