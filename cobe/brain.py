@@ -158,10 +158,10 @@ class Brain:
         score = 0.
 
         # evaluate forward probabilities
-        for output_idx in xrange(self.order, len(output_tokens)):
-            output_token = output_tokens[output_idx]
+        for output_idx in xrange(len(output_tokens)-self.order):
+            output_token = output_tokens[output_idx+self.order]
             if output_token in input_tokens:
-                expr = output_tokens[output_idx-self.order:output_idx]
+                expr = output_tokens[output_idx:output_idx+self.order]
 
                 p = db.get_expr_token_probability(_NEXT_TOKEN_TABLE, expr,
                                                   output_token, c)
