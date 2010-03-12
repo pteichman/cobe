@@ -168,7 +168,16 @@ class Brain:
                 if p > 0:
                     score = score - math.log(p, 2)
 
-        # FIXME: evaluate reverse probabilities
+        # evaluate reverse probabilities
+        for output_idx in xrange(len(output_tokens)-self.order):
+            output_token = output_tokens[output_idx]
+            if output_token in input_tokens:
+                expr = output_tokens[output_idx+1:output_idx+self.order+1]
+
+                p = db.get_expr_token_probability(_PREV_TOKEN_TABLE, expr,
+                                                  output_token, c)
+                if p > 0:
+                    score = score - math.log(p, 2)
 
         # prefer smaller replies
         n_tokens = len(output_tokens)
