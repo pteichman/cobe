@@ -268,10 +268,19 @@ class Db:
         if c is None:
             c = self.cursor()
 
-        # FIXME: needs to UPDATE if the key already exists
+        if text is None:
+            q = "DELETE FROM info WHERE attribute = ?"
+            c.execute(q, (attribute,))
+        else:
+            q = "SELECT count(*) FROM info WHERE attribute = ?"
+            row = c.execute(q, (attribute,)).fetchone()
 
-        q = "INSERT INTO info (attribute, text) VALUES (?, ?)"
-        c.execute(q, (attribute, text))
+            if row and row[0] > 0:
+                q = "UPDATE info SET text = ? WHERE attribute = ?"
+                c.execute(q, (text, attribute))
+            else:
+                q = "INSERT INTO info (attribute, text) VALUES (?, ?)"
+                c.execute(q, (attribute, text))
 
     def get_info_text(self, attribute, c=None):
         if c is None:

@@ -27,6 +27,26 @@ class testInit(unittest.TestCase):
         brain = Brain(TEST_BRAIN_FILE)
         self.assertEqual(order, brain.order)
 
+    def testInfoText(self):
+        order = 2
+        Brain.init(TEST_BRAIN_FILE, order=order)
+
+        brain = Brain(TEST_BRAIN_FILE)
+
+        db = brain._db
+        key = "test_text"
+
+        self.assertEqual(None, db.get_info_text(key))
+
+        db.set_info_text(key, "test_value")
+        self.assertEqual("test_value", db.get_info_text(key))
+
+        db.set_info_text(key, "test_value2")
+        self.assertEqual("test_value2", db.get_info_text(key))
+
+        db.set_info_text(key, None)
+        self.assertEqual(None, db.get_info_text(key))
+
 class testLearn(unittest.TestCase):
     def setUp(self):
         if os.path.exists(TEST_BRAIN_FILE):
