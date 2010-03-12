@@ -96,6 +96,8 @@ class Brain:
 
         while best_reply is None or time.time() < end:
             reply, score = self._generate_reply(token_ids)
+            if reply is None:
+                break
 
             if not best_score or score > best_score:
                 best_score = score
@@ -120,6 +122,9 @@ class Brain:
 
         while expr_id is None:
             token_id = db.get_random_token(c=c)
+            if token_id is None:
+                return None, None
+
             expr_id = db.get_random_expr(token_id, c=c)
 
         return token_id, expr_id
@@ -134,6 +139,8 @@ class Brain:
             pivot_expr_id = db.get_random_expr(pivot_token_id, c=c)
         else:
             pivot_token_id, pivot_expr_id = self._babble(c)
+            if pivot_token_id is None:
+                return None, 0.
 
         next_token_ids = db.follow_chain(_NEXT_TOKEN_TABLE, pivot_expr_id, c=c)
         prev_token_ids = db.follow_chain(_PREV_TOKEN_TABLE, pivot_expr_id, c=c)
@@ -320,6 +327,9 @@ class Db:
             return None
 
         count = int(row[0])
+
+        if count == 1:
+            return None
 
         # start at id 1 to avoid end_token
         return random.randint(1, count-1)
