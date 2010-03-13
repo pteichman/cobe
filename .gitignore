@@ -1,5 +1,6 @@
 *.brain
 *.pyc
+build
 cobe.egg-info
 cobe.pstats
 dist
