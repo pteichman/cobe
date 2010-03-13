@@ -10,7 +10,10 @@ parser.add_option("", "--debug", action="store_true",
 parser.add_option("", "--profile", action="store_true",
                   help=optparse.SUPPRESS_HELP)
 
-parser.add_commands(commands)
+parser.add_command(commands.InitCommand(), "Control")
+parser.add_command(commands.ConsoleCommand(), "Control")
+parser.add_command(commands.LearnCommand(), "Learning")
+parser.add_command(commands.LearnIrcLogCommand(), "Learning")
 
 def main():
     (command, options, args) = parser.parse_args()
