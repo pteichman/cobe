@@ -9,6 +9,8 @@ setup(
     version = "0.5",
     author = "Peter Teichman",
     author_email = "peter@teichman.org",
+    url = "http://github.com/pteichman/cobe",
+    description = "A database-backed Python port of MegaHAL",
     packages = ["cobe"],
     test_suite = "tests.cobe_suite",
     install_requires = ["cmdparse>=0.9"],
