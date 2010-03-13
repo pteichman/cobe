@@ -352,13 +352,6 @@ class Db:
         if row:
             return row[0]
 
-    def get_token_texts(self, token_ids, c=None):
-        if c is None:
-            c = self.cursor()
-
-        return "".join([self.get_token_text(token_id)
-                        for token_id in token_ids])
-
     def _get_expr_token_ids(self, expr_id, c):
         q = "SELECT count,%s FROM expr WHERE id = ?" % self._all_tokens
         return c.execute(q, (expr_id,)).fetchone()
