@@ -1,13 +1,14 @@
 import cmdparse
 import commands
 import logging
+import optparse
 import sys
 
 parser = cmdparse.CommandParser()
 parser.add_option("", "--debug", action="store_true",
-                  help="enable debugging output")
+                  help=optparse.SUPPRESS_HELP)
 parser.add_option("", "--profile", action="store_true",
-                  help="enable profiling output")
+                  help=optparse.SUPPRESS_HELP)
 
 parser.add_commands(commands)
 
