@@ -15,6 +15,12 @@ _DEFAULT_BRAIN_FILENAME = "cobe.brain"
 
 log = logging.getLogger("cobe")
 
+def check_for_brain_file(filename):
+    if not os.path.exists(filename):
+        print "ERROR: %s file not found. Run init?" % filename
+        return False
+    return True
+
 class InitCommand(Command):
     def __init__(self):
         Command.__init__(self, "init", summary="Initialize a new brain")
@@ -56,6 +62,9 @@ class LearnCommand(Command):
             log.error("usage: learn <text file>")
             return
 
+        if not check_for_brain_file(_DEFAULT_BRAIN_FILENAME):
+            return 1
+
         b = Brain(_DEFAULT_BRAIN_FILENAME)
 
         for filename in args:
@@ -92,6 +101,9 @@ class LearnIrcLogCommand(Command):
         if len(args) == 0:
             log.error("usage: learn-irc-log <irc log file>")
             return
+
+        if not check_for_brain_file(_DEFAULT_BRAIN_FILENAME):
+            return 1
 
         b = Brain(_DEFAULT_BRAIN_FILENAME)
 
@@ -147,6 +159,9 @@ class ConsoleCommand(Command):
         Command.__init__(self, "console", summary="Interactive console")
 
     def run(self, options, args):
+        if not check_for_brain_file(_DEFAULT_BRAIN_FILENAME):
+            return 1
+
         b = Brain(_DEFAULT_BRAIN_FILENAME)
 
         while True:
