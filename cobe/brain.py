@@ -331,8 +331,8 @@ class Db:
         if count == 1:
             return None
 
-        # start at id 1 to avoid end_token
-        return random.randint(1, count-1)
+        # assume end_token was the first token inserted
+        return random.randint(self._end_token_id+1, count-1)
 
     def get_word_token_id(self, token, c=None):
         if c is None:
