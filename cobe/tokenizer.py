@@ -3,6 +3,11 @@
 import re
 
 class MegaHALTokenizer:
+    """A traditional MegaHAL style tokenizer. This considers any of these
+to be a token:
+  * one or more consecutive alpha characters (including apostrophe)
+  * one or more consecutive numeric characters
+  * one or more consecutive punctuation/space characters (excluding apostrophe)"""
     def split(self, phrase):
         if len(phrase) == 0:
             return []
@@ -13,7 +18,7 @@ class MegaHALTokenizer:
 
         # megahal traditionally considers [a-z0-9] as word characters.
         # Let's see what happens if we add [_']
-        words = re.findall("([\w']+|[^\w']+)", phrase.upper(), re.UNICODE)
+        words = re.findall("([A-Z']+|[0-9]+|[^A-Z'0-9]+)", phrase.upper(), re.UNICODE)
         return words
 
     def join(self, words):
