@@ -7,16 +7,12 @@ http://blogs.perl.org/users/aevar_arnfjor_bjarmason/2010/01/hailo-a-perl-rewrite
 Our goals are similar: an on-disk data store for lower memory usage,
 better support for Unicode, and general stability.
 
-Dependencies:
+To install:
 
-* python-cmdparse:
-
-  $ git clone git://github.com/pteichman/python-cmdparse.git
-  $ easy_install python-cmdparse
+  $ python setup.py install
 
 Usage:
 
   $ cobe init
+  $ cobe learn <text file>
   $ cobe console
-
-Reply quality is an ongoing project.
