@@ -353,7 +353,7 @@ class Db:
             return row[0]
 
     def _get_expr_token_ids(self, expr_id, c):
-        q = "SELECT count,%s FROM expr WHERE id = ?" % self._all_tokens
+        q = "SELECT %s FROM expr WHERE id = ?" % self._all_tokens
         return c.execute(q, (expr_id,)).fetchone()
 
     def insert_token(self, token, is_word, c=None):
@@ -484,29 +484,22 @@ class Db:
         if c is None:
             c = self.cursor()
 
-        expr_info = self._get_expr_token_ids(expr_id, c)
-        next_expr_count = expr_info[0]
-        next_token_ids = expr_info[1:]
+        # initialize the chain with the current expr's tokens
+        chain = list(self._get_expr_token_ids(expr_id, c))
+        expr_token_ids = chain[:]
 
-        chain = list(next_token_ids)
-
-        # pick a random next_token given the things in expr_id
+        # pick a random next_token that can follow expr_id
         next_token_id = self._get_random_next_token(table, expr_id, c)
-
         while next_token_id != self._end_token_id:
             chain.append(next_token_id)
 
             if table == _NEXT_TOKEN_TABLE:
-                next_token_ids = list(next_token_ids[1:])
-                next_token_ids.append(next_token_id)
+                expr_token_ids = expr_token_ids[1:] + [next_token_id]
             else:
-                new_next_token_ids = [next_token_id]
-                new_next_token_ids.extend(next_token_ids[:-1])
-                next_token_ids = new_next_token_ids
+                expr_token_ids = [next_token_id] + expr_token_ids[:-1]
 
-            next_expr_id, next_expr_count = self._get_expr_and_count_by_token_ids(next_token_ids, c)
-
-            next_token_id = self._get_random_next_token(table, next_expr_id, c)
+            expr_id = self.get_expr_by_token_ids(expr_token_ids, c)
+            next_token_id = self._get_random_next_token(table, expr_id, c)
 
         return chain
 
