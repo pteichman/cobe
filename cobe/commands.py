@@ -144,7 +144,7 @@ class LearnIrcLogCommand(Command):
 
 class ConsoleCommand(Command):
     def __init__(self):
-        Command.__init__(self, "console", summary="Speak with Cobe.")
+        Command.__init__(self, "console", summary="Interactive console")
 
     def run(self, options, args):
         b = Brain(_DEFAULT_BRAIN_FILENAME)
