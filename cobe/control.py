@@ -1,7 +1,5 @@
-#!/usr/bin/env python
-
 import cmdparse
-import cobe.commands
+import commands
 import logging
 import sys
 
@@ -11,9 +9,9 @@ parser.add_option("", "--debug", action="store_true",
 parser.add_option("", "--profile", action="store_true",
                   help="enable profiling output")
 
-parser.add_commands(cobe.commands)
+parser.add_commands(commands)
 
-if __name__ == "__main__":
+def main():
     (command, options, args) = parser.parse_args()
 
     formatter = logging.Formatter("%(levelname)s: %(message)s")
@@ -41,3 +39,6 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print
         sys.exit(1)
+
+if __name__ == "__main__":
+    main()

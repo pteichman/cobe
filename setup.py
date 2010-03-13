@@ -20,5 +20,10 @@ setup(
         "Operating System :: OS Independent",
         "Programming Language :: Python",
         "Topic :: Scientific/Engineering :: Artificial Intelligence"
-    ]
+    ],
+    entry_points = {
+        "console_scripts" : [
+            "cobe-control = cobe.control:main"
+        ]
+    }
 )
