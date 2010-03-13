@@ -11,6 +11,7 @@ setup(
     author_email = "peter@teichman.org",
     packages = ["cobe"],
     test_suite = "tests.cobe_suite",
+    install_requires = ["cmdparse>=0.9"],
     classifiers = [
         "Development Status :: 4 - Beta",
         "Environment :: Console",
