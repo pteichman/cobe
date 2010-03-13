@@ -241,7 +241,7 @@ class Brain:
     def init(filename, order=5, create_indexes=True):
         """Initialize a brain. This brain's file must not already exist."""
 
-        log.info("Initializing a cobe brain.")
+        log.info("Initializing a cobe brain: %s" % filename)
 
         db = Db(sqlite3.connect(filename))
         db.init(order, create_indexes)
