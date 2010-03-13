@@ -24,7 +24,7 @@ setup(
     ],
     entry_points = {
         "console_scripts" : [
-            "cobe-control = cobe.control:main"
+            "cobe = cobe.control:main"
         ]
     }
 )
