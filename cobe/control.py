@@ -5,6 +5,8 @@ import optparse
 import sys
 
 parser = cmdparse.CommandParser()
+parser.add_option("-b", "--brain", type="string", default="cobe.brain",
+                  help="Specify an alternate brain file")
 parser.add_option("", "--debug", action="store_true",
                   help=optparse.SUPPRESS_HELP)
 parser.add_option("", "--profile", action="store_true",

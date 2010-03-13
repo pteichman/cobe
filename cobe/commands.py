@@ -11,8 +11,6 @@ from brain import Brain
 
 from cmdparse import Command
 
-_DEFAULT_BRAIN_FILENAME = "cobe.brain"
-
 log = logging.getLogger("cobe")
 
 def check_for_brain_file(filename):
@@ -29,7 +27,7 @@ class InitCommand(Command):
         self.add_option("", "--order", type="int", default=5)
 
     def run(self, options, args):
-        filename = _DEFAULT_BRAIN_FILENAME
+        filename = options.brain
 
         if os.path.exists(filename):
             if options.force:
@@ -62,10 +60,10 @@ class LearnCommand(Command):
             log.error("usage: learn <text file>")
             return
 
-        if not check_for_brain_file(_DEFAULT_BRAIN_FILENAME):
+        if not check_for_brain_file(options.brain):
             return 1
 
-        b = Brain(_DEFAULT_BRAIN_FILENAME)
+        b = Brain(options.brain)
 
         for filename in args:
             now = time.time()
@@ -102,10 +100,10 @@ class LearnIrcLogCommand(Command):
             log.error("usage: learn-irc-log <irc log file>")
             return
 
-        if not check_for_brain_file(_DEFAULT_BRAIN_FILENAME):
+        if not check_for_brain_file(options.brain):
             return 1
 
-        b = Brain(_DEFAULT_BRAIN_FILENAME)
+        b = Brain(options.brain)
 
         for filename in args:
             now = time.time()
@@ -159,10 +157,10 @@ class ConsoleCommand(Command):
         Command.__init__(self, "console", summary="Interactive console")
 
     def run(self, options, args):
-        if not check_for_brain_file(_DEFAULT_BRAIN_FILENAME):
+        if not check_for_brain_file(options.brain):
             return 1
 
-        b = Brain(_DEFAULT_BRAIN_FILENAME)
+        b = Brain(options.brain)
 
         while True:
             try:
