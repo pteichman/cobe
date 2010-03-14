@@ -96,7 +96,9 @@ class Brain:
         best_reply = None
 
         # loop for one second
-        end = time.time() + 1
+        start = time.time()
+        end = start + 1
+        count = 0
 
         while best_reply is None or time.time() < end:
             reply, score = self._generate_reply(token_ids)
@@ -106,6 +108,10 @@ class Brain:
             if not best_score or score > best_score:
                 best_score = score
                 best_reply = reply
+
+            count = count + 1
+
+        log.debug("made %d replies in %f seconds" % (count, time.time()-start))
 
         if best_reply is None:
             return "I don't know enough to answer you yet!"
