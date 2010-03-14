@@ -1,5 +1,5 @@
 from cobe.brain import Brain
-from cobe.tokenizer import MegaHALTokenizer
+from cobe.tokenizers import MegaHALTokenizer
 import os
 import unittest
 

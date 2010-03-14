@@ -1,6 +1,6 @@
 import unittest
 
-from cobe.tokenizer import CobeTokenizer, MegaHALTokenizer
+from cobe.tokenizers import CobeTokenizer, MegaHALTokenizer
 
 class testMegaHALTokenizer(unittest.TestCase):
     def setUp(self):

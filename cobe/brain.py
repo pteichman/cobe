@@ -7,7 +7,7 @@ import re
 import sqlite3
 import time
 
-import tokenizer
+import tokenizers
 
 log = logging.getLogger("cobe")
 
@@ -25,7 +25,7 @@ class Brain:
         self._end_token_id = db.get_token_id(_END_TOKEN_TEXT)
         self._learning = False
 
-        self.tokenizer = tokenizer.CobeTokenizer()
+        self.tokenizer = tokenizers.CobeTokenizer()
 
     def start_batch_learning(self):
         self._learning = True
