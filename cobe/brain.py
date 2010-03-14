@@ -496,14 +496,22 @@ class Db:
             return int(row[0])
 
     def _get_random_next_token(self, table, expr_id, c):
-        # try to limit the table sort to 1/10 the available data
-        q = "SELECT token_id FROM %s WHERE expr_id = ? AND RANDOM()>0.9 ORDER BY RANDOM()" % table
-        row = c.execute(q, (expr_id,)).fetchone()
-        if row is None:
-            q = "SELECT token_id FROM %s WHERE expr_id = ? ORDER BY RANDOM()" % table
-            row = c.execute(q, (expr_id,)).fetchone()
+        q = "SELECT token_id FROM %s WHERE expr_id = ?" % table
 
-        return row[0]
+        count = 0
+        ret = None
+
+        c.execute(q, (expr_id,))
+
+        rows = c.fetchmany()
+        while len(rows) > 0:
+            for row in rows:
+                if random.randint(0, count) == 0:
+                    ret = row[0]
+                count = count + 1
+            rows = c.fetchmany()
+
+        return ret
 
     def follow_chain(self, table, expr_id, c=None):
         if c is None:
