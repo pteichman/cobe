@@ -238,13 +238,13 @@ class Brain:
         return expr_id
 
     @staticmethod
-    def init(filename, order=5, create_indexes=True):
+    def init(filename, order=5):
         """Initialize a brain. This brain's file must not already exist."""
 
         log.info("Initializing a cobe brain: %s" % filename)
 
         db = Db(sqlite3.connect(filename))
-        db.init(order, create_indexes)
+        db.init(order)
 
 class Db:
     """Database functions to support a Cobe brain."""
@@ -503,7 +503,7 @@ class Db:
 
         return chain
 
-    def init(self, order, create_indexes):
+    def init(self, order):
         c = self.cursor()
 
         log.debug("Creating table: info")
@@ -552,22 +552,21 @@ CREATE TABLE prev_token (
         # save the order of this brain
         self.set_info_text("order", str(order), c=c)
 
-        if create_indexes:
-            c.execute("""
+        c.execute("""
 CREATE INDEX tokens_text on tokens (text)""")
 
-            for i in xrange(order):
-                c.execute("""
+        for i in xrange(order):
+            c.execute("""
 CREATE INDEX expr_token%d_id on expr (token%d_id)""" % (i, i))
 
-            token_ids = ",".join(["token%d_id" % i for i in xrange(order)])
-            c.execute("""
+        token_ids = ",".join(["token%d_id" % i for i in xrange(order)])
+        c.execute("""
 CREATE INDEX expr_token_ids on expr (%s)""" % token_ids)
 
-            c.execute("""
+        c.execute("""
 CREATE INDEX next_token_expr_id ON next_token (expr_id, token_id)""")
 
-            c.execute("""
+        c.execute("""
 CREATE INDEX prev_token_expr_id ON prev_token (expr_id, token_id)""")
 
         self.commit()
