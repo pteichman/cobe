@@ -298,12 +298,20 @@ class Db:
                 q = "INSERT INTO info (attribute, text) VALUES (?, ?)"
                 c.execute(q, (attribute, text))
 
-    def get_info_text(self, attribute, c=None):
+    def get_info_text(self, attribute, text_factory=None, c=None):
         if c is None:
             c = self.cursor()
 
+        if text_factory is not None:
+            old_text_factory = self._conn.text_factory
+            self._conn.text_factory = text_factory
+
         q = "SELECT text FROM info WHERE attribute = ?"
         row = c.execute(q, (attribute,)).fetchone()
+
+        if text_factory is not None:
+            self._conn.text_factory = old_text_factory
+
         if row:
             return row[0]
 

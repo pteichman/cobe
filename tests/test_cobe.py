@@ -1,5 +1,6 @@
 from cobe.brain import Brain
 from cobe.tokenizers import MegaHALTokenizer
+import cPickle as pickle
 import os
 import unittest
 
@@ -46,6 +47,25 @@ class testInit(unittest.TestCase):
 
         db.set_info_text(key, None)
         self.assertEqual(None, db.get_info_text(key))
+
+    def testInfoPickle(self):
+        order = 2
+        Brain.init(TEST_BRAIN_FILE, order=order)
+
+        brain = Brain(TEST_BRAIN_FILE)
+
+        db = brain._db
+        key = "pickle_test"
+        obj = self
+
+        db.set_info_text(key, pickle.dumps(obj))
+
+        # pickle cannot load from a unicode object
+        get_info_text = lambda: pickle.loads(db.get_info_text(key))
+        self.assertRaises(TypeError, get_info_text)
+
+        get_info_text = lambda: pickle.loads(
+            db.get_info_text(key, text_factory=str))
 
 class testLearn(unittest.TestCase):
     def setUp(self):
