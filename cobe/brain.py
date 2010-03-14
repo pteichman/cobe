@@ -143,6 +143,7 @@ class Brain:
         # generate a reply containing one of token_ids
         db = self._db
         c = db.cursor()
+        c.arraysize = 200
 
         if len(token_ids) > 0:
             pivot_token_id = random.choice(token_ids)
