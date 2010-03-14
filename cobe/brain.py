@@ -242,12 +242,18 @@ class Brain:
         return expr_id
 
     @staticmethod
-    def init(filename, order=5):
+    def init(filename, order=5, tokenizer=None):
         """Initialize a brain. This brain's file must not already exist."""
 
         log.info("Initializing a cobe brain: %s" % filename)
 
-        tokenizer = "cobe"
+        if tokenizer is None:
+            tokenizer = "cobe"
+
+        if tokenizer not in ("cobe", "megahal"):
+            log.info("Unknown tokenizer: %s. Using CobeTokenizer", tokenizer)
+            tokenizer = "cobe"
+
         db = Db(sqlite3.connect(filename))
         db.init(order, tokenizer)
 
