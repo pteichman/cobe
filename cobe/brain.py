@@ -22,10 +22,14 @@ class Brain:
 
         self.order = int(db.get_info_text("order"))
 
+        tokenizer_name = db.get_info_text("tokenizer")
+        if tokenizer_name == "megahal":
+            self.tokenizer = tokenizers.MegaHALTokenizer()
+        else:
+            self.tokenizer = tokenizers.CobeTokenizer()
+
         self._end_token_id = db.get_token_id(_END_TOKEN_TEXT)
         self._learning = False
-
-        self.tokenizer = tokenizers.CobeTokenizer()
 
     def start_batch_learning(self):
         self._learning = True
@@ -243,8 +247,9 @@ class Brain:
 
         log.info("Initializing a cobe brain: %s" % filename)
 
+        tokenizer = "cobe"
         db = Db(sqlite3.connect(filename))
-        db.init(order)
+        db.init(order, tokenizer)
 
 class Db:
     """Database functions to support a Cobe brain."""
@@ -511,7 +516,7 @@ class Db:
 
         return chain
 
-    def init(self, order):
+    def init(self, order, tokenizer):
         c = self.cursor()
 
         log.debug("Creating table: info")
@@ -559,6 +564,9 @@ CREATE TABLE prev_token (
 
         # save the order of this brain
         self.set_info_text("order", str(order), c=c)
+
+        # save the tokenizer
+        self.set_info_text("tokenizer", tokenizer)
 
         c.execute("""
 CREATE INDEX tokens_text on tokens (text)""")
