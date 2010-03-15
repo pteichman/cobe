@@ -1,8 +1,0 @@
-#!/usr/bin/env python
-
-import pstats
-stats = pstats.Stats("cobe.pstats")
-
-stats.strip_dirs()
-stats.sort_stats("time")
-stats.print_stats(.2, "brain")
