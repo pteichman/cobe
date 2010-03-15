@@ -97,7 +97,7 @@ class Brain:
 
         # loop for one second
         start = time.time()
-        end = start + 1
+        end = start + 0.5
         count = 0
 
         while best_reply is None or time.time() < end:
