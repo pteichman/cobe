@@ -9,8 +9,6 @@ parser.add_option("-b", "--brain", type="string", default="cobe.brain",
                   help="Specify an alternate brain file")
 parser.add_option("", "--debug", action="store_true",
                   help=optparse.SUPPRESS_HELP)
-parser.add_option("", "--profile", action="store_true",
-                  help=optparse.SUPPRESS_HELP)
 
 parser.add_command(commands.InitCommand(), "Control")
 parser.add_command(commands.ConsoleCommand(), "Control")
@@ -30,18 +28,12 @@ def main():
     else:
         logging.root.setLevel(logging.INFO)
 
-    if options.profile:
-        import cProfile
-
     if command is None:
         parser.print_help()
         sys.exit(1)
 
     try:
-        if options.profile:
-            cProfile.run("command.run(options, args)", "cobe.pstats")
-        else:
-            command.run(options, args)
+        command.run(options, args)
     except KeyboardInterrupt:
         print
         sys.exit(1)
