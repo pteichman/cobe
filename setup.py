@@ -6,16 +6,16 @@ use_setuptools()
 from setuptools import setup, find_packages
 setup(
     name = "cobe",
-    version = "0.5",
+    version = "1.0",
     author = "Peter Teichman",
     author_email = "peter@teichman.org",
-    url = "http://github.com/pteichman/cobe",
+    url = "http://wiki.github.com/pteichman/cobe/",
     description = "A database-backed Python port of MegaHAL",
     packages = ["cobe"],
     test_suite = "tests.cobe_suite",
     install_requires = ["cmdparse>=0.9"],
     classifiers = [
-        "Development Status :: 4 - Beta",
+        "Development Status :: 5 - Production/Stable",
         "Environment :: Console",
         "Intended Audience :: Developers",
         "Intended Audience :: End Users/Desktop",
