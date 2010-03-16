@@ -28,7 +28,7 @@ class Brain:
             log.info("File does not exist. Assuming defaults.")
             Brain.init(filename)
 
-        self._db = db = Db(sqlite3.connect(filename))
+        self._db = db = _Db(sqlite3.connect(filename))
 
         self.order = int(db.get_info_text("order"))
 
@@ -293,10 +293,10 @@ tokenizer -- One of Cobe, MegaHAL (default Cobe). See documentation
             log.info("Unknown tokenizer: %s. Using CobeTokenizer", tokenizer)
             tokenizer = "Cobe"
 
-        db = Db(sqlite3.connect(filename))
+        db = _Db(sqlite3.connect(filename))
         db.init(order, tokenizer)
 
-class Db:
+class _Db:
     """Database functions to support a Cobe brain. This is not meant
     to be used from outside."""
     def __init__(self, conn):
