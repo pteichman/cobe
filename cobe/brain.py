@@ -19,7 +19,11 @@ _NEXT_TOKEN_TABLE = "next_token"
 _PREV_TOKEN_TABLE = "prev_token"
 
 class Brain:
+    """The main interface for Cobe."""
     def __init__(self, filename):
+        """Construct a brain for the specified filename. If that file
+        doesn't exist, it will be initialized with the default brain
+        settings."""
         if not os.path.exists(filename):
             log.info("File does not exist. Assuming defaults.")
             Brain.init(filename)
@@ -38,13 +42,19 @@ class Brain:
         self._learning = False
 
     def start_batch_learning(self):
+        """Begin a series of batch learn operations. Data will not be
+        committed to the database until stop_batch_learning is
+        called. Learn text using the normal learn(text) method."""
         self._learning = True
 
     def stop_batch_learning(self):
+        """Finish a series of batch learn operations."""
         self._learning = False
         self._db.commit()
 
     def learn(self, text):
+        """Learn a string of text. If the input is not already
+        Unicode, it will be decoded as utf-8."""
         if type(text) != types.UnicodeType:
             # Assume that non-Unicode text is encoded as utf-8, which
             # should be somewhat safe in the modern world.
@@ -96,6 +106,8 @@ class Brain:
             db.commit()
 
     def reply(self, text):
+        """Reply to a string of text. If the input is not already
+        Unicode, it will be decoded as utf-8."""
         if type(text) != types.UnicodeType:
             # Assume that non-Unicode text is encoded as utf-8, which
             # should be somewhat safe in the modern world.
@@ -266,8 +278,12 @@ class Brain:
 
     @staticmethod
     def init(filename, order=5, tokenizer=None):
-        """Initialize a brain. This brain's file must not already exist."""
+        """Initialize a brain. This brain's file must not already exist.
 
+Keyword arguments:
+order -- Order of the forward/reverse Markov chains (integer)
+tokenizer -- One of Cobe, MegaHAL (default Cobe). See documentation
+             for cobe.tokenizers for details. (string)"""
         log.info("Initializing a cobe brain: %s" % filename)
 
         if tokenizer is None:
@@ -281,7 +297,8 @@ class Brain:
         db.init(order, tokenizer)
 
 class Db:
-    """Database functions to support a Cobe brain."""
+    """Database functions to support a Cobe brain. This is not meant
+    to be used from outside."""
     def __init__(self, conn):
         self._conn = conn
 

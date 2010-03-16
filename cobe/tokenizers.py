@@ -6,9 +6,11 @@ import types
 class MegaHALTokenizer:
     """A traditional MegaHAL style tokenizer. This considers any of these
 to be a token:
-  * one or more consecutive alpha characters (including apostrophe)
+  * one or more consecutive alpha characters (plus apostrophe)
   * one or more consecutive numeric characters
-  * one or more consecutive punctuation/space characters (excluding apostrophe)"""
+  * one or more consecutive punctuation/space characters (not apostrophe)
+
+This tokenizer ignores differences in capitalization."""
     def split(self, phrase):
         if type(phrase) != types.UnicodeType:
             raise TypeError("Input must be Unicode")
@@ -29,6 +31,16 @@ to be a token:
         return u"".join(words).capitalize()
 
 class CobeTokenizer:
+    """A tokenizer that is somewhat improved from MegaHAL. These are
+considered tokens:
+  * one or more consecutive Unicode word characters (plus apostrophe)
+  * one or more consecutive Unicode non-word characters
+  * an HTTP url, http: followed by any run of non-space characters.
+
+This tokenizer minimizes whitespace at the beginning or end of a token.
+
+It preserves differences in case. foo, Foo, and FOO are different
+tokens."""
     def split(self, phrase):
         if type(phrase) != types.UnicodeType:
             raise TypeError("Input must be Unicode")
