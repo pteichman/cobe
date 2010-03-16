@@ -29,7 +29,7 @@ class Brain:
         self.order = int(db.get_info_text("order"))
 
         tokenizer_name = db.get_info_text("tokenizer")
-        if tokenizer_name == "megahal":
+        if tokenizer_name == "MegaHAL":
             self.tokenizer = tokenizers.MegaHALTokenizer()
         else:
             self.tokenizer = tokenizers.CobeTokenizer()
@@ -271,11 +271,11 @@ class Brain:
         log.info("Initializing a cobe brain: %s" % filename)
 
         if tokenizer is None:
-            tokenizer = "cobe"
+            tokenizer = "Cobe"
 
-        if tokenizer not in ("cobe", "megahal"):
+        if tokenizer not in ("Cobe", "MegaHAL"):
             log.info("Unknown tokenizer: %s. Using CobeTokenizer", tokenizer)
-            tokenizer = "cobe"
+            tokenizer = "Cobe"
 
         db = Db(sqlite3.connect(filename))
         db.init(order, tokenizer)

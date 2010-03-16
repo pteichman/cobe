@@ -29,7 +29,7 @@ class testInit(unittest.TestCase):
         self.assertEqual(order, brain.order)
 
     def testInitWithTokenizer(self):
-        tokenizer = "megahal"
+        tokenizer = "MegaHAL"
         Brain.init(TEST_BRAIN_FILE, order=2, tokenizer=tokenizer)
 
         brain = Brain(TEST_BRAIN_FILE)
