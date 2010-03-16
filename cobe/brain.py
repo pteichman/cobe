@@ -2,6 +2,7 @@
 
 import logging
 import math
+import os
 import random
 import re
 import sqlite3
@@ -19,6 +20,10 @@ _PREV_TOKEN_TABLE = "prev_token"
 
 class Brain:
     def __init__(self, filename):
+        if not os.path.exists(filename):
+            log.info("File does not exist. Assuming defaults.")
+            Brain.init(filename)
+
         self._db = db = Db(sqlite3.connect(filename))
 
         self.order = int(db.get_info_text("order"))
