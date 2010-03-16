@@ -1,6 +1,7 @@
 # Copyright (C) 2010 Peter Teichman
 
 import re
+import types
 
 class MegaHALTokenizer:
     """A traditional MegaHAL style tokenizer. This considers any of these
@@ -9,6 +10,9 @@ to be a token:
   * one or more consecutive numeric characters
   * one or more consecutive punctuation/space characters (excluding apostrophe)"""
     def split(self, phrase):
+        if type(phrase) != types.UnicodeType:
+            raise TypeError("Input must be Unicode")
+
         if len(phrase) == 0:
             return []
 
@@ -22,10 +26,13 @@ to be a token:
         return words
 
     def join(self, words):
-        return "".join(words).capitalize()
+        return u"".join(words).capitalize()
 
 class CobeTokenizer:
     def split(self, phrase):
+        if type(phrase) != types.UnicodeType:
+            raise TypeError("Input must be Unicode")
+
         if len(phrase) == 0:
             return []
 
@@ -41,4 +48,4 @@ class CobeTokenizer:
         return words
 
     def join(self, words):
-        return "".join(words)
+        return u"".join(words)

@@ -6,6 +6,7 @@ import random
 import re
 import sqlite3
 import time
+import types
 
 import tokenizers
 
@@ -39,7 +40,12 @@ class Brain:
         self._db.commit()
 
     def learn(self, text):
-        tokens = self.tokenizer.split(text.decode("utf-8"))
+        if type(text) != types.UnicodeType:
+            # Assume that non-Unicode text is encoded as utf-8, which
+            # should be somewhat safe in the modern world.
+            text = text.decode("utf-8")
+
+        tokens = self.tokenizer.split(text)
 
         if len(tokens) < self.order:
             log.debug("Input too short to learn: %s", text)
@@ -85,7 +91,12 @@ class Brain:
             db.commit()
 
     def reply(self, text):
-        tokens = self.tokenizer.split(text.decode("utf-8"))
+        if type(text) != types.UnicodeType:
+            # Assume that non-Unicode text is encoded as utf-8, which
+            # should be somewhat safe in the modern world.
+            text = text.decode("utf-8")
+
+        tokens = self.tokenizer.split(text)
 
         db = self._db
         c = db.cursor()
