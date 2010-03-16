@@ -589,6 +589,9 @@ CREATE TABLE prev_token (
         # save the tokenizer
         self.set_info_text("tokenizer", tokenizer)
 
+        # save the brain/schema version
+        self.set_info_text("version", "1")
+
         c.execute("""
 CREATE INDEX tokens_text on tokens (text)""")
 
