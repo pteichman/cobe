@@ -10,7 +10,7 @@ setup(
     author = "Peter Teichman",
     author_email = "peter@teichman.org",
     url = "http://wiki.github.com/pteichman/cobe/",
-    description = "A database-backed Python port of MegaHAL",
+    description = "A conversation simulator similar to MegaHAL",
     packages = ["cobe"],
     test_suite = "tests.cobe_suite",
     install_requires = ["cmdparse>=0.9"],
