@@ -58,7 +58,7 @@ class Brain:
         if type(text) != types.UnicodeType:
             # Assume that non-Unicode text is encoded as utf-8, which
             # should be somewhat safe in the modern world.
-            text = text.decode("utf-8")
+            text = text.decode("utf-8", "ignore")
 
         tokens = self.tokenizer.split(text)
 
@@ -111,7 +111,7 @@ class Brain:
         if type(text) != types.UnicodeType:
             # Assume that non-Unicode text is encoded as utf-8, which
             # should be somewhat safe in the modern world.
-            text = text.decode("utf-8")
+            text = text.decode("utf-8", "ignore")
 
         tokens = self.tokenizer.split(text)
 
