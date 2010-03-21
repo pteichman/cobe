@@ -13,7 +13,7 @@ setup(
     description = "A conversation simulator similar to MegaHAL",
     packages = ["cobe"],
     test_suite = "tests.cobe_suite",
-    install_requires = ["cmdparse>=0.9"],
+    install_requires = ["argparse>=1.1"],
     classifiers = [
         "Development Status :: 5 - Production/Stable",
         "Environment :: Console",

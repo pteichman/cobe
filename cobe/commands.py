@@ -13,24 +13,27 @@ from cmdparse import Command
 
 log = logging.getLogger("cobe")
 
-class InitCommand(Command):
-    def __init__(self):
-        Command.__init__(self, "init", summary="Initialize a new brain")
+class InitCommand:
+    @classmethod
+    def add_subparser(cls, parser):
+        subparser = parser.add_parser("init", help="Initialize a new brain")
 
-        self.add_option("", "--force", action="store_true")
-        self.add_option("", "--order", type="int", default=5)
+        subparser.add_argument("--force", action="store_true")
+        subparser.add_argument("--order", type=int, default=5)
+        subparser.set_defaults(run=cls.run)
 
-    def run(self, options, args):
-        filename = options.brain
+    @staticmethod
+    def run(args):
+        filename = args.brain
 
         if os.path.exists(filename):
-            if options.force:
+            if args.force:
                 os.remove(filename)
             else:
                 log.error("%s already exists!", filename)
                 return
 
-        Brain.init(filename, options.order)
+        Brain.init(filename, args.order)
 
 def progress_generator(filename):
     s = os.stat(filename)
@@ -45,18 +48,18 @@ def progress_generator(filename):
 
     fd.close()
 
-class LearnCommand(Command):
-    def __init__(self):
-        Command.__init__(self, "learn", summary="Learn a file of text")
+class LearnCommand:
+    @classmethod
+    def add_subparser(cls, parser):
+        subparser = parser.add_parser("learn", help="Learn a file of text")
+        subparser.add_argument("file", nargs="+")
+        subparser.set_defaults(run=cls.run)
 
-    def run(self, options, args):
-        if len(args) == 0:
-            log.error("usage: learn <text file>")
-            return
+    @staticmethod
+    def run(args):
+        b = Brain(args.brain)
 
-        b = Brain(options.brain)
-
-        for filename in args:
+        for filename in args.file:
             now = time.time()
             print filename
 
@@ -79,21 +82,22 @@ class LearnCommand(Command):
             elapsed = time.time() - now
             print "\r100%% (%d/s)" % (count/elapsed)
 
-class LearnIrcLogCommand(Command):
-    def __init__(self):
-        Command.__init__(self, "learn-irc-log", summary="Learn an irc log")
-        self.add_option("-i", "--ignore-nick",
-                        action="append", dest="ignored_nicks",
-                        help="Ignore an IRC nick (can be specified multiple times)")
+class LearnIrcLogCommand:
+    @classmethod
+    def add_subparser(cls, parser):
+        subparser = parser.add_parser("learn-irc-log",
+                                      help="Learn a file of IRC log text")
+        subparser.add_argument("-i", "--ignore-nick", action="append",
+                               dest="ignored_nicks",
+                               help="Ignore an IRC nick")
+        subparser.add_argument("file", nargs="+")
+        subparser.set_defaults(run=cls.run)
 
-    def run(self, options, args):
-        if len(args) == 0:
-            log.error("usage: learn-irc-log <irc log file>")
-            return
+    @classmethod
+    def run(cls, args):
+        b = Brain(args.brain)
 
-        b = Brain(options.brain)
-
-        for filename in args:
+        for filename in args.file:
             now = time.time()
             print filename
 
@@ -109,8 +113,8 @@ class LearnIrcLogCommand(Command):
                                                           count/elapsed))
                     sys.stdout.flush()
 
-                msg = self._parse_irc_message(line.strip(),
-                                              options.ignored_nicks)
+                msg = cls._parse_irc_message(line.strip(),
+                                             args.ignored_nicks)
                 if msg:
                     b.learn(msg)
                     count = count + 1
@@ -119,7 +123,8 @@ class LearnIrcLogCommand(Command):
             elapsed = time.time() - now
             print "\r100%% (%d/s)" % (count/elapsed)
 
-    def _parse_irc_message(self, msg, ignored_nicks=None):
+    @staticmethod
+    def _parse_irc_message(msg, ignored_nicks=None):
         # only match lines of the form "HH:MM <nick> message"
         match = re.match("\d+:\d+\s+<(.+?)>\s+(.*)", msg)
         if not match:
@@ -140,12 +145,15 @@ class LearnIrcLogCommand(Command):
 
         return msg
 
-class ConsoleCommand(Command):
-    def __init__(self):
-        Command.__init__(self, "console", summary="Interactive console")
+class ConsoleCommand:
+    @classmethod
+    def add_subparser(cls, parser):
+        subparser = parser.add_parser("console", help="Interactive console")
+        subparser.set_defaults(run=cls.run)
 
-    def run(self, options, args):
-        b = Brain(options.brain)
+    @staticmethod
+    def run(args):
+        b = Brain(args.brain)
 
         while True:
             try:
