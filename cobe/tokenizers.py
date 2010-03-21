@@ -28,7 +28,26 @@ This tokenizer ignores differences in capitalization."""
         return words
 
     def join(self, words):
-        return u"".join(words).capitalize()
+        """Capitalize the first alpha character in the reply and the
+        first alpha character that follows one of [.?!] and a
+        space."""
+        chars = list(u"".join(words))
+        start = True
+
+        for i in xrange(len(chars)):
+            char = chars[i]
+            if char.isalpha():
+                if start:
+                    chars[i] = char.upper()
+                else:
+                    chars[i] = char.lower()
+
+                start = False
+            else:
+                if i > 2 and chars[i-1] in ".?!" and char.isspace():
+                    start = True
+
+        return u"".join(chars)
 
 class CobeTokenizer:
     """A tokenizer that is somewhat improved from MegaHAL. These are

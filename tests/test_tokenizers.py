@@ -43,6 +43,16 @@ class testMegaHALTokenizer(unittest.TestCase):
         words = self.tokenizer.split(u"hal9000's test")
         self.assertEquals(words, ["HAL", "9000", "'S", " ", "TEST", "."])
 
+    def testCapitalize(self):
+        words = self.tokenizer.split(u"this is a test")
+        self.assertEquals(u"This is a test.", self.tokenizer.join(words))
+
+        words = self.tokenizer.split(u"A.B. Hal test test. will test")
+        self.assertEquals(u"A.b. Hal test test. Will test.",
+                          self.tokenizer.join(words))
+
+        words = self.tokenizer.split(u"2nd place test")
+        self.assertEquals(u"2Nd place test.", self.tokenizer.join(words))
 
 class testCobeTokenizer(unittest.TestCase):
     def setUp(self):
