@@ -20,6 +20,8 @@ class InitCommand:
 
         subparser.add_argument("--force", action="store_true")
         subparser.add_argument("--order", type=int, default=5)
+        subparser.add_argument("--megahal", action="store_true",
+                               help="Use MegaHAL-compatible tokenizer")
         subparser.set_defaults(run=cls.run)
 
     @staticmethod
@@ -33,7 +35,11 @@ class InitCommand:
                 log.error("%s already exists!", filename)
                 return
 
-        Brain.init(filename, args.order)
+        tokenizer = None
+        if args.megahal:
+            tokenizer = "MegaHAL"
+
+        Brain.init(filename, order=args.order, tokenizer=tokenizer)
 
 def progress_generator(filename):
     s = os.stat(filename)
