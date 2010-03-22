@@ -22,8 +22,6 @@ This tokenizer ignores differences in capitalization."""
         if phrase[-1] not in ".!?":
             phrase = phrase + "."
 
-        # megahal traditionally considers [a-z0-9] as word characters.
-        # Let's see what happens if we add [_']
         words = re.findall("([A-Z']+|[0-9]+|[^A-Z'0-9]+)", phrase.upper(), re.UNICODE)
         return words
 
