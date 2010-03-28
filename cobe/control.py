@@ -1,6 +1,5 @@
 import argparse
 import logging
-import optparse
 import sys
 
 from . import commands
