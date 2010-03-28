@@ -7,7 +7,7 @@ import readline
 import sys
 import time
 
-from brain import Brain
+from .brain import Brain
 
 log = logging.getLogger("cobe")
 

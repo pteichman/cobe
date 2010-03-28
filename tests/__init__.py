@@ -1,9 +1,9 @@
 import unittest
 
 # import our test modules
-import test_brain
-import test_commands
-import test_tokenizers
+from . import test_brain
+from . import test_commands
+from . import test_tokenizers
 
 __all__ = ["cobe_suite"]
 

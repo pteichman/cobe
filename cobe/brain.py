@@ -9,7 +9,7 @@ import sqlite3
 import time
 import types
 
-import tokenizers
+from . import tokenizers
 
 log = logging.getLogger("cobe")
 

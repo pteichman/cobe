@@ -1,8 +1,9 @@
 import argparse
-import commands
 import logging
 import optparse
 import sys
+
+from . import commands
 
 parser = argparse.ArgumentParser(description="Cobe control")
 parser.add_argument("-b", "--brain", default="cobe.brain")
