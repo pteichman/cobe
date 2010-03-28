@@ -9,8 +9,6 @@ import time
 
 from brain import Brain
 
-from cmdparse import Command
-
 log = logging.getLogger("cobe")
 
 class InitCommand:
