@@ -123,7 +123,7 @@ class Brain:
         best_score = None
         best_reply = None
 
-        # loop for one second
+        # loop for half a second
         start = time.time()
         end = start + 0.5
         count = 0
