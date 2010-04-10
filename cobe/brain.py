@@ -299,10 +299,15 @@ tokenizer -- One of Cobe, MegaHAL (default Cobe). See documentation
 class _Db:
     """Database functions to support a Cobe brain. This is not meant
     to be used from outside."""
+
+    # The current schema/database version, used for migrations
+    _SCHEMA_VERSION = 1
+
     def __init__(self, conn):
         self._conn = conn
 
         if self.is_initted():
+            self._version = int(self.get_info_text("version", "1"))
             self._order = int(self.get_info_text("order"))
             self._end_token_id = self.get_token_id(_END_TOKEN_TEXT)
 
@@ -625,7 +630,7 @@ CREATE TABLE prev_token (
         self.set_info_text("tokenizer", tokenizer)
 
         # save the brain/schema version
-        self.set_info_text("version", "1")
+        self.set_info_text("version", "%d" % self._SCHEMA_VERSION)
 
         c.execute("""
 CREATE INDEX tokens_text on tokens (text)""")
