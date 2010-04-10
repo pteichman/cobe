@@ -301,7 +301,7 @@ class _Db:
     to be used from outside."""
 
     # The current schema/database version, used for migrations
-    _SCHEMA_VERSION = 1
+    _SCHEMA_VERSION = 2
 
     def __init__(self, conn):
         self._conn = conn
@@ -438,8 +438,8 @@ class _Db:
         if c is None:
             c = self.cursor()
 
-        q = "INSERT INTO expr (count,%s) VALUES (0,%s)" % (self._all_tokens,
-                                                           self._all_token_q)
+        q = "INSERT INTO expr (count,random,%s) VALUES (0,RANDOM(),%s)" \
+            % (self._all_tokens, self._all_token_q)
 
         c.execute(q, token_ids)
         return c.lastrowid
@@ -470,7 +470,7 @@ class _Db:
             q = "UPDATE %s SET count = count + 1 WHERE expr_id = ? AND token_id = ?" % table
             c.execute(q, (expr_id, token_id))
         else:
-            q = "INSERT INTO %s (expr_id, token_id, count) VALUES (?, ?, ?)" % table
+            q = "INSERT INTO %s (expr_id, token_id, count, random) VALUES (?, ?, ?, RANDOM())" % table
             c.execute(q, (expr_id, token_id, 1))
 
     def get_random_expr(self, token_id, c=None):
@@ -606,7 +606,8 @@ CREATE TABLE tokens (
 CREATE TABLE expr (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     count INTEGER NOT NULL,
-    %s)""" % ',\n    '.join(tokens))
+    %s,
+    random INTEGER NOT NULL)""" % ',\n    '.join(tokens))
 
         log.debug("Creating table: next_token")
         c.execute("""
@@ -614,7 +615,8 @@ CREATE TABLE next_token (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     expr_id INTEGER NOT NULL REFERENCES expr (id),
     token_id INTEGER NOT NULL REFERENCES token (id),
-    count INTEGER NOT NULL)""")
+    count INTEGER NOT NULL,
+    random INTEGER NOT NULL)""")
 
         log.debug("Creating table: prev_token")
         c.execute("""
@@ -622,7 +624,8 @@ CREATE TABLE prev_token (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     expr_id INTEGER NOT NULL REFERENCES expr (id),
     token_id INTEGER NOT NULL REFERENCES token (id),
-    count INTEGER NOT NULL)""")
+    count INTEGER NOT NULL,
+    random INTEGER NOT NULL)""")
 
         # create a token for the end of a chain
         self.insert_token(_END_TOKEN_TEXT, 0, c=c)
@@ -657,11 +660,25 @@ CREATE INDEX prev_token_expr_id ON prev_token (expr_id, token_id)""")
         c.close()
         self.close()
 
+    def _add_random_columns(self):
+        c = self.cursor()
+
+        for table in ["expr", "next_token", "prev_token"]:
+            log.info("Randomizing %s table...", table)
+            c.execute("""
+ALTER TABLE %s ADD COLUMN random INTEGER""" % table)
+            c.execute("""
+UPDATE %s SET random = RANDOM()""" % table)
+
+        self.commit()
+        c.close()
+
     def _migrate(self, v1, v2):
         """Migrate the database schema from v1 to v2"""
 
         migrations = {
-            1: []
+            1: [],
+            2: [self._add_random_columns]
         }
 
         for version in (v1, v2):
