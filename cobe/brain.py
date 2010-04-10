@@ -481,22 +481,17 @@ class _Db:
         positions = range(self._order)
         random.shuffle(positions)
 
+        q = "SELECT RANDOM()"
+        (rand,) = c.execute(q).fetchone()
+
         for pos in positions:
-            q = "SELECT count(id) FROM expr WHERE token%d_id = ?" % pos
-            row = c.execute(q, (token_id,)).fetchone()
-            count = row[0]
+            q = "SELECT id FROM expr WHERE token%d_id = ? AND random > ? LIMIT 1" % pos
+            row = c.execute(q, (token_id, rand)).fetchone()
 
-            if count == 0:
-                continue
-            elif count == 1:
-                offset = 0
-            else:
-                offset = random.randint(0, count-1)
+            if not row:
+                q = "SELECT id FROM expr WHERE token%d_id = ? AND random <= ? LIMIT 1" % pos
+                row = c.execute(q, (token_id, rand)).fetchone()
 
-            q = "SELECT id FROM expr WHERE token%d_id = ? LIMIT 1 OFFSET ?" \
-                % pos
-
-            row = c.execute(q, (token_id, offset)).fetchone()
             if row:
                 return int(row[0])
 
@@ -541,22 +536,18 @@ class _Db:
             return int(row[0])
 
     def _get_random_next_token(self, table, expr_id, c):
-        q = "SELECT token_id FROM %s WHERE expr_id = ?" % table
+        q = "SELECT RANDOM()"
+        (rand,) = c.execute(q).fetchone()
 
-        count = 0
-        ret = None
+        q = "SELECT token_id FROM %s WHERE expr_id = ? AND random > ? LIMIT 1" % table
+        row = c.execute(q, (expr_id, rand)).fetchone()
 
-        c.execute(q, (expr_id,))
+        if not row:
+            q = "SELECT token_id FROM %s WHERE expr_id = ? AND random <= ? LIMIT 1" % table
+            row = c.execute(q, (expr_id, rand)).fetchone()
 
-        rows = c.fetchmany()
-        while len(rows) > 0:
-            for row in rows:
-                if random.randint(0, count) == 0:
-                    ret = row[0]
-                count = count + 1
-            rows = c.fetchmany()
-
-        return ret
+        if row:
+            return row[0]
 
     def follow_chain(self, table, expr_id, c=None):
         if c is None:
