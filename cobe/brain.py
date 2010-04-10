@@ -349,7 +349,7 @@ class _Db:
                 q = "INSERT INTO info (attribute, text) VALUES (?, ?)"
                 c.execute(q, (attribute, text))
 
-    def get_info_text(self, attribute, text_factory=None, c=None):
+    def get_info_text(self, attribute, default=None, text_factory=None, c=None):
         if c is None:
             c = self.cursor()
 
@@ -365,6 +365,8 @@ class _Db:
 
         if row:
             return row[0]
+
+        return default
 
     def get_token_id(self, token, c=None):
         if c is None:
