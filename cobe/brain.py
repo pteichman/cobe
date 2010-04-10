@@ -317,6 +317,10 @@ class _Db:
                                                  for i in xrange(self._order)])
             self._all_token_q = ",".join(["?" for i in xrange(self._order)])
 
+            if self._version < self._SCHEMA_VERSION:
+                log.info("Old brain version %d, needs migrations", self._version)
+                self._migrate(self._version, self._SCHEMA_VERSION)
+
     def cursor(self):
         return self._conn.cursor()
 
@@ -652,3 +656,26 @@ CREATE INDEX prev_token_expr_id ON prev_token (expr_id, token_id)""")
         self.commit()
         c.close()
         self.close()
+
+    def _migrate(self, v1, v2):
+        """Migrate the database schema from v1 to v2"""
+
+        migrations = {
+            1: []
+        }
+
+        for version in (v1, v2):
+            if version not in migrations:
+                log.error("No migrations defined for schema version %d",
+                          version)
+                return
+
+        v1_migrations = migrations.get(v1)
+        v2_migrations = migrations.get(v2)
+
+        for migration in v2_migrations:
+            if migration not in v1_migrations:
+                migration()
+
+        self._version = v2
+        self.set_info_text("version", "%d" % v2)
