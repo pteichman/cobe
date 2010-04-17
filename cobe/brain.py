@@ -199,6 +199,12 @@ class Brain:
         if len(output_tokens) == 0:
             return 0.
 
+        # If input_tokens is empty (i.e. we didn't know any words in
+        # the input), use output == input to make sure we still check
+        # scoring
+        if len(input_tokens) == 0:
+            input_tokens = output_tokens
+
         db = self._db
 
         score = 0.
