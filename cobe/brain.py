@@ -261,7 +261,7 @@ class Brain:
         for token in tokens:
             token_id = memo.setdefault(token, db.get_token_id(token, c=c))
             if token_id is None:
-                if re.search("\w", token):
+                if re.search("\w", token, re.UNICODE):
                     is_word = True
                 else:
                     is_word = False
