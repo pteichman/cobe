@@ -9,6 +9,7 @@ import sqlite3
 import time
 import types
 
+from .instatrace import Instatrace
 from . import tokenizers
 
 log = logging.getLogger("cobe")
@@ -17,6 +18,8 @@ log = logging.getLogger("cobe")
 _END_TOKEN_TEXT = ""
 _NEXT_TOKEN_TABLE = "next_token"
 _PREV_TOKEN_TABLE = "prev_token"
+
+_trace = Instatrace()
 
 class Brain:
     """The main interface for Cobe."""
@@ -28,7 +31,9 @@ class Brain:
             log.info("File does not exist. Assuming defaults.")
             Brain.init(filename)
 
+        _start = _trace.now()
         self._db = db = _Db(sqlite3.connect(filename))
+        _trace.trace("Brain.connect_ms", _trace.now()-_start)
 
         self.order = int(db.get_info_text("order"))
 
@@ -61,6 +66,7 @@ class Brain:
             text = text.decode("utf-8", "ignore")
 
         tokens = self.tokenizer.split(text)
+        _trace.trace("Brain.learn_input_token_count", len(tokens))
 
         if len(tokens) < self.order:
             log.debug("Input too short to learn: %s", text)
@@ -114,11 +120,13 @@ class Brain:
             text = text.decode("utf-8", "ignore")
 
         tokens = self.tokenizer.split(text)
+        _trace.trace("Brain.reply_input_token_count", len(tokens))
 
         db = self._db
         c = db.cursor()
 
         token_ids = self._get_known_word_tokens(tokens, c)
+        _trace.trace("Brain.known_word_token_count", len(token_ids))
 
         # If we didn't recognize any word tokens in the input, pick
         # something random from the database and babble.
@@ -133,10 +141,14 @@ class Brain:
         end = start + 0.5
         count = 0
 
+        _start = _trace.now()
         while best_reply is None or time.time() < end:
+            _now = _trace.now()
             reply, score = self._generate_reply(token_ids)
             if reply is None:
                 break
+
+            _trace.trace("Brain.generate_reply_ms", _trace.now()-_now)
 
             if not best_score or score > best_score:
                 best_score = score
@@ -144,16 +156,24 @@ class Brain:
 
             count = count + 1
 
+        _time = _trace.now()-_start
+        _trace.trace("Brain.reply_ms", _time)
+        _trace.trace("Brain.reply_count", count, _time)
+        _trace.trace("Brain.best_reply_score", int(best_score*1000))
+        _trace.trace("Brain.best_reply_length", len(best_reply))
         log.debug("made %d replies in %f seconds" % (count, time.time()-start))
 
         if best_reply is None:
             return "I don't know enough to answer you yet!"
 
+        _now = _trace.now()
         # look up the words for these tokens
         text = []
         memo = {}
         for token_id in best_reply:
             text.append(memo.setdefault(token_id, db.get_token_text(token_id)))
+
+        _trace.trace("Brain.reply_words_lookup_ms", _trace.now()-_now)
 
         return self.tokenizer.join(text)
 
@@ -183,7 +203,9 @@ class Brain:
         reply = prev_token_ids
         reply.extend(next_token_ids)
 
+        _now = _trace.now()
         score = self._evaluate_reply(token_ids, reply, c)
+        _trace.trace("Brain.evaluate_reply_ms", _trace.now()-_now)
 
         if log.isEnabledFor(logging.DEBUG):
             text = self._get_marked_text(reply, pivot_token_id)
@@ -227,12 +249,20 @@ class Brain:
                 if p > 0:
                     score = score - math.log(p, 2)
 
+        raw_score = score
+
         # prefer smaller replies
         n_tokens = len(output_tokens)
         if n_tokens >= 8:
             score = score / math.sqrt(n_tokens-1)
         elif n_tokens >= 16:
             score = score / n_tokens
+
+        _trace.trace("Brain.reply_score", int(raw_score*1000))
+
+        if score != raw_score:
+            _trace.trace("Brain.adjusted_reply_score", int(score*1000),
+                         raw_score/score)
 
         return score
 
@@ -310,7 +340,10 @@ tokenizer -- One of Cobe, MegaHAL (default Cobe). See documentation
             tokenizer = "Cobe"
 
         db = _Db(sqlite3.connect(filename))
+
+        _now = _trace.now()
         db.init(order, tokenizer)
+        _trace.trace("Brain.init_time_ms", _trace.now()-_now)
 
 class _Db:
     """Database functions to support a Cobe brain. This is not meant
@@ -332,7 +365,10 @@ class _Db:
         return self._conn.cursor()
 
     def commit(self):
-        return self._conn.commit()
+        _start = _trace.now()
+        ret = self._conn.commit()
+        _trace.trace("Brain.db_commit_ms", _trace.now()-_start)
+        return ret
 
     def close(self):
         return self._conn.close()
