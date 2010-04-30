@@ -167,4 +167,4 @@ class ConsoleCommand:
                 sys.exit(0)
 
             b.learn(cmd)
-            print b.reply(cmd).capitalize().encode("utf-8")
+            print b.reply(cmd).encode("utf-8")
