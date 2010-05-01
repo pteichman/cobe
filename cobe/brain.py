@@ -120,6 +120,11 @@ class Brain:
 
         token_ids = self._get_known_word_tokens(tokens, c)
 
+        # If we didn't recognize any word tokens in the input, pick
+        # something random from the database and babble.
+        if len(token_ids) == 0:
+            token_ids = self._babble(c)
+
         best_score = None
         best_reply = None
 
@@ -153,33 +158,20 @@ class Brain:
         return self.tokenizer.join(text)
 
     def _babble(self, c):
-        db = self._db
-
-        token_id = None
-        expr_id = None
-
-        while expr_id is None:
-            token_id = db.get_random_token(c=c)
-            if token_id is None:
-                return None, None
-
-            expr_id = db.get_random_expr(token_id, c=c)
-
-        return token_id, expr_id
+        # Generate a random input that can be used for reply generation
+        return [self._db.get_random_token(c=c)]
 
     def _generate_reply(self, token_ids):
+        if len(token_ids) == 0:
+            return
+
         # generate a reply containing one of token_ids
         db = self._db
         c = db.cursor()
         c.arraysize = 200
 
-        if len(token_ids) > 0:
-            pivot_token_id = random.choice(token_ids)
-            pivot_expr_id = db.get_random_expr(pivot_token_id, c=c)
-        else:
-            pivot_token_id, pivot_expr_id = self._babble(c)
-            if pivot_token_id is None:
-                return None, 0.
+        pivot_token_id = random.choice(token_ids)
+        pivot_expr_id = db.get_random_expr(pivot_token_id, c=c)
 
         next_token_ids = db.follow_chain(_NEXT_TOKEN_TABLE, pivot_expr_id, c=c)
         prev_token_ids = db.follow_chain(_PREV_TOKEN_TABLE, pivot_expr_id, c=c)
