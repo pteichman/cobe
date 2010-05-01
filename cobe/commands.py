@@ -94,6 +94,9 @@ class LearnIrcLogCommand:
         subparser.add_argument("-i", "--ignore-nick", action="append",
                                dest="ignored_nicks",
                                help="Ignore an IRC nick")
+        subparser.add_argument("-o", "--only-nick", action="append",
+                               dest="only_nicks",
+                               help="Only learn from specified nicks")
         subparser.add_argument("file", nargs="+")
         subparser.set_defaults(run=cls.run)
 
@@ -118,7 +121,8 @@ class LearnIrcLogCommand:
                     sys.stdout.flush()
 
                 msg = cls._parse_irc_message(line.strip(),
-                                             args.ignored_nicks)
+                                             args.ignored_nicks,
+                                             args.only_nicks)
                 if msg:
                     b.learn(msg)
                     count = count + 1
@@ -128,7 +132,7 @@ class LearnIrcLogCommand:
             print "\r100%% (%d/s)" % (count/elapsed)
 
     @staticmethod
-    def _parse_irc_message(msg, ignored_nicks=None):
+    def _parse_irc_message(msg, ignored_nicks=None, only_nicks=None):
         # only match lines of the form "HH:MM <nick> message"
         match = re.match("\d+:\d+\s+<(.+?)>\s+(.*)", msg)
         if not match:
@@ -138,6 +142,9 @@ class LearnIrcLogCommand:
         msg = match.group(2)
 
         if ignored_nicks is not None and nick in ignored_nicks:
+            return None
+
+        if only_nicks is not None and nick not in only_nicks:
             return None
 
         # strip "username: " at the beginning of messages
