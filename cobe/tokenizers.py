@@ -65,7 +65,7 @@ tokens."""
         if len(phrase) == 0:
             return []
 
-        words = re.findall("(http:\S+|[\w']+|[^\w']+)", phrase, re.UNICODE)
+        words = re.findall("(https?:\S+|[\w']+|[^\w']+)", phrase, re.UNICODE)
 
         # Turn any runs of multiple spaces at the beginning or end of
         # the token into a single space. This discourages extra spaces
