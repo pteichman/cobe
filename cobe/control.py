@@ -7,6 +7,8 @@ from . import commands
 parser = argparse.ArgumentParser(description="Cobe control")
 parser.add_argument("-b", "--brain", default="cobe.brain")
 parser.add_argument("--debug", action="store_true", help=argparse.SUPPRESS)
+parser.add_argument("--instatrace", metavar="FILE",
+                    help="log performance statistics to FILE")
 
 subparsers = parser.add_subparsers(title="Commands")
 commands.ConsoleCommand.add_subparser(subparsers)
@@ -26,6 +28,9 @@ def main():
         logging.root.setLevel(logging.DEBUG)
     else:
         logging.root.setLevel(logging.INFO)
+
+    if args.instatrace:
+        instatrace.Instatrace().init(args.instatrace)
 
     try:
         args.run(args)
