@@ -185,6 +185,10 @@ class Brain:
 
         score = self._evaluate_reply(token_ids, reply, c)
 
+        if log.isEnabledFor(logging.DEBUG):
+            text = self._get_marked_text(reply, pivot_token_id)
+            log.debug(text.encode("utf-8"))
+
         return reply, score
 
     def _evaluate_reply(self, input_tokens, output_tokens, c):
@@ -273,6 +277,20 @@ class Brain:
             expr_id = db.insert_expr(token_ids, c=c)
 
         return expr_id
+
+    def _get_marked_text(self, token_ids, pivot_token_id):
+        db = self._db
+
+        # look up the words for these tokens
+        text = []
+        memo = {}
+        for token_id in token_ids:
+            token = memo.setdefault(token_id, db.get_token_text(token_id))
+            if token_id == pivot_token_id:
+                token = "[%s]" % token
+            text.append(token)
+
+        return self.tokenizer.join(text)
 
     @staticmethod
     def init(filename, order=5, tokenizer=None):
