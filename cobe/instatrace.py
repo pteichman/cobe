@@ -17,7 +17,10 @@ class Instatrace:
         self._fd = None
 
     def init(self, filename):
-        self._fd = open(filename, "w+")
+        if self._fd is not None:
+            self._fd.close()
+
+        self._fd = open(filename, "w")
 
     def is_enabled(self):
         return self._fd is not None
