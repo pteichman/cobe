@@ -159,15 +159,15 @@ class Brain:
 
             count = count + 1
 
+        if best_reply is None:
+            return "I don't know enough to answer you yet!"
+
         _time = _trace.now()-_start
         _trace.trace("Brain.reply_ms", _time)
         _trace.trace("Brain.reply_count", count, _time)
         _trace.trace("Brain.best_reply_score", int(best_score*1000))
         _trace.trace("Brain.best_reply_length", len(best_reply))
         log.debug("made %d replies in %f seconds" % (count, time.time()-start))
-
-        if best_reply is None:
-            return "I don't know enough to answer you yet!"
 
         _now = _trace.now()
         # look up the words for these tokens
@@ -182,11 +182,14 @@ class Brain:
 
     def _babble(self, c):
         # Generate a random input that can be used for reply generation
-        return [self._db.get_random_token(c=c)]
+        token = self._db.get_random_token(c=c)
+        if token:
+            return [token]
+        return []
 
     def _generate_reply(self, token_ids):
         if len(token_ids) == 0:
-            return
+            return None, None
 
         # generate a reply containing one of token_ids
         db = self._db
