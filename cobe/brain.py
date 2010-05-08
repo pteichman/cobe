@@ -23,13 +23,16 @@ _trace = Instatrace()
 
 class Brain:
     """The main interface for Cobe."""
-    def __init__(self, filename):
+    def __init__(self, filename, instatrace=None):
         """Construct a brain for the specified filename. If that file
         doesn't exist, it will be initialized with the default brain
         settings."""
         if not os.path.exists(filename):
             log.info("File does not exist. Assuming defaults.")
             Brain.init(filename)
+
+        if instatrace is not None:
+            _trace.init(instatrace)
 
         _start = _trace.now()
         self._db = db = _Db(sqlite3.connect(filename))
