@@ -36,7 +36,7 @@ class Brain:
 
         _start = _trace.now()
         self._db = db = _Db(sqlite3.connect(filename))
-        _trace.trace("Brain.connect_ms", _trace.now()-_start)
+        _trace.trace("Brain.connect_us", _trace.now()-_start)
 
         self.order = int(db.get_info_text("order"))
 
@@ -151,7 +151,7 @@ class Brain:
             if reply is None:
                 break
 
-            _trace.trace("Brain.generate_reply_ms", _trace.now()-_now)
+            _trace.trace("Brain.generate_reply_us", _trace.now()-_now)
 
             if not best_score or score > best_score:
                 best_score = score
@@ -163,7 +163,7 @@ class Brain:
             return "I don't know enough to answer you yet!"
 
         _time = _trace.now()-_start
-        _trace.trace("Brain.reply_ms", _time)
+        _trace.trace("Brain.reply_us", _time)
         _trace.trace("Brain.reply_count", count, _time)
         _trace.trace("Brain.best_reply_score", int(best_score*1000))
         _trace.trace("Brain.best_reply_length", len(best_reply))
@@ -176,7 +176,7 @@ class Brain:
         for token_id in best_reply:
             text.append(memo.setdefault(token_id, db.get_token_text(token_id)))
 
-        _trace.trace("Brain.reply_words_lookup_ms", _trace.now()-_now)
+        _trace.trace("Brain.reply_words_lookup_us", _trace.now()-_now)
 
         return self.tokenizer.join(text)
 
@@ -211,7 +211,7 @@ class Brain:
 
         _now = _trace.now()
         score = self._evaluate_reply(token_ids, reply, c)
-        _trace.trace("Brain.evaluate_reply_ms", _trace.now()-_now)
+        _trace.trace("Brain.evaluate_reply_us", _trace.now()-_now)
 
         if log.isEnabledFor(logging.DEBUG):
             text = self._get_marked_text(reply, pivot_token_id)
@@ -349,7 +349,7 @@ tokenizer -- One of Cobe, MegaHAL (default Cobe). See documentation
 
         _now = _trace.now()
         db.init(order, tokenizer)
-        _trace.trace("Brain.init_time_ms", _trace.now()-_now)
+        _trace.trace("Brain.init_time_us", _trace.now()-_now)
 
 class _Db:
     """Database functions to support a Cobe brain. This is not meant
@@ -373,7 +373,7 @@ class _Db:
     def commit(self):
         _start = _trace.now()
         ret = self._conn.commit()
-        _trace.trace("Brain.db_commit_ms", _trace.now()-_start)
+        _trace.trace("Brain.db_commit_us", _trace.now()-_start)
         return ret
 
     def close(self):
