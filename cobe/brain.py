@@ -257,12 +257,17 @@ class Brain:
 
         raw_score = score
 
-        # prefer smaller replies
+        # Prefer smaller replies. This behavior is present but not
+        # documented in recent MegaHAL.
+        score_divider = 1
         n_tokens = len(output_tokens)
         if n_tokens >= 8:
-            score = score / math.sqrt(n_tokens-1)
+            score_divider = math.sqrt(n_tokens-1)
         elif n_tokens >= 16:
-            score = score / n_tokens
+            score_divider = n_tokens
+
+        score = score / score_divider
+        _trace.trace("Brain.reply_score_divider", math.floor(score_divider))
 
         _trace.trace("Brain.reply_score", int(raw_score*1000))
 
