@@ -213,7 +213,7 @@ class Brain:
         score = self._evaluate_reply(token_ids, reply, c)
         _trace.trace("Brain.evaluate_reply_us", _trace.now()-_now)
 
-        if log.isEnabledFor(logging.DEBUG):
+        if log.isEnabledFor(logging.DEBUG) and score == 0:
             text = self._get_marked_text(reply, pivot_token_id)
             log.debug(text.encode("utf-8"))
 
