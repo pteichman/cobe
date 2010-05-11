@@ -3,6 +3,7 @@ import logging
 import sys
 
 from . import commands
+from . import instatrace
 
 parser = argparse.ArgumentParser(description="Cobe control")
 parser.add_argument("-b", "--brain", default="cobe.brain")
