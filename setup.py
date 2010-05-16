@@ -12,7 +12,7 @@ setup(
     url = "http://wiki.github.com/pteichman/cobe/",
     description = "A conversation simulator similar to MegaHAL",
     packages = ["cobe"],
-    test_suite = "tests.cobe_suite",
+    test_suite = "tests",
     install_requires = ["argparse>=1.1"],
     classifiers = [
         "Development Status :: 5 - Production/Stable",
