@@ -14,6 +14,7 @@ parser.add_argument("--instatrace", metavar="FILE",
 subparsers = parser.add_subparsers(title="Commands")
 commands.ConsoleCommand.add_subparser(subparsers)
 commands.InitCommand.add_subparser(subparsers)
+commands.IrcClientCommand.add_subparser(subparsers)
 commands.LearnCommand.add_subparser(subparsers)
 commands.LearnIrcLogCommand.add_subparser(subparsers)
 
