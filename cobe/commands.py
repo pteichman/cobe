@@ -8,7 +8,6 @@ import sys
 import time
 
 from .brain import Brain
-from .irc import Runner
 
 log = logging.getLogger("cobe")
 
@@ -180,7 +179,8 @@ class ConsoleCommand:
 class IrcClientCommand:
     @classmethod
     def add_subparser(cls, parser):
-        subparser = parser.add_parser("irc-client", help="IRC client")
+        subparser = parser.add_parser("irc-client",
+                                      help="IRC client [requires twisted]")
         subparser.add_argument("-s", "--server", required=True,
                                help="IRC server hostname")
         subparser.add_argument("-p", "--port", type=int, default=6667,
@@ -192,9 +192,19 @@ class IrcClientCommand:
         subparser.add_argument("-i", "--ignore-nick", action="append",
                                dest="ignored_nicks",
                                help="Ignore an IRC nick")
-        subparser.set_defaults(run=cls.run)
+
+        try:
+            import twisted
+            subparser.set_defaults(run=cls.run)
+        except ImportError:
+            subparser.set_defaults(run=cls.disabled)
+
+    @staticmethod
+    def disabled(args):
+        print "ERROR: cobe irc-client requires twisted: http://twistedmatrix.com/"
 
     @staticmethod
     def run(args):
+        from .irc import Runner
         b = Brain(args.brain)
         Runner().run(b, args)
