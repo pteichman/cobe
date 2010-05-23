@@ -20,7 +20,10 @@ class Instatrace:
         if self._fd is not None:
             self._fd.close()
 
-        self._fd = open(filename, "w")
+        if filename is None:
+            self._fd = None
+        else:
+            self._fd = open(filename, "w")
 
     def is_enabled(self):
         return self._fd is not None
