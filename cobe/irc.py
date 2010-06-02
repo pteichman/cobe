@@ -64,7 +64,7 @@ class CobeBot(irc.IRCClient):
         log.msg("nick changed to %s", nick)
         self.nickname = nick
 
-class CobeBotFactory(protocol.ClientFactory):
+class CobeBotFactory(protocol.ReconnectingClientFactory):
     # the class of the protocol to build when new connection is made
     protocol = CobeBot
 
@@ -73,13 +73,22 @@ class CobeBotFactory(protocol.ClientFactory):
         self.channel = channel
         self.nickname = nickname
 
+    def buildProtocol(self, addr):
+        self.resetDelay()
+        return protocol.ReconnectingClientFactory.buildProtocol(self, addr)
+
     def clientConnectionLost(self, connector, reason):
         """If we get disconnected, reconnect to server."""
-        connector.connect()
+        log.msg("lost connection: %s", reason)
+        protocol.ReconnectingClientFactory.clientConnectionLost(self,
+                                                                connector,
+                                                                reason)
 
     def clientConnectionFailed(self, connector, reason):
-        print "connection failed:", reason
-        reactor.stop()
+        log.msg("connection failed: %s", reason)
+        protocol.ReconnectingClientFactory.clientConnectionFailed(self,
+                                                                  connector,
+                                                                  reason)
 
 class Runner:
     def run(self, brain, args):
