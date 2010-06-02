@@ -1,6 +1,8 @@
 # Copyright (C) 2010 Peter Teichman
 
+import datetime
 import math
+import os
 import time
 
 def singleton(cls):
@@ -23,6 +25,12 @@ class Instatrace:
         if filename is None:
             self._fd = None
         else:
+        # rotate logs
+            if os.path.exists(filename):
+                now = datetime.datetime.now()
+                stamp = now.strftime("%Y-%m-%d.%H%M%S")
+                os.rename(filename, "%s.%s" % (filename, stamp))
+
             self._fd = open(filename, "w")
 
     def is_enabled(self):
