@@ -1,4 +1,5 @@
 *.brain
+*.instatrace
 *.pyc
 build
 cobe.egg-info
