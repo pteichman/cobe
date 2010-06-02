@@ -30,6 +30,10 @@ class CobeBot(irc.IRCClient):
         """This will get called when the bot receives a message."""
         user = user.split('!', 1)[0]
 
+        # ignore specified nicks
+        if self.factory.ignored_nicks and user in self.factory.ignored_nicks:
+            return
+
         # only respond on channels
         if not channel.startswith("#"):
             return
@@ -68,10 +72,12 @@ class CobeBotFactory(protocol.ReconnectingClientFactory):
     # the class of the protocol to build when new connection is made
     protocol = CobeBot
 
-    def __init__(self, brain, channel, nickname):
+    def __init__(self, brain, channel, nickname, ignored_nicks):
         self.brain = brain
         self.channel = channel
         self.nickname = nickname
+
+        self.ignored_nicks = ignored_nicks
 
     def buildProtocol(self, addr):
         self.resetDelay()
@@ -93,7 +99,7 @@ class CobeBotFactory(protocol.ReconnectingClientFactory):
 class Runner:
     def run(self, brain, args):
         log.startLogging(sys.stdout)
-        f = CobeBotFactory(brain, args.channel, args.nick)
+        f = CobeBotFactory(brain, args.channel, args.nick, args.ignored_nicks)
 
         reactor.connectTCP(args.server, args.port, f)
         reactor.run()
