@@ -61,7 +61,7 @@ class CobeBot(irc.IRCClient):
             self.say(channel, "%s: %s" % (user, reply))
 
     def nickChanged(self, nick):
-        log.msg("nick changed to %s", nick)
+        log.msg("nick changed to %s" % nick)
         self.nickname = nick
 
 class CobeBotFactory(protocol.ReconnectingClientFactory):
@@ -79,13 +79,13 @@ class CobeBotFactory(protocol.ReconnectingClientFactory):
 
     def clientConnectionLost(self, connector, reason):
         """If we get disconnected, reconnect to server."""
-        log.msg("lost connection: %s", reason)
+        log.err("lost connection: ", reason)
         protocol.ReconnectingClientFactory.clientConnectionLost(self,
                                                                 connector,
                                                                 reason)
 
     def clientConnectionFailed(self, connector, reason):
-        log.msg("connection failed: %s", reason)
+        log.err("connection failed: ", reason)
         protocol.ReconnectingClientFactory.clientConnectionFailed(self,
                                                                   connector,
                                                                   reason)
