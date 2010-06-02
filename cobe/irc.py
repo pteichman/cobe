@@ -58,7 +58,9 @@ class CobeBot(irc.IRCClient):
 
         # convert message to unicode
         text = text.decode("utf-8")
-        self.factory.brain.learn(text)
+
+        if not self.factory.only_nicks or user in self.factory.only_nicks:
+            self.factory.brain.learn(text)
 
         if to == self.nickname:
             reply = self.factory.brain.reply(text).encode("utf-8")
@@ -72,12 +74,13 @@ class CobeBotFactory(protocol.ReconnectingClientFactory):
     # the class of the protocol to build when new connection is made
     protocol = CobeBot
 
-    def __init__(self, brain, channel, nickname, ignored_nicks):
+    def __init__(self, brain, channel, nickname, ignored_nicks, only_nicks):
         self.brain = brain
         self.channel = channel
         self.nickname = nickname
 
         self.ignored_nicks = ignored_nicks
+        self.only_nicks = only_nicks
 
     def buildProtocol(self, addr):
         self.resetDelay()
@@ -99,7 +102,8 @@ class CobeBotFactory(protocol.ReconnectingClientFactory):
 class Runner:
     def run(self, brain, args):
         log.startLogging(sys.stdout)
-        f = CobeBotFactory(brain, args.channel, args.nick, args.ignored_nicks)
+        f = CobeBotFactory(brain, args.channel, args.nick, args.ignored_nicks,
+                           args.only_nicks)
 
         reactor.connectTCP(args.server, args.port, f)
         reactor.run()

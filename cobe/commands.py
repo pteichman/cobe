@@ -192,6 +192,9 @@ class IrcClientCommand:
         subparser.add_argument("-i", "--ignore-nick", action="append",
                                dest="ignored_nicks",
                                help="Ignore an IRC nick")
+        subparser.add_argument("-o", "--only-nick", action="append",
+                               dest="only_nicks",
+                               help="Only learn from a specific IRC nick")
 
         try:
             import twisted
