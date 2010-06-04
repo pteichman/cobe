@@ -359,10 +359,13 @@ tokenizer -- One of Cobe, MegaHAL (default Cobe). See documentation
 class _Db:
     """Database functions to support a Cobe brain. This is not meant
     to be used from outside."""
-    def __init__(self, conn):
+    def __init__(self, conn, run_migrations=True):
         self._conn = conn
 
         if self.is_initted():
+            if run_migrations:
+                self._run_migrations()
+
             self._order = int(self.get_info_text("order"))
             self._end_token_id = self.get_token_id(_END_TOKEN_TEXT)
 
@@ -624,7 +627,7 @@ class _Db:
 
         return chain
 
-    def init(self, order, tokenizer):
+    def init(self, order, tokenizer, run_migrations=True):
         c = self.cursor()
 
         log.debug("Creating table: info")
@@ -667,6 +670,9 @@ CREATE TABLE prev_token (
     token_id INTEGER NOT NULL REFERENCES token (id),
     count INTEGER NOT NULL)""")
 
+        if run_migrations:
+            self._run_migrations()
+
         # create a token for the end of a chain
         self.insert_token(_END_TOKEN_TEXT, 0, c=c)
 
@@ -698,4 +704,8 @@ CREATE INDEX prev_token_expr_id ON prev_token (expr_id, token_id)""")
 
         self.commit()
         c.close()
+
         self.close()
+
+    def _run_migrations(self):
+        pass
