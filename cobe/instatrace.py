@@ -37,10 +37,16 @@ class Instatrace:
         return self._fd is not None
 
     def now(self):
-        """High resolution, integer now"""
+        """Microsecond resolution, integer now"""
         if not self.is_enabled():
             return 0
         return int(time.time()*100000)
+
+    def now_ms(self):
+        """Millisecond resolution, integer now"""
+        if not self.is_enabled():
+            return 0
+        return int(time.time()*1000)
 
     def trace(self, statName, statValue, userData=None):
         if not self.is_enabled():
