@@ -84,6 +84,10 @@ class Brain:
         token_ids = self._get_or_register_tokens(c, tokens)
         n_exprs = len(token_ids)-self.order
 
+        # increment seen count for each token
+        for token_id in token_ids:
+            db.inc_token_count(token_id, c=c)
+
         for i in xrange(n_exprs+1):
             expr = token_ids[i:i+self.order]
             expr_id = self._get_or_register_expr(c, expr)
@@ -487,7 +491,7 @@ class _Db:
         if c is None:
             c = self.cursor()
 
-        q = "INSERT INTO tokens (text, is_word) VALUES (?, ?)"
+        q = "INSERT INTO tokens (text, is_word, count) VALUES (?, ?, 0)"
         c.execute(q, (token, is_word))
         return c.lastrowid
 
@@ -500,6 +504,13 @@ class _Db:
 
         c.execute(q, token_ids)
         return c.lastrowid
+
+    def inc_token_count(self, token_id, c=None):
+        if c is None:
+            c = self.cursor()
+
+        q = "UPDATE tokens SET count = count + 1 WHERE id = ?"
+        c.execute(q, (token_id,))
 
     def inc_expr_count(self, expr_id, c=None):
         if c is None:
@@ -708,4 +719,56 @@ CREATE INDEX prev_token_expr_id ON prev_token (expr_id, token_id)""")
         self.close()
 
     def _run_migrations(self):
-        pass
+        _start = _trace.now()
+        self._maybe_add_token_counts()
+        _trace.trace("Db.run_migrations_us", _trace.now()-_start)
+
+    def _maybe_add_token_counts(self):
+        c = self.cursor()
+
+        try:
+            c.execute("""
+SELECT count FROM tokens LIMIT 1""")
+        except sqlite3.OperationalError: # no such column: count
+            self._add_token_counts(c)
+
+        c.close()
+
+    def _add_token_counts(self, c):
+        log.info("SCHEMA UPDATE: adding token counts")
+        _start = _trace.now_ms()
+
+        c.execute("""
+ALTER TABLE tokens ADD COLUMN count INTEGER""")
+
+        read_c = self.cursor()
+
+        log.info("extracting next token counts")
+
+        q = read_c.execute("""
+SELECT count(*) AS count, token_id AS id FROM next_token GROUP BY id""")
+
+        for row in q:
+            c.execute("""
+UPDATE tokens SET count = ? WHERE id = ?""", (row[0], row[1]))
+
+        self.commit()
+
+        log.info("extracting prev token counts")
+
+        # add counts for tokens that were never in next_token
+        q = read_c.execute("""
+SELECT count(*) AS count, token_id AS id FROM prev_token,tokens WHERE tokens.count IS NULL AND tokens.id = prev_token.token_id GROUP BY id""")
+
+        for row in q:
+            c.execute("""
+UPDATE tokens SET count = ? WHERE id = ?""", row)
+
+        # Some tokens can still have NULL counts, if they have only been
+        # found in training input shorter than the current Markov order.
+        # Set their counts to 1 to have valid data.
+        c.execute("""
+UPDATE tokens SET count = 1 WHERE count IS NULL""")
+
+        self.commit()
+        _trace.trace("Db.add_token_counts_us", _trace.now_ms()-_start)
