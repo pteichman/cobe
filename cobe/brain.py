@@ -618,22 +618,13 @@ class _Db:
             return int(row[0])
 
     def _get_random_next_token(self, table, expr_id, c):
-        q = "SELECT token_id FROM %s WHERE expr_id = ?" % table
+        q = "SELECT token_id FROM %s WHERE expr_id = ? LIMIT 1 OFFSET ifnull(abs(random())%%(SELECT count(*) FROM %s WHERE expr_id = ?), 0)" % (table, table)
 
-        count = 0
-        ret = None
+        c.execute(q, (expr_id, expr_id))
 
-        c.execute(q, (expr_id,))
-
-        rows = c.fetchmany()
-        while len(rows) > 0:
-            for row in rows:
-                if random.randint(0, count) == 0:
-                    ret = row[0]
-                count = count + 1
-            rows = c.fetchmany()
-
-        return ret
+        row = c.fetchone()
+        if row:
+            return row[0]
 
     def follow_chain(self, table, expr_id, memo, c=None):
         if c is None:
