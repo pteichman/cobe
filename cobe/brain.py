@@ -218,7 +218,6 @@ class Brain:
                                          memo, c=c)
         prev_token_ids = db.follow_chain(_PREV_TOKEN_TABLE, pivot_expr_id,
                                          memo, c=c)
-        prev_token_ids.reverse()
 
         # strip the original expr from the prev reply
         prev_token_ids = prev_token_ids[:-self.order]
@@ -642,30 +641,28 @@ class _Db:
 
         # initialize the chain with the current expr's tokens
         try:
-            chain = memo[expr_id]
+            expr = memo[expr_id]
         except KeyError:
-            chain = self._get_expr_token_ids(expr_id, c)
-            memo[expr_id] = chain
+            expr = self._get_expr_token_ids(expr_id, c)
+            memo[expr_id] = expr
 
-        chain = list(chain)
-        expr_token_ids = chain[:]
+        chain = list(expr)
 
         # pick a random next_token that can follow expr_id
         next_token_id = self._get_random_next_token(table, expr_id, c)
         while next_token_id != self._end_token_id:
-            chain.append(next_token_id)
-
             if table == _NEXT_TOKEN_TABLE:
-                expr_token_ids = expr_token_ids[1:] + [next_token_id]
+                chain.append(next_token_id)
+                token_ids = tuple(chain[-self._order:])
             else:
-                expr_token_ids = [next_token_id] + expr_token_ids[:-1]
+                chain.insert(0, next_token_id)
+                token_ids = tuple(chain[:self._order])
 
             try:
-                t = tuple(expr_token_ids)
-                expr_id = memo[t]
+                expr_id = memo[token_ids]
             except KeyError:
-                expr_id = self.get_expr_by_token_ids(expr_token_ids, c)
-                memo[t] = expr_id
+                expr_id = self.get_expr_by_token_ids(token_ids, c)
+                memo[token_ids] = expr_id
 
             next_token_id = self._get_random_next_token(table, expr_id, c)
 
