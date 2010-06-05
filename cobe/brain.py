@@ -132,13 +132,13 @@ class Brain:
         db = self._db
         c = db.cursor()
 
-        token_ids = self._get_known_word_tokens(tokens, c)
-        _trace.trace("Brain.known_word_token_count", len(token_ids))
+        token_infos = self._get_known_word_tokens(tokens, c)
+        _trace.trace("Brain.known_word_token_count", len(token_infos))
 
         # If we didn't recognize any word tokens in the input, pick
         # something random from the database and babble.
-        if len(token_ids) == 0:
-            token_ids = self._babble(c)
+        if len(token_infos) == 0:
+            token_infos = self._babble(c)
 
         best_score = None
         best_reply = None
@@ -151,7 +151,7 @@ class Brain:
         _start = _trace.now()
         while best_reply is None or time.time() < end:
             _now = _trace.now()
-            reply, score = self._generate_reply(token_ids)
+            reply, score = self._generate_reply(token_infos)
             if reply is None:
                 break
 
@@ -191,8 +191,8 @@ class Brain:
             return [token]
         return []
 
-    def _generate_reply(self, token_ids):
-        if len(token_ids) == 0:
+    def _generate_reply(self, token_infos):
+        if len(token_infos) == 0:
             return None, None
 
         # generate a reply containing one of token_ids
@@ -200,6 +200,7 @@ class Brain:
         c = db.cursor()
         c.arraysize = 200
 
+        token_ids = [token_info[0] for token_info in token_infos]
         pivot_token_id = random.choice(token_ids)
         pivot_expr_id = db.get_random_expr(pivot_token_id, c=c)
 
@@ -284,15 +285,15 @@ class Brain:
     def _get_known_word_tokens(self, tokens, c):
         db = self._db
 
-        token_ids = []
+        token_infos = []
         memo = {}
 
         for token in tokens:
-            token_id = memo.setdefault(token, db.get_word_token_id(token, c=c))
-            if token_id is not None:
-                token_ids.append(token_id)
+            token_info = memo.setdefault(token, db.get_word_token_info(token, c=c))
+            if token_info is not None:
+                token_infos.append(token_info)
 
-        return token_ids
+        return token_infos
 
     def _get_or_register_tokens(self, c, tokens):
         db = self._db
@@ -451,28 +452,21 @@ class _Db:
         if c is None:
             c = self.cursor()
 
-        # get the count of tokens
-        q = "SELECT MAX(id) from tokens"
-        row = c.execute(q).fetchone()
-        if not row:
-            return None
+        # select a random row from tokens
+        q = "SELECT id, count FROM tokens WHERE id != ? AND id >= abs(random()) % (SELECT MAX(id) FROM tokens)"
+        row = c.execute(q, (self._end_token_id,)).fetchone()
 
-        count = int(row[0])
+        if row:
+            return row[0], row[1]
 
-        if count == 1:
-            return None
-
-        # assume end_token was the first token inserted
-        return random.randint(self._end_token_id+1, count-1)
-
-    def get_word_token_id(self, token, c=None):
+    def get_word_token_info(self, token, c=None):
         if c is None:
             c = self.cursor()
 
-        q = "SELECT id FROM tokens WHERE text = ? AND is_word = 1"
+        q = "SELECT id, count FROM tokens WHERE text = ? AND is_word = 1"
         row = c.execute(q, (token,)).fetchone()
         if row:
-            return int(row[0])
+            return int(row[0]), int(row[1])
 
     def get_token_text(self, token_id, c=None):
         if c is None:
