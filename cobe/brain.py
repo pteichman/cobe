@@ -180,7 +180,12 @@ class Brain:
         text = []
         memo = {}
         for token_id in best_reply:
-            text.append(memo.setdefault(token_id, db.get_token_text(token_id)))
+            try:
+                token_text = memo[token_id]
+            except KeyError:
+                token_text = db.get_token_text(token_id)
+                memo[token_id] = token_text
+            text.append(token_text)
 
         _trace.trace("Brain.reply_words_lookup_us", _trace.now()-_now)
 
@@ -296,7 +301,12 @@ class Brain:
         memo = {}
 
         for token in tokens:
-            token_info = memo.setdefault(token, db.get_word_token_info(token, c=c))
+            try:
+                token_info = memo[token]
+            except KeyError:
+                token_info = db.get_word_token_info(token, c=c)
+                memo[token] = token_info
+
             if token_info is not None:
                 token_infos.append(token_info)
 
@@ -308,7 +318,12 @@ class Brain:
         token_ids = []
         memo = {}
         for token in tokens:
-            token_id = memo.setdefault(token, db.get_token_id(token, c=c))
+            try:
+                token_id = memo[token]
+            except KeyError:
+                token_id = db.get_token_id(token, c=c)
+                memo[token] = token_id
+
             if token_id is None:
                 if re.search("\w", token, re.UNICODE):
                     is_word = True
@@ -338,7 +353,12 @@ class Brain:
         text = []
         memo = {}
         for token_id in token_ids:
-            token = memo.setdefault(token_id, db.get_token_text(token_id))
+            try:
+                token = memo[token_id]
+            except KeyError:
+                token = db.get_token_text(token_id)
+                memo[token_id] = token
+
             if token_id == pivot_token_id:
                 token = "[%s]" % token
             text.append(token)
@@ -622,10 +642,11 @@ class _Db:
 
         # initialize the chain with the current expr's tokens
         try:
-            chain = memo["expr_token_ids_%d" % expr_id]
+            chain = memo[expr_id]
         except KeyError:
-            chain = memo.setdefault("expr_token_ids_%d" % expr_id,
-                                    self._get_expr_token_ids(expr_id, c))
+            chain = self._get_expr_token_ids(expr_id, c)
+            memo[expr_id] = chain
+
         chain = list(chain)
         expr_token_ids = chain[:]
 
@@ -640,10 +661,12 @@ class _Db:
                 expr_token_ids = [next_token_id] + expr_token_ids[:-1]
 
             try:
-                expr_id = memo[tuple(expr_token_ids)]
+                t = tuple(expr_token_ids)
+                expr_id = memo[t]
             except KeyError:
-                expr_id = memo.setdefault(tuple(expr_token_ids),
-                                          self.get_expr_by_token_ids(expr_token_ids, c))
+                expr_id = self.get_expr_by_token_ids(expr_token_ids, c)
+                memo[t] = expr_id
+
             next_token_id = self._get_random_next_token(table, expr_id, c)
 
         return chain
