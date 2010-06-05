@@ -191,6 +191,9 @@ class Brain:
             return [token]
         return []
 
+    def _choose_pivot(self, token_infos):
+        return random.choice(token_infos)[0]
+
     def _generate_reply(self, token_infos):
         if len(token_infos) == 0:
             return None, None
@@ -201,7 +204,7 @@ class Brain:
         c.arraysize = 200
 
         token_ids = [token_info[0] for token_info in token_infos]
-        pivot_token_id = random.choice(token_ids)
+        pivot_token_id = self._choose_pivot(token_infos)
         pivot_expr_id = db.get_random_expr(pivot_token_id, c=c)
 
         next_token_ids = db.follow_chain(_NEXT_TOKEN_TABLE, pivot_expr_id, c=c)
