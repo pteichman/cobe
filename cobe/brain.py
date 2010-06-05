@@ -148,10 +148,12 @@ class Brain:
         end = start + 0.5
         count = 0
 
+        memo = {}
+
         _start = _trace.now()
         while best_reply is None or time.time() < end:
             _now = _trace.now()
-            reply, score = self._generate_reply(token_infos)
+            reply, score = self._generate_reply(token_infos, memo)
             if reply is None:
                 break
 
@@ -194,7 +196,7 @@ class Brain:
     def _choose_pivot(self, token_infos):
         return random.choice(token_infos)[0]
 
-    def _generate_reply(self, token_infos):
+    def _generate_reply(self, token_infos, memo):
         if len(token_infos) == 0:
             return None, None
 
@@ -207,8 +209,10 @@ class Brain:
         pivot_token_id = self._choose_pivot(token_infos)
         pivot_expr_id = db.get_random_expr(pivot_token_id, c=c)
 
-        next_token_ids = db.follow_chain(_NEXT_TOKEN_TABLE, pivot_expr_id, c=c)
-        prev_token_ids = db.follow_chain(_PREV_TOKEN_TABLE, pivot_expr_id, c=c)
+        next_token_ids = db.follow_chain(_NEXT_TOKEN_TABLE, pivot_expr_id,
+                                         memo, c=c)
+        prev_token_ids = db.follow_chain(_PREV_TOKEN_TABLE, pivot_expr_id,
+                                         memo, c=c)
         prev_token_ids.reverse()
 
         # strip the original expr from the prev reply
@@ -612,12 +616,17 @@ class _Db:
 
         return ret
 
-    def follow_chain(self, table, expr_id, c=None):
+    def follow_chain(self, table, expr_id, memo, c=None):
         if c is None:
             c = self.cursor()
 
         # initialize the chain with the current expr's tokens
-        chain = list(self._get_expr_token_ids(expr_id, c))
+        try:
+            chain = memo["expr_token_ids_%d" % expr_id]
+        except KeyError:
+            chain = memo.setdefault("expr_token_ids_%d" % expr_id,
+                                    self._get_expr_token_ids(expr_id, c))
+        chain = list(chain)
         expr_token_ids = chain[:]
 
         # pick a random next_token that can follow expr_id
@@ -630,7 +639,11 @@ class _Db:
             else:
                 expr_token_ids = [next_token_id] + expr_token_ids[:-1]
 
-            expr_id = self.get_expr_by_token_ids(expr_token_ids, c)
+            try:
+                expr_id = memo[tuple(expr_token_ids)]
+            except KeyError:
+                expr_id = memo.setdefault(tuple(expr_token_ids),
+                                          self.get_expr_by_token_ids(expr_token_ids, c))
             next_token_id = self._get_random_next_token(table, expr_id, c)
 
         return chain
