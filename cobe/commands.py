@@ -97,6 +97,8 @@ class LearnIrcLogCommand:
         subparser.add_argument("-o", "--only-nick", action="append",
                                dest="only_nicks",
                                help="Only learn from specified nicks")
+        subparser.add_argument("-r", "--reply-to", action="append",
+                               help="Reply (invisibly) to things said to specified nick")
         subparser.add_argument("file", nargs="+")
         subparser.set_defaults(run=cls.run)
 
@@ -120,12 +122,19 @@ class LearnIrcLogCommand:
                                                           count/elapsed))
                     sys.stdout.flush()
 
-                msg = cls._parse_irc_message(line.strip(),
-                                             args.ignored_nicks,
-                                             args.only_nicks)
-                if msg:
-                    b.learn(msg)
-                    count = count + 1
+                count = count + 1
+
+                parsed = cls._parse_irc_message(line.strip(),
+                                                args.ignored_nicks,
+                                                args.only_nicks)
+                if parsed is None:
+                    continue
+
+                to, msg = parsed
+                b.learn(msg)
+
+                if args.reply_to is not None and to in args.reply_to:
+                    b.reply(msg)
 
             b.stop_batch_learning()
             elapsed = time.time() - now
@@ -147,14 +156,19 @@ class LearnIrcLogCommand:
         if only_nicks is not None and nick not in only_nicks:
             return None
 
+        to = None
+
         # strip "username: " at the beginning of messages
-        msg = re.sub("^\S+[,:]\s+", "", msg)
+        match = re.search("^(\S+)[,:]\s+(\S.*)", msg)
+        if match:
+            to = match.group(1)
+            msg = match.group(2)
 
         # strip kibot style '"asdf" --user, 06-oct-09' quotes
         msg = re.sub("\"(.*)\" --\S+,\s+\d+-\S+-\d+",
                      lambda m: m.group(1), msg)
 
-        return msg
+        return to, msg
 
 class ConsoleCommand:
     @classmethod
