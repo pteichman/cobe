@@ -228,7 +228,8 @@ class Brain:
         reply.extend(next_token_ids)
 
         _now = _trace.now()
-        score = self._evaluate_reply(token_ids, list(reply), c)
+        score = self._evaluate_reply(token_ids, list(reply), memo, c)
+
         _trace.trace("Brain.evaluate_reply_us", _trace.now()-_now)
 
         if log.isEnabledFor(logging.DEBUG) and score == 0:
@@ -237,7 +238,7 @@ class Brain:
 
         return reply, score
 
-    def _evaluate_reply(self, input_tokens, output_tokens, c):
+    def _evaluate_reply(self, input_tokens, output_tokens, memo, c):
         if len(output_tokens) == 0:
             return 0.
 
@@ -251,16 +252,25 @@ class Brain:
 
         score = 0.
 
+        next_memo = memo.setdefault(_NEXT_TOKEN_TABLE, {})
+        prev_memo = memo.setdefault(_PREV_TOKEN_TABLE, {})
+
         # evaluate forward probabilities
         for output_idx in xrange(len(output_tokens)-self.order):
             output_token = output_tokens[output_idx+self.order]
             if output_token in input_tokens:
                 expr = output_tokens[output_idx:output_idx+self.order]
 
-                p = db.get_expr_token_probability(_NEXT_TOKEN_TABLE, expr,
-                                                  output_token, c)
+                try:
+                    key = (tuple(expr), output_token)
+                    p = next_memo[key]
+                except KeyError:
+                    p = db.get_expr_token_probability(_NEXT_TOKEN_TABLE, expr,
+                                                      output_token, c)
+                    next_memo[key] = p
+
                 if p > 0:
-                    score = score - math.log(p, 2)
+                    score -= math.log(p, 2)
 
         # evaluate reverse probabilities
         for output_idx in xrange(len(output_tokens)-self.order):
@@ -268,10 +278,16 @@ class Brain:
             if output_token in input_tokens:
                 expr = output_tokens[output_idx+1:output_idx+self.order+1]
 
-                p = db.get_expr_token_probability(_PREV_TOKEN_TABLE, expr,
-                                                  output_token, c)
+                try:
+                    key = (tuple(expr), output_token)
+                    p = prev_memo[key]
+                except KeyError:
+                    p = db.get_expr_token_probability(_PREV_TOKEN_TABLE, expr,
+                                                      output_token, c)
+                    prev_memo[key] = p
+
                 if p > 0:
-                    score = score - math.log(p, 2)
+                    score -= math.log(p, 2)
 
         raw_score = score
 
