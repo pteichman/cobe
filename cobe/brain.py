@@ -1,5 +1,6 @@
 # Copyright (C) 2010 Peter Teichman
 
+import collections
 import logging
 import math
 import os
@@ -220,13 +221,14 @@ class Brain:
                                          memo, c=c)
 
         # strip the original expr from the prev reply
-        prev_token_ids = prev_token_ids[:-self.order]
+        for i in xrange(self.order):
+            prev_token_ids.pop()
 
         reply = prev_token_ids
         reply.extend(next_token_ids)
 
         _now = _trace.now()
-        score = self._evaluate_reply(token_ids, reply, c)
+        score = self._evaluate_reply(token_ids, list(reply), c)
         _trace.trace("Brain.evaluate_reply_us", _trace.now()-_now)
 
         if log.isEnabledFor(logging.DEBUG) and score == 0:
@@ -616,23 +618,26 @@ class _Db:
             expr = self._get_expr_token_ids(expr_id, c)
             memo[expr_id] = expr
 
-        chain = list(expr)
+        chain = collections.deque(expr)
+        token_ids = collections.deque(expr, self._order)
 
         # pick a random next_token that can follow expr_id
         next_token_id = self._get_random_next_token(table, expr_id, c)
         while next_token_id != self._end_token_id:
             if table == _NEXT_TOKEN_TABLE:
                 chain.append(next_token_id)
-                token_ids = tuple(chain[-self._order:])
+                token_ids.append(next_token_id)
             else:
-                chain.insert(0, next_token_id)
-                token_ids = tuple(chain[:self._order])
+                chain.appendleft(next_token_id)
+                token_ids.appendleft(next_token_id)
+
+            key = tuple(token_ids)
 
             try:
-                expr_id = memo[token_ids]
+                expr_id = memo[key]
             except KeyError:
-                expr_id = self.get_expr_by_token_ids(token_ids, c)
-                memo[token_ids] = expr_id
+                expr_id = self.get_expr_by_token_ids(key, c)
+                memo[key] = expr_id
 
             next_token_id = self._get_random_next_token(table, expr_id, c)
 
