@@ -436,13 +436,10 @@ class _Db:
             q = "DELETE FROM info WHERE attribute = ?"
             c.execute(q, (attribute,))
         else:
-            q = "SELECT count(*) FROM info WHERE attribute = ?"
-            row = c.execute(q, (attribute,)).fetchone()
+            q = "UPDATE info SET text = ? WHERE attribute = ?"
+            c.execute(q, (text, attribute))
 
-            if row and row[0] > 0:
-                q = "UPDATE info SET text = ? WHERE attribute = ?"
-                c.execute(q, (text, attribute))
-            else:
+            if c.rowcount == 0:
                 q = "INSERT INTO info (attribute, text) VALUES (?, ?)"
                 c.execute(q, (attribute, text))
 
