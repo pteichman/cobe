@@ -16,19 +16,25 @@ class testIrcLogParsing(unittest.TestCase):
         msg = "12:00 <foo> bar baz"
         cmd = self.command
 
-        self.assertEqual("bar baz", cmd._parse_irc_message(msg))
+        self.assertEqual("bar baz", cmd._parse_irc_message(msg)[1])
+
+    def testPubmsgToCobe(self):
+        msg = "12:00 <foo> cobe: bar baz"
+        cmd = self.command
+
+        self.assertEqual(("cobe", "bar baz"), cmd._parse_irc_message(msg))
 
     def testNormalPubmsgWithSpaces(self):
         msg = "12:00 < foo> bar baz"
         cmd = self.command
 
-        self.assertEqual("bar baz", cmd._parse_irc_message(msg))
+        self.assertEqual("bar baz", cmd._parse_irc_message(msg)[1])
 
     def testKibotQuotePubmsg(self):
         msg = "12:00 <foo> \"bar baz\" --user, 01-oct-09"
         cmd = self.command
 
-        self.assertEqual("bar baz", cmd._parse_irc_message(msg))
+        self.assertEqual("bar baz", cmd._parse_irc_message(msg)[1])
 
     def testIgnoredNickPubmsg(self):
         msg = "12:00 <foo> bar baz"
