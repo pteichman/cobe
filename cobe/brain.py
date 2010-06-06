@@ -596,13 +596,6 @@ class _Db:
         if row:
             return int(row[0]), int(row[1])
 
-    def _get_expr_count(self, expr_id, c):
-        q = "SELECT count FROM expr WHERE id = ?"
-
-        row = c.execute(q, (expr_id,)).fetchone()
-        if row:
-            return int(row[0])
-
     def _get_random_next_token(self, table, expr_id, c):
         q = "SELECT token_id FROM %s WHERE expr_id = ? LIMIT 1 OFFSET ifnull(abs(random())%%(SELECT count(*) FROM %s WHERE expr_id = ?), 0)" % (table, table)
 
