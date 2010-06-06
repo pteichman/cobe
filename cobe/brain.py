@@ -536,25 +536,14 @@ class _Db:
         q = "UPDATE expr SET count = count + 1 WHERE id = ?"
         c.execute(q, (expr_id,))
 
-    def _count_expr_token_links(self, table, expr_id, token_id, c=None):
-        if c is None:
-            c = self.cursor()
-
-        q = "SELECT count FROM %s WHERE expr_id = ? AND token_id = ?" % table
-        row = c.execute(q, (expr_id, token_id)).fetchone()
-        if row:
-            return int(row[0])
-
     def add_or_inc_link(self, table, expr_id, token_id, c=None):
         if c is None:
             c = self.cursor()
 
-        count = self._count_expr_token_links(table, expr_id, token_id, c)
+        q = "UPDATE %s SET count = count + 1 WHERE expr_id = ? AND token_id = ?" % table
+        c.execute(q, (expr_id, token_id))
 
-        if count is not None:
-            q = "UPDATE %s SET count = count + 1 WHERE expr_id = ? AND token_id = ?" % table
-            c.execute(q, (expr_id, token_id))
-        else:
+        if c.rowcount == 0:
             q = "INSERT INTO %s (expr_id, token_id, count) VALUES (?, ?, ?)" % table
             c.execute(q, (expr_id, token_id, 1))
 
