@@ -56,4 +56,3 @@ class Instatrace:
             extra = " " + repr(userData)
 
         self._fd.write("%s %d%s\n" % (statName, statValue, extra))
-        self._fd.flush()
