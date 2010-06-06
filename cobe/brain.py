@@ -402,11 +402,31 @@ class _Db:
             self._order = int(self.get_info_text("order"))
             self._end_token_id = self.get_token_id(_END_TOKEN_TEXT)
 
-            self._all_tokens = ",".join(["token%d_id" % i 
+            self._all_tokens = ",".join(["token%d_id" % i
                                          for i in xrange(self._order)])
             self._all_token_args = " AND ".join(["token%d_id = ?" % i
                                                  for i in xrange(self._order)])
             self._all_token_q = ",".join(["?" for i in xrange(self._order)])
+
+            # construct partial subqueries for use when following chains
+            next_parts = []
+            prev_parts = []
+            for i in xrange(self._order-1):
+                next_parts.append("next_expr.token%d_id = expr.token%d_id" %
+                                  (i, i+1))
+                prev_parts.append("prev_expr.token%d_id = expr.token%d_id" %
+                                  (i+1, i))
+            next_query = " AND ".join(next_parts)
+            prev_query = " AND ".join(prev_parts)
+
+            self._next_chain_q = "SELECT next_expr.token%(last_token)d_id, next_expr.id FROM expr, expr AS next_expr WHERE expr.id = :expr_id AND next_expr.token%(last_token)d_id = (SELECT token_id FROM %(table)s WHERE expr_id = :expr_id LIMIT 1 OFFSET ifnull(random()%%(SELECT count(*) FROM %(table)s WHERE expr_id = :expr_id), 0)) AND %(subquery)s" \
+                % { "last_token" : self._order-1,
+                    "subquery" : next_query,
+                    "table" : _NEXT_TOKEN_TABLE }
+
+            self._prev_chain_q = "SELECT prev_expr.token0_id, prev_expr.id FROM expr, expr AS prev_expr WHERE expr.id = :expr_id AND prev_expr.token0_id = (SELECT token_id FROM %(table)s WHERE expr_id = :expr_id LIMIT 1 OFFSET ifnull(random()%%(SELECT count(*) FROM %(table)s WHERE expr_id = :expr_id), 0)) AND %(subquery)s" \
+                % { "subquery" : prev_query,
+                    "table" : _PREV_TOKEN_TABLE }
 
     def cursor(self):
         return self._conn.cursor()
@@ -607,6 +627,20 @@ class _Db:
         if row:
             return row[0]
 
+    def _get_random_next_expr(self, table, expr_id, c):
+        if table == _NEXT_TOKEN_TABLE:
+            q = self._next_chain_q
+        else:
+            q = self._prev_chain_q
+
+        c.execute(q, {"expr_id" : expr_id})
+
+        row = c.fetchone()
+        if row:
+            return row[0], row[1]
+
+        return self._end_token_id, 0
+
     def follow_chain(self, table, expr_id, memo, c=None):
         if c is None:
             c = self.cursor()
@@ -619,27 +653,16 @@ class _Db:
             memo[expr_id] = expr
 
         chain = collections.deque(expr)
-        token_ids = collections.deque(expr, self._order)
 
         # pick a random next_token that can follow expr_id
-        next_token_id = self._get_random_next_token(table, expr_id, c)
+        next_token_id, expr_id = self._get_random_next_expr(table, expr_id, c)
         while next_token_id != self._end_token_id:
             if table == _NEXT_TOKEN_TABLE:
                 chain.append(next_token_id)
-                token_ids.append(next_token_id)
             else:
                 chain.appendleft(next_token_id)
-                token_ids.appendleft(next_token_id)
 
-            key = tuple(token_ids)
-
-            try:
-                expr_id = memo[key]
-            except KeyError:
-                expr_id = self.get_expr_by_token_ids(key, c)
-                memo[key] = expr_id
-
-            next_token_id = self._get_random_next_token(table, expr_id, c)
+            next_token_id, expr_id = self._get_random_next_expr(table, expr_id, c)
 
         return chain
 
