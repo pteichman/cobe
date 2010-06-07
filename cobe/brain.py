@@ -627,42 +627,36 @@ class _Db:
         if row:
             return row[0]
 
-    def _get_random_next_expr(self, table, expr_id, c):
-        if table == _NEXT_TOKEN_TABLE:
-            q = self._next_chain_q
-        else:
-            q = self._prev_chain_q
-
-        c.execute(q, {"expr_id" : expr_id})
-
-        row = c.fetchone()
-        if row:
-            return row[0], row[1]
-
-        return self._end_token_id, 0
-
     def follow_chain(self, table, expr_id, memo, c=None):
         if c is None:
             c = self.cursor()
 
-        # initialize the chain with the current expr's tokens
         try:
             expr = memo[expr_id]
         except KeyError:
             expr = self._get_expr_token_ids(expr_id, c)
             memo[expr_id] = expr
 
+        # initialize the chain with the current expr's tokens
         chain = collections.deque(expr)
 
-        # pick a random next_token that can follow expr_id
-        next_token_id, expr_id = self._get_random_next_expr(table, expr_id, c)
-        while next_token_id != self._end_token_id:
-            if table == _NEXT_TOKEN_TABLE:
-                chain.append(next_token_id)
-            else:
-                chain.appendleft(next_token_id)
+        if table == _NEXT_TOKEN_TABLE:
+            append = chain.append
+            query = self._next_chain_q
+        else:
+            append = chain.appendleft
+            query = self._prev_chain_q
 
-            next_token_id, expr_id = self._get_random_next_expr(table, expr_id, c)
+        while True:
+            # get the token
+            c.execute(query, {"expr_id" : expr_id})
+
+            row = c.fetchone()
+            if not row or row[0] == self._end_token_id:
+                break
+
+            next_token_id, expr_id = row
+            append(next_token_id)
 
         return chain
 
