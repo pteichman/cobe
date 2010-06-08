@@ -465,6 +465,7 @@ class _Db:
     to be used from outside."""
     def __init__(self, conn, run_migrations=True):
         self._conn = conn
+        conn.row_factory = sqlite3.Row
 
         if self.is_initted():
             if run_migrations:
