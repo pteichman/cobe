@@ -133,13 +133,18 @@ class Brain:
         db = self._db
         c = db.cursor()
 
-        token_infos = self._get_known_word_tokens(tokens, c)
-        _trace.trace("Brain.known_word_token_count", len(token_infos))
+        token_counts = self._get_known_word_tokens(tokens, c)
+        _trace.trace("Brain.known_word_token_count", len(token_counts))
 
         # If we didn't recognize any word tokens in the input, pick
         # something random from the database and babble.
-        if len(token_infos) == 0:
-            token_infos = self._babble(c)
+        if len(token_counts) == 0:
+            token_counts = self._babble(c)
+
+        # Calculate the probability for using each of these tokens as
+        # the pivot. This scores rare words higher, so we'll generate
+        # fewer replies from common words.
+        token_probs = self._get_reply_probabilities(token_counts)
 
         best_score = None
         best_reply = None
@@ -154,7 +159,7 @@ class Brain:
         _start = _trace.now()
         while best_reply is None or time.time() < end:
             _now = _trace.now()
-            reply, score = self._generate_reply(token_infos, memo)
+            reply, score = self._generate_reply(token_probs, memo)
             if reply is None:
                 break
 
@@ -192,6 +197,10 @@ class Brain:
 
         return self.tokenizer.join(text)
 
+    def _get_reply_probabilities(self, token_counts):
+        count = len(token_counts)
+        return [(token[0], 1./count) for token in token_counts]
+
     def _babble(self, c):
         # Generate a random input that can be used for reply generation
         token = self._db.get_random_token(c=c)
@@ -199,11 +208,21 @@ class Brain:
             return [token]
         return []
 
-    def _choose_pivot(self, token_infos):
-        return random.choice(token_infos)[0]
+    def _choose_pivot(self, token_probs):
+        r = random.random()
 
-    def _generate_reply(self, token_infos, memo):
-        if len(token_infos) == 0:
+        cur = 0.
+        for token in token_probs:
+            cur += token[1]
+            if r < cur:
+                return token[0]
+
+        # this should never happen if token_probs ranges 0..1.0, but
+        # provide a fallthrough anyway
+        return random.choice(token_probs)[0]
+
+    def _generate_reply(self, token_probs, memo):
+        if len(token_probs) == 0:
             return None, None
 
         # generate a reply containing one of token_ids
@@ -211,8 +230,8 @@ class Brain:
         c = db.cursor()
         c.arraysize = 200
 
-        token_ids = [token_info[0] for token_info in token_infos]
-        pivot_token_id = self._choose_pivot(token_infos)
+        token_ids = [token_prob[0] for token_prob in token_probs]
+        pivot_token_id = self._choose_pivot(token_probs)
         pivot_expr_id = db.get_random_expr(pivot_token_id, c=c)
 
         next_token_ids = db.follow_chain(_NEXT_TOKEN_TABLE, pivot_expr_id,
