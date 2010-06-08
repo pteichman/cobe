@@ -144,7 +144,7 @@ class Brain:
         # Calculate the probability for using each of these tokens as
         # the pivot. This scores rare words higher, so we'll generate
         # fewer replies from common words.
-        token_probs = self._get_reply_probabilities(token_counts)
+        token_probs = self._get_pivot_probabilities(token_counts)
 
         best_score = None
         best_reply = None
@@ -197,9 +197,36 @@ class Brain:
 
         return self.tokenizer.join(text)
 
-    def _get_reply_probabilities(self, token_counts):
-        count = len(token_counts)
-        return [(token[0], 1./count) for token in token_counts]
+    def _get_pivot_probabilities(self, token_counts):
+        # Calculate the probability we wish to pick each token as the pivot.
+        # This uses -log2(p) as a method for inverting token probability,
+        # ensuring that our rarer tokens are picked more often.
+
+        # token_counts is a list of (token_id, token_count) tuples
+
+        if len(token_counts) == 1:
+            return [(token_counts[0][0], 1.0)]
+
+        count_sum = 0
+        for token_count in token_counts:
+            count_sum += token_count[1]
+
+        # calculate the (non-normalized) probability we want each to occur
+        p = []
+        p_sum = 0.
+        for token in token_counts:
+            count = token[1]
+            token_p = -math.log(float(count) / count_sum, 2)
+
+            p.append(token_p)
+            p_sum += token_p
+
+        # normalize the probabilities
+        ret = []
+        for t in zip(token_counts, p):
+            ret.append((t[0][0], t[1] / p_sum))
+
+        return ret
 
     def _babble(self, c):
         # Generate a random input that can be used for reply generation
