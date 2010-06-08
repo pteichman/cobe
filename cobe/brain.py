@@ -133,18 +133,19 @@ class Brain:
         db = self._db
         c = db.cursor()
 
-        token_counts = self._get_known_word_tokens(tokens, c)
-        _trace.trace("Brain.known_word_token_count", len(token_counts))
-
-        # If we didn't recognize any word tokens in the input, pick
-        # something random from the database and babble.
-        if len(token_counts) == 0:
-            token_counts = self._babble(c)
+        token_infos = self._get_token_info(tokens, c)
 
         # Calculate the probability for using each of these tokens as
         # the pivot. This scores rare words higher, so we'll generate
         # fewer replies from common words.
-        token_probs = self._get_pivot_probabilities(token_counts)
+        token_probs = self._get_pivot_probabilities(token_infos)
+
+        _trace.trace("Brain.known_word_token_count", len(token_probs))
+
+        # If we didn't recognize any word tokens in the input, pick
+        # something random from the database and babble.
+        if len(token_probs) == 0:
+            token_probs = self._babble(c)
 
         best_score = None
         best_reply = None
@@ -168,7 +169,7 @@ class Brain:
             count += 1
 
             if best_score is not None \
-                    and self._too_similar(token_counts, reply):
+                    and self._too_similar(token_infos, reply):
                 similar_count += 1
                 continue
 
@@ -211,20 +212,25 @@ class Brain:
         # This uses -log2(p) as a method for inverting token probability,
         # ensuring that our rarer tokens are picked more often.
 
-        # token_counts is a list of (token_id, token_count) tuples
+        word_tokens = [token_info for token_info in token_counts
+                       if token_info and token_info["is_word"]]
 
-        if len(token_counts) == 1:
-            return [(token_counts[0][0], 1.0)]
+        if len(word_tokens) == 0:
+            return []
+
+        if len(word_tokens) == 1:
+            return [(word_tokens[0]["id"], 1.0)]
 
         count_sum = 0
-        for token_count in token_counts:
-            count_sum += token_count[1]
+        for token_count in word_tokens:
+            if token_count is not None:
+                count_sum += token_count["count"]
 
         # calculate the (non-normalized) probability we want each to occur
         p = []
         p_sum = 0.
-        for token in token_counts:
-            count = token[1]
+        for token in word_tokens:
+            count = token["count"]
             token_p = -math.log(float(count) / count_sum, 2)
 
             p.append(token_p)
@@ -232,8 +238,9 @@ class Brain:
 
         # normalize the probabilities
         ret = []
-        for t in zip(token_counts, p):
-            ret.append((t[0][0], t[1] / p_sum))
+        for t in zip(word_tokens, p):
+            if t[0]["is_word"]:
+                ret.append((t[0]["id"], t[1] / p_sum))
 
         return ret
 
@@ -241,7 +248,7 @@ class Brain:
         # Generate a random input that can be used for reply generation
         token = self._db.get_random_token(c=c)
         if token:
-            return [token]
+            return [(token[0], 1.0)]
         return []
 
     def _choose_pivot(self, token_probs):
@@ -366,7 +373,7 @@ class Brain:
 
         return score
 
-    def _get_known_word_tokens(self, tokens, c):
+    def _get_token_info(self, tokens, c):
         db = self._db
 
         token_infos = []
@@ -376,11 +383,10 @@ class Brain:
             try:
                 token_info = memo[token]
             except KeyError:
-                token_info = db.get_word_token_info(token, c=c)
+                token_info = db.get_token_info(token, c=c)
                 memo[token] = token_info
 
-            if token_info is not None:
-                token_infos.append(token_info)
+            token_infos.append(token_info)
 
         return token_infos
 
@@ -576,14 +582,14 @@ class _Db:
         if row:
             return row[0], row[1]
 
-    def get_word_token_info(self, token, c=None):
+    def get_token_info(self, token, c=None):
         if c is None:
             c = self.cursor()
 
-        q = "SELECT id, count FROM tokens WHERE text = ? AND is_word = 1"
+        q = "SELECT id, is_word, count FROM tokens WHERE text = ?"
         row = c.execute(q, (token,)).fetchone()
         if row:
-            return int(row[0]), int(row[1])
+            return row
 
     def get_token_text(self, token_id, c=None):
         if c is None:
