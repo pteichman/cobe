@@ -153,6 +153,7 @@ class Brain:
         start = time.time()
         end = start + 0.5
         count = 0
+        similar_count = 0
 
         memo = {}
 
@@ -160,16 +161,20 @@ class Brain:
         while best_reply is None or time.time() < end:
             _now = _trace.now()
             reply, score = self._generate_reply(token_probs, memo)
+            _trace.trace("Brain.generate_reply_us", _trace.now()-_now)
             if reply is None:
                 break
 
-            _trace.trace("Brain.generate_reply_us", _trace.now()-_now)
+            count += 1
+
+            if best_score is not None \
+                    and self._too_similar(token_counts, reply):
+                similar_count += 1
+                continue
 
             if not best_score or score > best_score:
                 best_score = score
                 best_reply = reply
-
-            count = count + 1
 
         if best_reply is None:
             return "I don't know enough to answer you yet!"
@@ -177,6 +182,7 @@ class Brain:
         _time = _trace.now()-_start
         _trace.trace("Brain.reply_us", _time)
         _trace.trace("Brain.reply_count", count, _time)
+        _trace.trace("Brain.similar_reply_count", similar_count, _time)
         _trace.trace("Brain.best_reply_score", int(best_score*1000))
         _trace.trace("Brain.best_reply_length", len(best_reply))
         log.debug("made %d replies in %f seconds" % (count, time.time()-start))
@@ -196,6 +202,9 @@ class Brain:
         _trace.trace("Brain.reply_words_lookup_us", _trace.now()-_now)
 
         return self.tokenizer.join(text)
+
+    def _too_similar(self, input_tokens, output_tokens):
+        return False
 
     def _get_pivot_probabilities(self, token_counts):
         # Calculate the probability we wish to pick each token as the pivot.
