@@ -866,7 +866,7 @@ SELECT count(*) AS count, token_id AS id FROM prev_token,tokens WHERE tokens.cou
 
         for row in q:
             c.execute("""
-UPDATE tokens SET count = ? WHERE id = ?""", row)
+UPDATE tokens SET count = ? WHERE id = ?""", tuple(row))
 
         # Some tokens can still have NULL counts, if they have only been
         # found in training input shorter than the current Markov order.
