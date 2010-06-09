@@ -205,7 +205,11 @@ class Brain:
         return self.tokenizer.join(text)
 
     def _too_similar(self, input_tokens, output_tokens):
-        return False
+        for t in zip(input_tokens, output_tokens):
+            if t[0] is None or t[0][0] != t[1]:
+                return False
+
+        return True
 
     def _get_pivot_probabilities(self, token_counts):
         # Calculate the probability we wish to pick each token as the pivot.
