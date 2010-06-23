@@ -65,7 +65,11 @@ tokens."""
         if len(phrase) == 0:
             return []
 
-        words = re.findall("(https?:\S+|[\w']+|[^\w']+)", phrase, re.UNICODE)
+        # Add hyphen to the list of possible word characters, so hyphenated
+        # words become one token (e.g. hy-phen). But don't remove it from
+        # the list of non-word characters, so if it's found entirely within
+        # punctuation it's a normal non-word (e.g. :-( )
+        words = re.findall("(https?:\S+|[\w'-]+|[^\w']+)", phrase, re.UNICODE)
 
         # Turn any runs of multiple spaces at the beginning or end of
         # the token into a single space. This discourages extra spaces

@@ -87,5 +87,15 @@ class testCobeTokenizer(unittest.TestCase):
         words = self.tokenizer.split(u"testing          :    (")
         self.assertEquals(words, ["testing", " :    ("])
 
+    def testSplitHyphenatedWord(self):
+        words = self.tokenizer.split(u"test-ing")
+        self.assertEquals(words, ["test-ing"])
+
+        words = self.tokenizer.split(u":-)")
+        self.assertEquals(words, [":-)"])
+
+        words = self.tokenizer.split(u"test-ing :-) 1-2-3")
+        self.assertEquals(words, ["test-ing", " :-) ", "1-2-3"])
+
 if __name__ == '__main__':
     unittest.main()
