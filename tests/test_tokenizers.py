@@ -107,5 +107,9 @@ class testCobeTokenizer(unittest.TestCase):
         words = self.tokenizer.split(u"test-ing :-) 1-2-3")
         self.assertEquals(words, ["test-ing", " :-) ", "1-2-3"])
 
+    def testSplitApostrophes(self):
+        words = self.tokenizer.split(u"don't :'(")
+        self.assertEquals(words, ["don't", " :'("])
+
 if __name__ == '__main__':
     unittest.main()

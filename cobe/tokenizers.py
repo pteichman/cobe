@@ -69,7 +69,7 @@ tokens."""
         # words become one token (e.g. hy-phen). But don't remove it from
         # the list of non-word characters, so if it's found entirely within
         # punctuation it's a normal non-word (e.g. :-( )
-        words = re.findall("(\w+:\S+|[\w'-]+|[^\w']+)", phrase, re.UNICODE)
+        words = re.findall("(\w+:\S+|[\w'-]+|[^\w]+)", phrase, re.UNICODE)
 
         # Turn any runs of multiple spaces at the beginning or end of
         # the token into a single space. This discourages extra spaces
