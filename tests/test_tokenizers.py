@@ -76,6 +76,16 @@ class testCobeTokenizer(unittest.TestCase):
         words = self.tokenizer.split(u"https://www.google.com/")
         self.assertEquals(words, ["https://www.google.com/"])
 
+        # odd protocols
+        words = self.tokenizer.split(u"cobe://www.google.com/")
+        self.assertEquals(words, ["cobe://www.google.com/"])
+
+        words = self.tokenizer.split(u"cobe:www.google.com/")
+        self.assertEquals(words, ["cobe:www.google.com/"])
+
+        words = self.tokenizer.split(u":foo")
+        self.assertEquals(words, [":", "foo"])
+
     def testSplitMultipleSpaces(self):
         words = self.tokenizer.split(u"this is  a test")
         self.assertEquals(words, ["this", " ", "is", " ", "a", " ", "test"])
