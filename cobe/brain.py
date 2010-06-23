@@ -166,6 +166,8 @@ class Brain:
             if reply is None:
                 break
 
+            _trace.trace("Brain.reply_output_token_count", len(reply))
+
             count += 1
 
             if best_score is not None \
