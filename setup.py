@@ -7,7 +7,7 @@ from setuptools import setup, find_packages
 
 setup(
     name = "cobe",
-    version = "1.1.0",
+    version = "1.1.1",
     author = "Peter Teichman",
     author_email = "peter@teichman.org",
     url = "http://wiki.github.com/pteichman/cobe/",
