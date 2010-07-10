@@ -86,8 +86,7 @@ class Brain:
         n_exprs = len(token_ids)-self.order
 
         # increment seen count for each token
-        for token_id in token_ids:
-            db.inc_token_count(token_id, c=c)
+        db.inc_token_counts(token_ids, c=c)
 
         for i in xrange(n_exprs+1):
             expr = token_ids[i:i+self.order]
@@ -628,12 +627,13 @@ class _Db:
         c.execute(q, token_ids)
         return c.lastrowid
 
-    def inc_token_count(self, token_id, c=None):
+    def inc_token_counts(self, token_ids, c=None):
         if c is None:
             c = self.cursor()
 
         q = "UPDATE tokens SET count = count + 1 WHERE id = ?"
-        c.execute(q, (token_id,))
+        for token_id in token_ids:
+            c.execute(q, (token_id,))
 
     def inc_expr_count(self, expr_id, c=None):
         if c is None:
