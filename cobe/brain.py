@@ -88,6 +88,8 @@ class Brain:
         # increment seen count for each token
         db.inc_token_counts(token_ids, c=c)
 
+        links = []
+
         for i in xrange(n_exprs+1):
             expr = token_ids[i:i+self.order]
             expr_id = self._get_or_register_expr(c, expr)
@@ -97,23 +99,24 @@ class Brain:
 
             if i == 0:
                 # add link to boundary on prev_token
-                db.add_or_inc_link(_PREV_TOKEN_TABLE, expr_id,
-                                   self._end_token_id, c=c)
+                links.append((_PREV_TOKEN_TABLE, expr_id, self._end_token_id))
 
             if i > 0:
                 # link prev token to this expr
                 prev_token = token_ids[i-1]
-                db.add_or_inc_link(_PREV_TOKEN_TABLE, expr_id, prev_token, c=c)
+                links.append((_PREV_TOKEN_TABLE, expr_id, prev_token))
 
             if i < n_exprs:
                 # link next token to this expr
                 next_token = token_ids[i+self.order]
-                db.add_or_inc_link(_NEXT_TOKEN_TABLE, expr_id, next_token, c=c)
+                links.append((_NEXT_TOKEN_TABLE, expr_id, next_token))
 
             if i == n_exprs:
                 # add link to boundary on next_token
-                db.add_or_inc_link(_NEXT_TOKEN_TABLE, expr_id,
-                                   self._end_token_id, c=c)
+                links.append((_NEXT_TOKEN_TABLE, expr_id, self._end_token_id))
+
+        if len(links) > 0:
+            db.add_or_inc_links(links, c=c)
 
         if not self._learning:
             db.commit()
@@ -642,16 +645,17 @@ class _Db:
         q = "UPDATE expr SET count = count + 1 WHERE id = ?"
         c.execute(q, (expr_id,))
 
-    def add_or_inc_link(self, table, expr_id, token_id, c=None):
+    def add_or_inc_links(self, links, c=None):
         if c is None:
             c = self.cursor()
 
-        q = "UPDATE %s SET count = count + 1 WHERE expr_id = ? AND token_id = ?" % table
-        c.execute(q, (expr_id, token_id))
+        for (table, expr_id, token_id) in links:
+            update_q = "UPDATE %s SET count = count + 1 WHERE expr_id = ? AND token_id = ?" % table
+            c.execute(update_q, (expr_id, token_id))
 
-        if c.rowcount == 0:
-            q = "INSERT INTO %s (expr_id, token_id, count) VALUES (?, ?, ?)" % table
-            c.execute(q, (expr_id, token_id, 1))
+            if c.rowcount == 0:
+                insert_q = "INSERT INTO %s (expr_id, token_id, count) VALUES (?, ?, ?)" % table
+                c.execute(insert_q, (expr_id, token_id, 1))
 
     def get_random_expr(self, token_id, c=None):
         if c is None:
