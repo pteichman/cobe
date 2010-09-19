@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 
-from ez_setup import use_setuptools
-use_setuptools()
-
+# Require setuptools. See http://pypi.python.org/pypi/setuptools for
+# installation instructions, or run the ez_setup script found at
+# http://peak.telecommunity.com/dist/ez_setup.py
 from setuptools import setup, find_packages
+
 setup(
     name = "cobe",
     version = "1.1.0",
