@@ -39,7 +39,7 @@ class CobeBot(irc.IRCClient):
             return
 
         # strip pasted nicks from messages
-        msg = re.sub("<\S+>", "", msg)
+        msg = re.sub("<\S+>\s+", "", msg)
 
         # strip kibot style quotes from messages
         match = re.match("\"(.*)\" --\S+, \d+-\S+\d+.", msg)
