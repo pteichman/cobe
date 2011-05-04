@@ -889,6 +889,10 @@ DROP INDEX tokens_stem""")
         except sqlite3.OperationalError: # no such index: tokens_stem
             pass
 
+        # delete all the existing stems from the table
+        c.execute("""
+UPDATE tokens SET stem = NULL""")
+
         self._conn.create_function("stem", 1, stemmer.stem)
         c.execute("""
 UPDATE tokens SET stem = stem(tokens.text) WHERE is_word = 1""")
