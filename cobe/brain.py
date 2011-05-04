@@ -453,7 +453,7 @@ class Brain:
                     is_word = False
 
                 stem = None
-                if self.stemmer is not None:
+                if is_word and self.stemmer is not None:
                     stem = self.stemmer.stem(token)
 
                 token_id = db.insert_token(token, is_word, stem, c=c)
@@ -891,7 +891,7 @@ DROP INDEX tokens_stem""")
 
         self._conn.create_function("stem", 1, stemmer.stem)
         c.execute("""
-UPDATE tokens SET stem = stem(tokens.text)""")
+UPDATE tokens SET stem = stem(tokens.text) WHERE is_word = 1""")
 
         self.commit()
 
