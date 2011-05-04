@@ -1,6 +1,6 @@
 import unittest
 
-from cobe.tokenizers import CobeTokenizer, MegaHALTokenizer
+from cobe.tokenizers import CobeStemmer, CobeTokenizer, MegaHALTokenizer
 
 class testMegaHALTokenizer(unittest.TestCase):
     def setUp(self):
@@ -110,6 +110,23 @@ class testCobeTokenizer(unittest.TestCase):
     def testSplitApostrophes(self):
         words = self.tokenizer.split(u"don't :'(")
         self.assertEquals(words, ["don't", " :'("])
+
+class testCobeStemmer(unittest.TestCase):
+    def setUp(self):
+        self.stemmer = CobeStemmer("english")
+
+    def testStemmer(self):
+        self.assertEquals("foo", self.stemmer.stem("foo"))
+        self.assertEquals("jump", self.stemmer.stem("jumping"))
+        self.assertEquals("run", self.stemmer.stem("running"))
+
+    def testStemmerCase(self):
+        self.assertEquals("foo", self.stemmer.stem("Foo"))
+        self.assertEquals("foo", self.stemmer.stem("FOO"))
+
+        self.assertEquals("foo", self.stemmer.stem("FOO'S"))
+        self.assertEquals("foo", self.stemmer.stem("FOOING"))
+        self.assertEquals("foo", self.stemmer.stem("Fooing"))
 
 if __name__ == '__main__':
     unittest.main()

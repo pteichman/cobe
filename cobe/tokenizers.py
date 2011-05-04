@@ -82,3 +82,19 @@ tokens."""
 
     def join(self, words):
         return u"".join(words)
+
+class CobeStemmer:
+    def __init__(self, name):
+        # use the PyStemmer Snowball stemmer bindings
+        import Stemmer
+        self.stemmer = Stemmer.Stemmer(name)
+
+    def stem(self, word):
+        # Don't preserve case when stemming, i.e. create lowercase stems.
+        # This will allow us to create replies that switch the case of
+        # input words, but still generate the reply in context with the
+        # generated case.
+
+        stem = self.stemmer.stemWords([word.lower()])[0]
+
+        return stem
