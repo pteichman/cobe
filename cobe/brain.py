@@ -452,7 +452,11 @@ class Brain:
                 else:
                     is_word = False
 
-                token_id = db.insert_token(token, is_word, c=c)
+                stem = None
+                if self.stemmer is not None:
+                    stem = self.stemmer.stem(token)
+
+                token_id = db.insert_token(token, is_word, stem, c=c)
                 memo[token] = token_id
 
             token_ids.append(token_id)
@@ -657,12 +661,12 @@ class _Db:
         q = "SELECT %s FROM expr WHERE id = ?" % self._all_tokens
         return c.execute(q, (expr_id,)).fetchone()
 
-    def insert_token(self, token, is_word, c=None):
+    def insert_token(self, token, is_word, stem, c=None):
         if c is None:
             c = self.cursor()
 
-        q = "INSERT INTO tokens (text, is_word, count) VALUES (?, ?, 0)"
-        c.execute(q, (token, is_word))
+        q = "INSERT INTO tokens (text, is_word, count, stem) VALUES (?, ?, 0, ?)"
+        c.execute(q, (token, is_word, stem))
         return c.lastrowid
 
     def insert_expr(self, token_ids, c=None):
@@ -840,7 +844,7 @@ CREATE TABLE prev_token (
             self._run_migrations()
 
         # create a token for the end of a chain
-        self.insert_token(_END_TOKEN_TEXT, 0, c=c)
+        self.insert_token(_END_TOKEN_TEXT, 0, None, c=c)
 
         # save the order of this brain
         self.set_info_text("order", str(order), c=c)
