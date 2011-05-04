@@ -47,6 +47,15 @@ class Brain:
         else:
             self.tokenizer = tokenizers.CobeTokenizer()
 
+        self.stemmer = None
+        stemmer_name = db.get_info_text("stemmer")
+
+        if stemmer_name is not None:
+            try:
+                self.stemmer = tokenizers.CobeStemmer(stemmer_name)
+            except Exception, e:
+                log.error("Error creating stemmer: %s", str(e))
+
         self._end_token_id = db.get_token_id(_END_TOKEN_TEXT)
         self._learning = False
 
@@ -143,7 +152,16 @@ class Brain:
         db = self._db
         c = db.cursor()
 
-        token_infos = self._get_token_info(tokens, c)
+        # Save the original input tokens separately from the list
+        input_token_infos = self._get_token_info(tokens, c)
+
+        # Create a set of token infos we'll use to seed replies
+        token_infos = set(input_token_infos)
+
+        # Conflate the reply seeds with the stems of their words
+        if self.stemmer is not None:
+            stems = self._conflate_stems(tokens)
+            token_infos.update(self._get_token_info(stems, c))
 
         # Calculate the probability for using each of these tokens as
         # the pivot. This scores rare words higher, so we'll generate
@@ -181,7 +199,7 @@ class Brain:
             count += 1
 
             if best_score is not None \
-                    and self._too_similar(token_infos, reply):
+                    and self._too_similar(input_token_infos, reply):
                 similar_count += 1
                 continue
 
@@ -215,6 +233,16 @@ class Brain:
         _trace.trace("Brain.reply_words_lookup_us", _trace.now()-_now)
 
         return self.tokenizer.join(text)
+
+    def _conflate_stems(self, tokens):
+        stems = set()
+        for token in tokens:
+            stem = self.stemmer.stem(token)
+
+            texts = self._db.get_token_stem_texts(stem)
+            if texts is not None:
+                stems.update(texts)
+        return stems
 
     def _too_similar(self, input_tokens, output_tokens):
         for t in zip(input_tokens, output_tokens):
@@ -586,6 +614,15 @@ class _Db:
         row = c.execute(q, (token,)).fetchone()
         if row:
             return int(row[0])
+
+    def get_token_stem_texts(self, stem, c=None):
+        if c is None:
+            c = self.cursor()
+
+        q = "SELECT text FROM tokens WHERE stem = ?"
+        row = c.execute(q, (stem,)).fetchall()
+        if row:
+            return [val[0] for val in row]
 
     def get_random_token(self, c=None):
         if c is None:
