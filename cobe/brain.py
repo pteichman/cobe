@@ -831,6 +831,7 @@ CREATE INDEX prev_token_expr_id ON prev_token (expr_id, token_id)""")
     def _run_migrations(self):
         _start = _trace.now()
         self._maybe_add_token_counts()
+        self._maybe_add_token_stems()
         _trace.trace("Db.run_migrations_us", _trace.now()-_start)
 
     def _maybe_add_token_counts(self):
@@ -882,3 +883,25 @@ UPDATE tokens SET count = 1 WHERE count IS NULL""")
 
         self.commit()
         _trace.trace("Db.add_token_counts_us", _trace.now_ms()-_start)
+
+    def _maybe_add_token_stems(self):
+        c = self.cursor()
+
+        try:
+            c.execute("""
+SELECT stem FROM tokens LIMIT 1""")
+        except sqlite3.OperationalError: # no such column: count
+            self._add_token_stems(c)
+
+        c.close()
+
+    def _add_token_stems(self, c):
+        log.info("SCHEMA UPDATE: adding token stems")
+        _start = _trace.now_ms()
+
+        c.execute("""
+ALTER TABLE tokens ADD COLUMN stem TEXT""")
+
+        self.commit()
+
+        _trace.trace("Db.add_token_stems_us", _trace.now_ms()-_start)
