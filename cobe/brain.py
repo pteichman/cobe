@@ -61,6 +61,14 @@ class Brain:
         self._learning = False
         self._db.commit()
 
+    def set_stemmer(self, language):
+        self.stemmer = tokenizers.CobeStemmer(language)
+
+        self._db.update_token_stems(self.stemmer)
+
+        self._db.set_info_text("stemmer", language)
+        self._db.commit()
+
     def learn(self, text):
         """Learn a string of text. If the input is not already
         Unicode, it will be decoded as utf-8."""
@@ -827,6 +835,31 @@ CREATE INDEX prev_token_expr_id ON prev_token (expr_id, token_id)""")
         c.close()
 
         self.close()
+
+    def update_token_stems(self, stemmer):
+        # stemmer is a CobeStemmer
+        _start = _trace.now_ms()
+
+        c = self.cursor()
+
+        try:
+            c.execute("""
+DROP INDEX tokens_stem""")
+        except sqlite3.OperationalError: # no such index: tokens_stem
+            pass
+
+        self._conn.create_function("stem", 1, stemmer.stem)
+        c.execute("""
+UPDATE tokens SET stem = stem(tokens.text)""")
+
+        self.commit()
+
+        _trace.trace("Db.update_token_stems_us", _trace.now_ms()-_start)
+
+        _start = _trace.now_ms()
+        c.execute("""
+CREATE INDEX tokens_stem on tokens (stem)""")
+        _trace.trace("Db.index_token_stems_us", _trace.now_ms()-_start)
 
     def _run_migrations(self):
         _start = _trace.now()

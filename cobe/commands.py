@@ -225,3 +225,23 @@ class IrcClientCommand:
         from .irc import Runner
         b = Brain(args.brain)
         Runner().run(b, args)
+
+class SetStemmerCommand:
+    @classmethod
+    def add_subparser(cls, parser):
+        subparser = parser.add_parser("set-stemmer", help="Configure a stemmer")
+
+        try:
+            import Stemmer
+            subparser.set_defaults(run=cls.run)
+        except ImportError:
+            subparser.set_defaults(run=cls.disabled)
+
+        subparser.add_argument("language", choices=Stemmer.algorithms(),
+                               help="Stemmer language")
+
+    @staticmethod
+    def run(args):
+        b = Brain(args.brain)
+
+        b.set_stemmer(args.language)
