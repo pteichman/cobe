@@ -95,6 +95,6 @@ class CobeStemmer:
         # input words, but still generate the reply in context with the
         # generated case.
 
-        stem = self.stemmer.stemWords([word.lower()])[0]
+        stem = self.stemmer.stemWord(word.lower())
 
         return stem
