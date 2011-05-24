@@ -70,9 +70,18 @@ class Brain:
         self._learning = False
         self._db.commit()
 
+    def del_stemmer(self):
+        self.stemmer = None
+
+        self._db.delete_token_stems()
+
+        self._db.set_info_text("stemmer", None)
+        self._db.commit()
+
     def set_stemmer(self, language):
         self.stemmer = tokenizers.CobeStemmer(language)
 
+        self._db.delete_token_stems()
         self._db.update_token_stems(self.stemmer)
 
         self._db.set_info_text("stemmer", language)
@@ -877,10 +886,7 @@ CREATE INDEX prev_token_expr_id ON prev_token (expr_id, token_id)""")
 
         self.close()
 
-    def update_token_stems(self, stemmer):
-        # stemmer is a CobeStemmer
-        _start = _trace.now_ms()
-
+    def delete_token_stems(self):
         c = self.cursor()
 
         try:
@@ -898,6 +904,14 @@ DROP INDEX token_stems_id""")
         # delete all the existing stems from the table
         c.execute("""
 DELETE FROM token_stems""")
+
+        self.commit()
+
+    def update_token_stems(self, stemmer):
+        # stemmer is a CobeStemmer
+        _start = _trace.now_ms()
+
+        c = self.cursor()
 
         q = c.execute("""
 SELECT id, text FROM tokens WHERE is_word = 1""")

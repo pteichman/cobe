@@ -245,3 +245,20 @@ class SetStemmerCommand:
         b = Brain(args.brain)
 
         b.set_stemmer(args.language)
+
+class DelStemmerCommand:
+    @classmethod
+    def add_subparser(cls, parser):
+        subparser = parser.add_parser("del-stemmer", help="Delete the stemmer")
+
+        try:
+            import Stemmer
+            subparser.set_defaults(run=cls.run)
+        except ImportError:
+            subparser.set_defaults(run=cls.disabled)
+
+    @staticmethod
+    def run(args):
+        b = Brain(args.brain)
+
+        b.del_stemmer()
