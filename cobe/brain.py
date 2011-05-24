@@ -1,4 +1,4 @@
-# Copyright (C) 2010 Peter Teichman
+# Copyright (C) 2011 Peter Teichman
 
 import collections
 import logging
@@ -623,7 +623,7 @@ class _Db:
         if c is None:
             c = self.cursor()
 
-        q = "SELECT text FROM tokens WHERE stem = ?"
+        q = "SELECT text FROM token_stems, tokens WHERE token_stems.stem = ? AND token_stems.token_id = tokens.id"
         row = c.execute(q, (stem,)).fetchall()
         if row:
             return [val[0] for val in row]
@@ -885,17 +885,28 @@ CREATE INDEX prev_token_expr_id ON prev_token (expr_id, token_id)""")
 
         try:
             c.execute("""
-DROP INDEX tokens_stem""")
-        except sqlite3.OperationalError: # no such index: tokens_stem
+DROP INDEX token_stems_stem""")
+        except sqlite3.OperationalError: # no such index: tokens_stems_stem
+            pass
+
+        try:
+            c.execute("""
+DROP INDEX token_stems_id""")
+        except sqlite3.OperationalError: # no such index: tokens_stems_id
             pass
 
         # delete all the existing stems from the table
         c.execute("""
-UPDATE tokens SET stem = NULL""")
+DELETE FROM token_stems""")
 
-        self._conn.create_function("stem", 1, stemmer.stem)
-        c.execute("""
-UPDATE tokens SET stem = stem(tokens.text) WHERE is_word = 1""")
+        q = c.execute("""
+SELECT id, text FROM tokens WHERE is_word = 1""")
+
+        insert_q = "INSERT INTO token_stems (token_id, stem) VALUES (?, ?)"
+        insert_c = self.cursor()
+
+        for row in q:
+            insert_c.execute(insert_q, (row[0], stemmer.stem(row[1])))
 
         self.commit()
 
@@ -903,7 +914,9 @@ UPDATE tokens SET stem = stem(tokens.text) WHERE is_word = 1""")
 
         _start = _trace.now_ms()
         c.execute("""
-CREATE INDEX tokens_stem on tokens (stem)""")
+CREATE INDEX token_stems_id on token_stems (token_id)""")
+        c.execute("""
+CREATE INDEX token_stems_stem on token_stems (stem)""")
         _trace.trace("Db.index_token_stems_us", _trace.now_ms()-_start)
 
     def _run_migrations(self):
@@ -967,8 +980,8 @@ UPDATE tokens SET count = 1 WHERE count IS NULL""")
 
         try:
             c.execute("""
-SELECT stem FROM tokens LIMIT 1""")
-        except sqlite3.OperationalError: # no such column: count
+SELECT stem FROM token_stems LIMIT 1""")
+        except sqlite3.OperationalError: # no such table: token_stems
             self._add_token_stems(c)
 
         c.close()
@@ -978,7 +991,9 @@ SELECT stem FROM tokens LIMIT 1""")
         _start = _trace.now_ms()
 
         c.execute("""
-ALTER TABLE tokens ADD COLUMN stem TEXT""")
+CREATE TABLE token_stems (
+    token_id INTEGER,
+    stem TEXT NOT NULL)""")
 
         self.commit()
 
