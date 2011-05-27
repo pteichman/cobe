@@ -1,6 +1,7 @@
 # Copyright (C) 2010 Peter Teichman
 
 import re
+import Stemmer
 import types
 
 class MegaHALTokenizer:
@@ -86,7 +87,6 @@ tokens."""
 class CobeStemmer:
     def __init__(self, name):
         # use the PyStemmer Snowball stemmer bindings
-        import Stemmer
         self.stemmer = Stemmer.Stemmer(name)
 
     def stem(self, word):

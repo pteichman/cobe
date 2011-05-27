@@ -7,14 +7,14 @@ from setuptools import setup, find_packages
 
 setup(
     name = "cobe",
-    version = "1.1.2",
+    version = "1.2.0",
     author = "Peter Teichman",
     author_email = "peter@teichman.org",
     url = "http://wiki.github.com/pteichman/cobe/",
     description = "A conversation simulator similar to MegaHAL",
     packages = ["cobe"],
     test_suite = "tests",
-    install_requires = ["argparse>=1.1"],
+    install_requires = ["argparse>=0.1", "PyStemmer>=1.1.0"],
     classifiers = [
         "Development Status :: 5 - Production/Stable",
         "Environment :: Console",
