@@ -5,3 +5,4 @@ build
 cobe.egg-info
 cobe.pstats
 dist
+virtualenv/
