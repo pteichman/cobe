@@ -168,12 +168,11 @@ class Brain:
             if input_id is not None:
                 pivot_set.add(input_id)
 
+        pivot_set = self._filter_pivots(pivot_set, c)
+
         # Conflate the known ids with the stems of their words
         if self.stemmer is not None:
-            stem_ids = self._conflate_stems(tokens)
-            pivot_set.update(stem_ids)
-
-        pivot_set = self._filter_pivots(pivot_set, c)
+            self._conflate_stems(pivot_set, tokens)
 
         _trace.trace("Brain.known_word_token_count", len(pivot_set))
 
@@ -252,16 +251,19 @@ class Brain:
 
         return text
 
-    def _conflate_stems(self, tokens):
-        stems = set()
+    def _conflate_stems(self, pivot_set, tokens):
         for token in tokens:
-            stem = self.stemmer.stem(token)
-
-            stem_ids = self._db.get_token_stem_ids(stem)
+            stem_ids = self._db.get_token_stem_ids(self.stemmer.stem(token))
             if stem_ids is not None:
-                stems.update(stem_ids)
+                # add the tuple of stems to the pivot set, and then
+                # remove the individual token_ids
+                pivot_set.add(tuple(stem_ids))
 
-        return stems
+                for stem_id in stem_ids:
+                    try:
+                        pivot_set.remove(stem_id)
+                    except KeyError:
+                        pass
 
     def _too_similar(self, input_tokens, output_tokens):
         for t in zip(input_tokens, output_tokens):
@@ -289,7 +291,13 @@ class Brain:
         return filtered
 
     def _choose_pivot(self, pivot_ids):
-        return random.choice(list(pivot_ids))
+        pivot = random.choice(tuple(pivot_ids))
+
+        if type(pivot) is types.TupleType:
+            # the input word was stemmed to several things
+            pivot = random.choice(pivot)
+
+        return pivot
 
     def _generate_reply(self, token_probs, memo):
         if len(token_probs) == 0:
