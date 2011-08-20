@@ -162,27 +162,25 @@ class Brain:
         input_ids = self._get_token_ids(tokens, memo, c)
         _trace.trace("Brain.reply_input_token_count", len(tokens))
 
-        # Make a copy of the input ids
-        pivot_set = set(input_ids)
+        # Make a copy of the known input ids
+        pivot_set = set()
+        for input_id in input_ids:
+            if input_id is not None:
+                pivot_set.add(input_id)
 
-        # Conflate the reply seeds with the stems of their words
+        # Conflate the known ids with the stems of their words
         if self.stemmer is not None:
             stem_ids = self._conflate_stems(tokens)
             pivot_set.update(stem_ids)
 
-        pivot_infos = self._get_token_infos(pivot_set, memo, c)
+        pivot_set = self._filter_pivots(pivot_set, c)
 
-        # Calculate the probability for using each of these tokens as
-        # the pivot. This scores rare words higher, so we'll generate
-        # fewer replies from common words.
-        pivot_probs = self._get_pivot_probabilities(pivot_infos)
-
-        _trace.trace("Brain.known_word_token_count", len(pivot_probs))
+        _trace.trace("Brain.known_word_token_count", len(pivot_set))
 
         # If we didn't recognize any word tokens in the input, pick
         # something random from the database and babble.
-        if len(pivot_probs) == 0:
-            pivot_probs = self._babble(c)
+        if len(pivot_set) == 0:
+            pivot_set = self._babble(c)
 
         best_score = None
         best_reply = None
@@ -196,7 +194,7 @@ class Brain:
         _start = _trace.now()
         while best_reply is None or time.time() < end:
             _now = _trace.now()
-            reply = self._generate_reply(pivot_probs, memo)
+            reply = self._generate_reply(pivot_set, memo)
             _trace.trace("Brain.generate_reply_us", _trace.now()-_now)
             if reply is None:
                 break
@@ -272,62 +270,24 @@ class Brain:
 
         return True
 
-    def _get_pivot_probabilities(self, token_counts):
-        # Calculate the probability we wish to pick each token as the pivot.
-        # This uses -log2(p) as a method for inverting token probability,
-        # ensuring that our rarer tokens are picked more often.
-
-        word_tokens = [token_info for token_info in token_counts
-                       if token_info and token_info["is_word"]]
-
-        if len(word_tokens) == 0:
-            return []
-
-        if len(word_tokens) == 1:
-            return [(word_tokens[0]["id"], 1.0)]
-
-        count_sum = 0
-        for token_count in word_tokens:
-            if token_count is not None:
-                count_sum += token_count["count"]
-
-        # calculate the (non-normalized) probability we want each to occur
-        p = []
-        p_sum = 0.
-        for token in word_tokens:
-            count = token["count"]
-            token_p = -math.log(float(count) / count_sum, 2)
-
-            p.append(token_p)
-            p_sum += token_p
-
-        # normalize the probabilities
-        ret = []
-        for t in zip(word_tokens, p):
-            if t[0]["is_word"]:
-                ret.append((t[0]["id"], t[1] / p_sum))
-
-        return ret
-
     def _babble(self, c):
         # Generate a random input that can be used for reply generation
         token = self._db.get_random_token(c=c)
         if token:
-            return [(token[0], 1.0)]
-        return []
+            return set([token[0]])
 
-    def _choose_pivot(self, token_probs):
-        r = random.random()
+    def _filter_pivots(self, pivot_set, c):
+        # remove pivots that might not give good results
+        filtered = set()
 
-        cur = 0.
-        for token in token_probs:
-            cur += token[1]
-            if r < cur:
-                return token[0]
+        for pivot_id in pivot_set:
+            if self._db.get_token_is_word(pivot_id, c=c):
+                filtered.add(pivot_id)
 
-        # this should never happen if token_probs ranges 0..1.0, but
-        # provide a fallthrough anyway
-        return random.choice(token_probs)[0]
+        return filtered
+
+    def _choose_pivot(self, pivot_ids):
+        return random.choice(list(pivot_ids))
 
     def _generate_reply(self, token_probs, memo):
         if len(token_probs) == 0:
@@ -340,7 +300,6 @@ class Brain:
         c = db.cursor()
         c.arraysize = 200
 
-        token_ids = [token_prob[0] for token_prob in token_probs]
         pivot_token_id = self._choose_pivot(token_probs)
         pivot_expr_id, pivot_expr_idx = db.get_random_expr(pivot_token_id, c=c)
 
@@ -460,20 +419,6 @@ class Brain:
             token_ids.append(token_id)
 
         return token_ids
-
-    def _get_token_infos(self, token_ids, memo, c):
-        memo = memo.setdefault("token_info", {})
-
-        # return an unordered set without duplicates
-        token_infos = set()
-
-        for token_id in token_ids:
-            token_info = \
-                memo.setdefault(token_id,
-                                self._db.get_token_info(token_id, c=c))
-            token_infos.add(token_info)
-
-        return token_infos
 
     def _get_or_register_tokens(self, c, tokens):
         db = self._db
@@ -661,14 +606,14 @@ class _Db:
         if row:
             return row[0], row[1]
 
-    def get_token_info(self, token_id, c=None):
+    def get_token_is_word(self, token_id, c=None):
         if c is None:
             c = self.cursor()
 
-        q = "SELECT id, is_word, count FROM tokens WHERE id = ?"
+        q = "SELECT is_word FROM tokens WHERE id = ?"
         row = c.execute(q, (token_id,)).fetchone()
         if row:
-            return row
+            return row["is_word"]
 
     def get_token_text(self, token_id, c=None):
         if c is None:
