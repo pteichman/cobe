@@ -227,11 +227,20 @@ class Brain:
         _trace.trace("Brain.best_reply_length", len(best_reply))
         log.debug("made %d replies in %f seconds" % (count, time.time()-start))
 
-        _now = _trace.now()
-        # look up the words for these tokens
-        text = []
         memo = {}
-        for token_id in best_reply:
+
+        # look up the words for these tokens
+        _now = _trace.now()
+        text = self._fetch_text(best_reply, memo)
+        _trace.trace("Brain.reply_words_lookup_us", _trace.now()-_now)
+
+        return self.tokenizer.join(text)
+
+    def _fetch_text(self, token_ids, memo):
+        text = []
+        db = self._db
+
+        for token_id in token_ids:
             try:
                 token_text = memo[token_id]
             except KeyError:
@@ -239,9 +248,7 @@ class Brain:
                 memo[token_id] = token_text
             text.append(token_text)
 
-        _trace.trace("Brain.reply_words_lookup_us", _trace.now()-_now)
-
-        return self.tokenizer.join(text)
+        return text
 
     def _conflate_stems(self, tokens):
         stems = set()
@@ -347,9 +354,9 @@ class Brain:
 
         _trace.trace("Brain.evaluate_reply_us", _trace.now()-_now)
 
-        if log.isEnabledFor(logging.DEBUG) and score == 0:
+        if log.isEnabledFor(logging.DEBUG):
             text = self._get_marked_text(reply, pivot_token_id)
-            log.debug(text.encode("utf-8"))
+            log.debug("%f %s" % (score, text.encode("utf-8")))
 
         return reply, score
 
@@ -485,18 +492,12 @@ class Brain:
         db = self._db
 
         # look up the words for these tokens
-        text = []
         memo = {}
-        for token_id in token_ids:
-            try:
-                token = memo[token_id]
-            except KeyError:
-                token = db.get_token_text(token_id)
-                memo[token_id] = token
+        text = self._fetch_text(token_ids, memo)
 
-            if token_id == pivot_token_id:
-                token = "[%s]" % token
-            text.append(token)
+        for i in xrange(len(token_ids)):
+            if token_ids[i] == pivot_token_id:
+                text[i] = "[%s]" % text[i]
 
         return self.tokenizer.join(text)
 
