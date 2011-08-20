@@ -161,8 +161,10 @@ class Brain:
         db = self._db
         c = db.cursor()
 
+        memo = {}
+
         # Save the original input tokens separately from the list
-        input_token_infos = self._get_token_info(tokens, c)
+        input_token_infos = self._get_token_info(tokens, memo, c)
 
         # Create a set of token infos we'll use to seed replies
         token_infos = set(input_token_infos)
@@ -170,7 +172,7 @@ class Brain:
         # Conflate the reply seeds with the stems of their words
         if self.stemmer is not None:
             stems = self._conflate_stems(tokens)
-            token_infos.update(self._get_token_info(stems, c))
+            token_infos.update(self._get_token_info(stems, memo, c))
 
         # Calculate the probability for using each of these tokens as
         # the pivot. This scores rare words higher, so we'll generate
@@ -192,8 +194,6 @@ class Brain:
         end = start + 0.5
         count = 0
         similar_count = 0
-
-        memo = {}
 
         _start = _trace.now()
         while best_reply is None or time.time() < end:
@@ -227,8 +227,6 @@ class Brain:
         _trace.trace("Brain.best_reply_length", len(best_reply))
         log.debug("made %d replies in %f seconds" % (count, time.time()-start))
 
-        memo = {}
-
         # look up the words for these tokens
         _now = _trace.now()
         text = self._fetch_text(best_reply, memo)
@@ -237,6 +235,8 @@ class Brain:
         return self.tokenizer.join(text)
 
     def _fetch_text(self, token_ids, memo):
+        memo = memo.setdefault("token_text", {})
+
         text = []
         db = self._db
 
@@ -327,6 +327,8 @@ class Brain:
     def _generate_reply(self, token_probs, memo):
         if len(token_probs) == 0:
             return None, None
+
+        memo = memo.setdefault("generate_reply", {})
 
         # generate a reply containing one of token_ids
         db = self._db
@@ -442,11 +444,11 @@ class Brain:
 
         return score
 
-    def _get_token_info(self, tokens, c):
+    def _get_token_info(self, tokens, memo, c):
+        memo = memo.setdefault("token_info", {})
         db = self._db
 
         token_infos = []
-        memo = {}
 
         for token in tokens:
             try:
@@ -781,6 +783,8 @@ class _Db:
     def follow_chain(self, table, expr_id, memo, c=None):
         if c is None:
             c = self.cursor()
+
+        memo = memo.setdefault("follow_chain", {})
 
         try:
             expr = memo[expr_id]
