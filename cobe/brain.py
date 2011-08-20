@@ -271,10 +271,12 @@ class Brain:
         return True
 
     def _babble(self, c):
-        # Generate a random input that can be used for reply generation
-        token = self._db.get_random_token(c=c)
-        if token:
-            return set([token[0]])
+        babble = set()
+        for i in xrange(5):
+            # Generate a few random tokens that can be used as pivots
+            babble.add(self._db.get_random_word_token(c=c))
+
+        return babble
 
     def _filter_pivots(self, pivot_set, c):
         # remove pivots that might not give good results
@@ -302,6 +304,9 @@ class Brain:
 
         pivot_token_id = self._choose_pivot(token_probs)
         pivot_expr_id, pivot_expr_idx = db.get_random_expr(pivot_token_id, c=c)
+
+        if pivot_expr_id is None:
+            return
 
         next_token_ids = db.follow_chain(_NEXT_TOKEN_TABLE, pivot_expr_id,
                                          memo, c=c)
@@ -595,16 +600,16 @@ class _Db:
         if row:
             return [val[0] for val in row]
 
-    def get_random_token(self, c=None):
+    def get_random_word_token(self, c=None):
         if c is None:
             c = self.cursor()
 
         # select a random row from tokens
-        q = "SELECT id, count FROM tokens WHERE id != ? AND id >= abs(random()) % (SELECT MAX(id) FROM tokens)"
-        row = c.execute(q, (self._end_token_id,)).fetchone()
+        q = "SELECT id FROM tokens WHERE is_word = 1 AND id >= abs(random()) % (SELECT MAX(id) FROM tokens)"
+        row = c.execute(q).fetchone()
 
         if row:
-            return row[0], row[1]
+            return row["id"]
 
     def get_token_is_word(self, token_id, c=None):
         if c is None:
@@ -696,6 +701,8 @@ class _Db:
             row = c.execute(q, (token_id, token_id)).fetchone()
             if row:
                 return int(row[0]), pos
+
+        return None, None
 
     def get_expr_by_token_ids(self, token_ids, c):
         q = "SELECT id FROM expr WHERE %s" % self._all_token_args
