@@ -155,36 +155,34 @@ class Brain:
             # should be somewhat safe in the modern world.
             text = text.decode("utf-8", "ignore")
 
+        memo = {}
+        c = self._db.cursor()
+
         tokens = self.tokenizer.split(text)
+        input_ids = self._get_token_ids(tokens, memo, c)
         _trace.trace("Brain.reply_input_token_count", len(tokens))
 
-        db = self._db
-        c = db.cursor()
-
-        memo = {}
-
-        # Save the original input tokens separately from the list
-        input_token_infos = self._get_token_info(tokens, memo, c)
-
-        # Create a set of token infos we'll use to seed replies
-        token_infos = set(input_token_infos)
+        # Make a copy of the input ids
+        pivot_set = set(input_ids)
 
         # Conflate the reply seeds with the stems of their words
         if self.stemmer is not None:
-            stems = self._conflate_stems(tokens)
-            token_infos.update(self._get_token_info(stems, memo, c))
+            stem_ids = self._conflate_stems(tokens)
+            pivot_set.update(stem_ids)
+
+        pivot_infos = self._get_token_infos(pivot_set, memo, c)
 
         # Calculate the probability for using each of these tokens as
         # the pivot. This scores rare words higher, so we'll generate
         # fewer replies from common words.
-        token_probs = self._get_pivot_probabilities(token_infos)
+        pivot_probs = self._get_pivot_probabilities(pivot_infos)
 
-        _trace.trace("Brain.known_word_token_count", len(token_probs))
+        _trace.trace("Brain.known_word_token_count", len(pivot_probs))
 
         # If we didn't recognize any word tokens in the input, pick
         # something random from the database and babble.
-        if len(token_probs) == 0:
-            token_probs = self._babble(c)
+        if len(pivot_probs) == 0:
+            pivot_probs = self._babble(c)
 
         best_score = None
         best_reply = None
@@ -198,10 +196,14 @@ class Brain:
         _start = _trace.now()
         while best_reply is None or time.time() < end:
             _now = _trace.now()
-            reply, score = self._generate_reply(token_probs, memo)
+            reply = self._generate_reply(pivot_probs, memo)
             _trace.trace("Brain.generate_reply_us", _trace.now()-_now)
             if reply is None:
                 break
+
+            _now = _trace.now()
+            score = self._evaluate_reply(input_ids, list(reply), memo, c)
+            _trace.trace("Brain.evaluate_reply_us", _trace.now()-_now)
 
             _trace.trace("Brain.reply_output_token_count", len(reply))
 
@@ -257,14 +259,15 @@ class Brain:
         for token in tokens:
             stem = self.stemmer.stem(token)
 
-            texts = self._db.get_token_stem_texts(stem)
-            if texts is not None:
-                stems.update(texts)
+            stem_ids = self._db.get_token_stem_ids(stem)
+            if stem_ids is not None:
+                stems.update(stem_ids)
+
         return stems
 
     def _too_similar(self, input_tokens, output_tokens):
         for t in zip(input_tokens, output_tokens):
-            if t[0] is None or t[0][0] != t[1]:
+            if t[0] is None or t[0] != t[1]:
                 return False
 
         return True
@@ -328,7 +331,7 @@ class Brain:
 
     def _generate_reply(self, token_probs, memo):
         if len(token_probs) == 0:
-            return None, None
+            return None
 
         memo = memo.setdefault("generate_reply", {})
 
@@ -356,10 +359,6 @@ class Brain:
         reply = prev_token_ids
         reply.extend(next_token_ids)
 
-        _now = _trace.now()
-        score = self._evaluate_reply(token_ids, list(reply), memo, c)
-        _trace.trace("Brain.evaluate_reply_us", _trace.now()-_now)
-
         if log.isEnabledFor(logging.DEBUG):
             assert reply[pivot_idx] == pivot_token_id
 
@@ -368,9 +367,9 @@ class Brain:
 
             text = self.tokenizer.join(words)
 
-            log.debug("%f %s" % (score, text.encode("utf-8")))
+            log.debug(text.encode("utf-8"))
 
-        return reply, score
+        return reply
 
     def _evaluate_reply(self, input_tokens, output_tokens, memo, c):
         if len(output_tokens) == 0:
@@ -452,20 +451,27 @@ class Brain:
 
         return score
 
-    def _get_token_info(self, tokens, memo, c):
-        memo = memo.setdefault("token_info", {})
-        db = self._db
-
-        token_infos = []
+    def _get_token_ids(self, tokens, memo, c):
+        memo = memo.setdefault("token_ids", {})
+        token_ids = []
 
         for token in tokens:
-            try:
-                token_info = memo[token]
-            except KeyError:
-                token_info = db.get_token_info(token, c=c)
-                memo[token] = token_info
+            token_id = memo.setdefault(token, self._db.get_token_id(token, c))
+            token_ids.append(token_id)
 
-            token_infos.append(token_info)
+        return token_ids
+
+    def _get_token_infos(self, token_ids, memo, c):
+        memo = memo.setdefault("token_info", {})
+
+        # return an unordered set without duplicates
+        token_infos = set()
+
+        for token_id in token_ids:
+            token_info = \
+                memo.setdefault(token_id,
+                                self._db.get_token_info(token_id, c=c))
+            token_infos.add(token_info)
 
         return token_infos
 
@@ -635,11 +641,11 @@ class _Db:
         if row:
             return int(row[0])
 
-    def get_token_stem_texts(self, stem, c=None):
+    def get_token_stem_ids(self, stem, c=None):
         if c is None:
             c = self.cursor()
 
-        q = "SELECT text FROM token_stems, tokens WHERE token_stems.stem = ? AND token_stems.token_id = tokens.id"
+        q = "SELECT token_id FROM token_stems WHERE token_stems.stem = ?"
         row = c.execute(q, (stem,)).fetchall()
         if row:
             return [val[0] for val in row]
@@ -655,12 +661,12 @@ class _Db:
         if row:
             return row[0], row[1]
 
-    def get_token_info(self, token, c=None):
+    def get_token_info(self, token_id, c=None):
         if c is None:
             c = self.cursor()
 
-        q = "SELECT id, is_word, count FROM tokens WHERE text = ?"
-        row = c.execute(q, (token,)).fetchone()
+        q = "SELECT id, is_word, count FROM tokens WHERE id = ?"
+        row = c.execute(q, (token_id,)).fetchone()
         if row:
             return row
 
