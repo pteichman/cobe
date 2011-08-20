@@ -335,12 +335,15 @@ class Brain:
 
         token_ids = [token_prob[0] for token_prob in token_probs]
         pivot_token_id = self._choose_pivot(token_probs)
-        pivot_expr_id = db.get_random_expr(pivot_token_id, c=c)
+        pivot_expr_id, pivot_expr_idx = db.get_random_expr(pivot_token_id, c=c)
 
         next_token_ids = db.follow_chain(_NEXT_TOKEN_TABLE, pivot_expr_id,
                                          memo, c=c)
         prev_token_ids = db.follow_chain(_PREV_TOKEN_TABLE, pivot_expr_id,
                                          memo, c=c)
+
+        # Save the index of the pivot token in the reply.
+        pivot_idx = len(prev_token_ids) - self.order + pivot_expr_idx
 
         # strip the original expr from the prev reply
         for i in xrange(self.order):
@@ -355,7 +358,13 @@ class Brain:
         _trace.trace("Brain.evaluate_reply_us", _trace.now()-_now)
 
         if log.isEnabledFor(logging.DEBUG):
-            text = self._get_marked_text(reply, pivot_token_id)
+            assert reply[pivot_idx] == pivot_token_id
+
+            words = self._fetch_text(reply, memo)
+            words[pivot_idx] = "[%s]" % words[pivot_idx]
+
+            text = self.tokenizer.join(words)
+
             log.debug("%f %s" % (score, text.encode("utf-8")))
 
         return reply, score
@@ -487,19 +496,6 @@ class Brain:
             expr_id = db.insert_expr(token_ids, c=c)
 
         return expr_id
-
-    def _get_marked_text(self, token_ids, pivot_token_id):
-        db = self._db
-
-        # look up the words for these tokens
-        memo = {}
-        text = self._fetch_text(token_ids, memo)
-
-        for i in xrange(len(token_ids)):
-            if token_ids[i] == pivot_token_id:
-                text[i] = "[%s]" % text[i]
-
-        return self.tokenizer.join(text)
 
     @staticmethod
     def init(filename, order=5, tokenizer=None):
@@ -738,7 +734,7 @@ class _Db:
 
             row = c.execute(q, (token_id, token_id)).fetchone()
             if row:
-                return int(row[0])
+                return int(row[0]), pos
 
     def get_expr_by_token_ids(self, token_ids, c):
         q = "SELECT id FROM expr WHERE %s" % self._all_token_args
