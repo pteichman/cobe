@@ -207,8 +207,10 @@ class Brain:
 
             count += 1
 
-            if best_score is not None \
-                    and self._too_similar(input_token_infos, reply):
+            if score < 0.0:
+                continue
+
+            if best_score is not None and self._too_similar(input_ids, reply):
                 similar_count += 1
                 continue
 
@@ -356,7 +358,6 @@ class Brain:
 
         _now = _trace.now()
         score = self._evaluate_reply(token_ids, list(reply), memo, c)
-
         _trace.trace("Brain.evaluate_reply_us", _trace.now()-_now)
 
         if log.isEnabledFor(logging.DEBUG):
@@ -373,7 +374,14 @@ class Brain:
 
     def _evaluate_reply(self, input_tokens, output_tokens, memo, c):
         if len(output_tokens) == 0:
-            return 0.
+            return -1.0
+
+        memo = memo.setdefault("evaluate_reply", {})
+
+        reply_key = tuple(output_tokens)
+        if reply_key in memo:
+            return -1.0
+        memo[reply_key] = True
 
         # If input_tokens is empty (i.e. we didn't know any words in
         # the input), use output == input to make sure we still check
