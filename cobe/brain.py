@@ -162,13 +162,8 @@ class Brain:
         input_ids = self._get_token_ids(tokens, memo, c)
         _trace.trace("Brain.reply_input_token_count", len(tokens))
 
-        # Make a copy of the known input ids
-        pivot_set = set()
-        for input_id in input_ids:
-            if input_id is not None:
-                pivot_set.add(input_id)
-
-        pivot_set = self._filter_pivots(pivot_set, c)
+        # filter out unknown words and non-words from the potential pivots
+        pivot_set = self._filter_pivots(input_ids, c)
 
         # Conflate the known ids with the stems of their words
         if self.stemmer is not None:
@@ -285,7 +280,8 @@ class Brain:
         filtered = set()
 
         for pivot_id in pivot_set:
-            if self._db.get_token_is_word(pivot_id, c=c):
+            if pivot_id is not None \
+                    and self._db.get_token_is_word(pivot_id, c=c):
                 filtered.add(pivot_id)
 
         return filtered
