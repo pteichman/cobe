@@ -194,7 +194,7 @@ class Brain:
                 break
 
             _now = _trace.now()
-            score = self._evaluate_reply(input_ids, list(reply), memo, c)
+            score = self._evaluate_reply(input_ids, reply, memo, c)
             _trace.trace("Brain.evaluate_reply_us", _trace.now()-_now)
 
             _trace.trace("Brain.reply_output_token_count", len(reply))
@@ -324,7 +324,7 @@ class Brain:
         for i in xrange(self.order):
             prev_token_ids.pop()
 
-        reply = prev_token_ids
+        reply = list(prev_token_ids)
         reply.extend(next_token_ids)
 
         if log.isEnabledFor(logging.DEBUG):
