@@ -609,7 +609,7 @@ class _Db:
             c = self.cursor()
 
         # select a random row from tokens
-        q = "SELECT id FROM tokens WHERE is_word = 1 AND id >= abs(random()) % (SELECT MAX(id) FROM tokens)"
+        q = "SELECT id FROM tokens WHERE is_word = 1 AND id >= abs(random()) % (SELECT MAX(id) FROM tokens) + 1"
         row = c.execute(q).fetchone()
 
         if row:
