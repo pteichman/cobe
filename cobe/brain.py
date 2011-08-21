@@ -296,8 +296,6 @@ class Brain:
         if len(token_probs) == 0:
             return None
 
-        memo = memo.setdefault("generate_reply", {})
-
         # generate a reply containing one of token_ids
         db = self._db
         c = db.cursor()
@@ -340,12 +338,13 @@ class Brain:
         if len(output_tokens) == 0:
             return -1.0
 
-        memo = memo.setdefault("evaluate_reply", {})
+        reply_memo = memo.setdefault("reply_memo", {})
 
-        reply_key = tuple(output_tokens)
-        if reply_key in memo:
+        # use hash(tuple()) to reduce output_tokens to an integer for storage
+        reply_key = hash(tuple(output_tokens))
+        if reply_key in reply_memo:
             return -1.0
-        memo[reply_key] = True
+        reply_memo[reply_key] = True
 
         # If input_tokens is empty (i.e. we didn't know any words in
         # the input), use output == input to make sure we still check
@@ -756,7 +755,7 @@ class _Db:
         try:
             expr = memo[expr_id]
         except KeyError:
-            expr = self._get_expr_token_ids(expr_id, c)
+            expr = tuple(self._get_expr_token_ids(expr_id, c))
             memo[expr_id] = expr
 
         # initialize the chain with the current expr's tokens
