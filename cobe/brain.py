@@ -160,7 +160,6 @@ class Brain:
 
         tokens = self.tokenizer.split(text)
         input_ids = self._get_token_ids(tokens, memo, c)
-        _trace.trace("Brain.reply_input_token_count", len(tokens))
 
         # filter out unknown words and non-words from the potential pivots
         pivot_set = self._filter_pivots(input_ids, c)
@@ -169,12 +168,16 @@ class Brain:
         if self.stemmer is not None:
             self._conflate_stems(pivot_set, tokens)
 
-        _trace.trace("Brain.known_word_token_count", len(pivot_set))
-
         # If we didn't recognize any word tokens in the input, pick
         # something random from the database and babble.
         if len(pivot_set) == 0:
             pivot_set = self._babble(c)
+
+        if len(pivot_set) == 0:
+            # we couldn't find any pivot words in _babble(), so we're
+            # working with an essentially empty brain. Use the classic
+            # MegaHAL reply:
+            return "I don't know enough to answer you yet!"
 
         best_score = None
         best_reply = None
@@ -190,8 +193,6 @@ class Brain:
             _now = _trace.now()
             reply = self._generate_reply(pivot_set, memo)
             _trace.trace("Brain.generate_reply_us", _trace.now()-_now)
-            if reply is None:
-                break
 
             _now = _trace.now()
             score = self._evaluate_reply(input_ids, reply, memo, c)
@@ -209,8 +210,8 @@ class Brain:
                 best_score = score
                 best_reply = reply
 
-        if best_reply is None:
-            return "I don't know enough to answer you yet!"
+        _trace.trace("Brain.reply_input_token_count", len(tokens))
+        _trace.trace("Brain.known_word_token_count", len(pivot_set))
 
         _time = _trace.now()-_start
         _trace.trace("Brain.reply_us", _time)
@@ -268,7 +269,10 @@ class Brain:
         babble = set()
         for i in xrange(5):
             # Generate a few random tokens that can be used as pivots
-            babble.add(self._db.get_random_word_token(c=c))
+            token_id = self._db.get_random_word_token(c=c)
+
+            if token_id is not None:
+                babble.add(token_id)
 
         return babble
 
@@ -335,7 +339,7 @@ class Brain:
         return reply
 
     def _evaluate_reply(self, input_tokens, output_tokens, memo, c):
-        if len(output_tokens) == 0:
+        if output_tokens is None or len(output_tokens) == 0:
             return -1.0
 
         reply_memo = memo.setdefault("reply_memo", {})
