@@ -11,6 +11,7 @@ import time
 import types
 
 from .instatrace import Instatrace
+from . import scoring
 from . import tokenizers
 
 log = logging.getLogger("cobe")
@@ -41,6 +42,8 @@ class Brain:
         _trace.trace("Brain.connect_us", _trace.now() - _start)
 
         self.order = int(db.get_info_text("order"))
+
+        self.scorer = scoring.CobeScorer(self.order)
 
         tokenizer_name = db.get_info_text("tokenizer")
         if tokenizer_name == "MegaHAL":
@@ -332,9 +335,6 @@ class Brain:
         return reply, pivot_idx
 
     def _evaluate_reply(self, input_tokens, output_tokens, memo, c):
-        if output_tokens is None or len(output_tokens) == 0:
-            return -1.0
-
         reply_memo = memo.setdefault("reply_memo", {})
 
         # use hash(tuple()) to reduce output_tokens to an integer for storage
@@ -343,77 +343,7 @@ class Brain:
             return -1.0
         reply_memo[reply_key] = True
 
-        # If input_tokens is empty (i.e. we didn't know any words in
-        # the input), use output == input to make sure we still check
-        # scoring
-        if len(input_tokens) == 0:
-            input_tokens = output_tokens
-
-        db = self._db
-
-        score = 0.
-
-        next_memo = memo.setdefault(_NEXT_TOKEN_TABLE, {})
-        prev_memo = memo.setdefault(_PREV_TOKEN_TABLE, {})
-
-        # evaluate forward probabilities
-        for output_idx in xrange(len(output_tokens) - self.order):
-            output_token = output_tokens[output_idx + self.order]
-            if output_token in input_tokens:
-                expr = output_tokens[output_idx:output_idx + self.order]
-
-                try:
-                    key = (tuple(expr), output_token)
-                    p = next_memo[key]
-                except KeyError:
-                    p = db.get_expr_token_probability(_NEXT_TOKEN_TABLE, expr,
-                                                      output_token, c)
-                    next_memo[key] = p
-
-                if p > 0:
-                    score -= math.log(p, 2)
-
-        # evaluate reverse probabilities
-        for output_idx in xrange(len(output_tokens) - self.order):
-            output_token = output_tokens[output_idx]
-            if output_token in input_tokens:
-                start = output_idx + 1
-                end = start + self.order
-
-                expr = output_tokens[start:end]
-
-                try:
-                    key = (tuple(expr), output_token)
-                    p = prev_memo[key]
-                except KeyError:
-                    p = db.get_expr_token_probability(_PREV_TOKEN_TABLE, expr,
-                                                      output_token, c)
-                    prev_memo[key] = p
-
-                if p > 0:
-                    score -= math.log(p, 2)
-
-        raw_score = score
-
-        # Prefer smaller replies. This behavior is present but not
-        # documented in recent MegaHAL.
-        score_divider = 1
-        n_tokens = len(output_tokens)
-        if n_tokens >= 8:
-            score_divider = math.sqrt(n_tokens - 1)
-        elif n_tokens >= 16:
-            score_divider = n_tokens
-
-        score = score / score_divider
-        _trace.trace("Brain.reply_score_divider", math.floor(score_divider))
-
-        _trace.trace("Brain.reply_score", int(raw_score * 1000))
-
-        if score != raw_score:
-            _trace.trace("Brain.adjusted_reply_score", int(score * 1000),
-                         raw_score / score)
-
-        return score
+        return self.scorer.score(input_tokens, output_tokens, self._db, memo)
 
     def _get_token_ids(self, tokens, memo, c):
         memo = memo.setdefault("token_ids", {})
