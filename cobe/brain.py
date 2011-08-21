@@ -187,7 +187,6 @@ class Brain:
         start = time.time()
         end = start + 0.5
         count = 0
-        similar_count = 0
 
         _start = _trace.now()
         while best_reply is None or time.time() < end:
@@ -203,10 +202,6 @@ class Brain:
 
             count += 1
 
-            if self._too_similar(input_ids, reply):
-                similar_count += 1
-                continue
-
             if score > best_score:
                 best_score = score
                 best_reply = reply
@@ -217,7 +212,6 @@ class Brain:
         _time = _trace.now() - _start
         _trace.trace("Brain.reply_us", _time)
         _trace.trace("Brain.reply_count", count, _time)
-        _trace.trace("Brain.similar_reply_count", similar_count, _time)
         _trace.trace("Brain.best_reply_score", int(best_score * 1000))
         _trace.trace("Brain.best_reply_length", len(best_reply))
         log.debug("made %d replies in %f seconds" % (count,
@@ -259,13 +253,6 @@ class Brain:
                         pivot_set.remove(stem_id)
                     except KeyError:
                         pass
-
-    def _too_similar(self, input_tokens, output_tokens):
-        for t in zip(input_tokens, output_tokens):
-            if t[0] is None or t[0] != t[1]:
-                return False
-
-        return True
 
     def _babble(self, c):
         babble = set()
