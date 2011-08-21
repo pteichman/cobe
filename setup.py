@@ -14,6 +14,7 @@ setup(
     description = "A conversation simulator similar to MegaHAL",
     packages = ["cobe"],
     test_suite = "tests",
+    setup_requires = ["nose==1.1.2", "coverage==3.5"],
     install_requires = ["argparse==1.2.1", "PyStemmer==1.1.0"],
     classifiers = [
         "Development Status :: 5 - Production/Stable",
