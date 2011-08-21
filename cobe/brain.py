@@ -201,9 +201,6 @@ class Brain:
 
             count += 1
 
-            if score < 0.0:
-                continue
-
             if best_score is not None and self._too_similar(input_ids, reply):
                 similar_count += 1
                 continue
