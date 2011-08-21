@@ -13,6 +13,13 @@ class Scorer:
 
         return score
 
+    def normalize(self, score):
+        # map high-valued scores into 0..1
+        if score < 0:
+            return score
+
+        return 1.0 - 1.0 / (1.0 + score)
+
     def score(self, input_tokens, output_tokens, db, memo):
         return NotImplementedError
 
@@ -86,4 +93,4 @@ class CobeScorer(Scorer):
 
         score = score / score_divider
 
-        return self.finish(score)
+        return self.finish(self.normalize(score))
