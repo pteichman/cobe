@@ -1,5 +1,6 @@
 # Copyright (C) 2010 Peter Teichman
 
+import atexit
 import logging
 import os
 import re
@@ -185,6 +186,13 @@ class ConsoleCommand:
     @staticmethod
     def run(args):
         b = Brain(args.brain)
+
+        history = os.path.expanduser("~/.cobe_history")
+        try:
+            readline.read_history_file(history)
+        except IOError:
+            pass
+        atexit.register(readline.write_history_file, history)
 
         while True:
             try:
