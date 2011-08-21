@@ -180,7 +180,7 @@ class Brain:
             # MegaHAL reply:
             return "I don't know enough to answer you yet!"
 
-        best_score = None
+        best_score = -1.0
         best_reply = None
 
         # loop for half a second
@@ -203,11 +203,11 @@ class Brain:
 
             count += 1
 
-            if best_score is not None and self._too_similar(input_ids, reply):
+            if self._too_similar(input_ids, reply):
                 similar_count += 1
                 continue
 
-            if not best_score or score > best_score:
+            if score > best_score:
                 best_score = score
                 best_reply = reply
 
