@@ -188,10 +188,12 @@ class Brain:
         end = start + 0.5
         count = 0
 
+        all_replies = []
+
         _start = _trace.now()
         while best_reply is None or time.time() < end:
             _now = _trace.now()
-            reply = self._generate_reply(pivot_set, memo)
+            reply, pivot_idx = self._generate_reply(pivot_set, memo)
             _trace.trace("Brain.generate_reply_us", _trace.now() - _now)
 
             _now = _trace.now()
@@ -205,6 +207,18 @@ class Brain:
             if score > best_score:
                 best_score = score
                 best_reply = reply
+
+            # dump all replies to the console if debugging is enabled
+            if log.isEnabledFor(logging.DEBUG):
+                all_replies.append((score, reply, pivot_idx))
+
+        all_replies.sort()
+        for score, reply, pivot_idx in all_replies:
+            words = self._fetch_text(reply, memo)
+            words[pivot_idx] = "[%s]" % words[pivot_idx]
+
+            text = self.tokenizer.join(words)
+            log.debug("%f %s", score, text.encode("utf-8"))
 
         _trace.trace("Brain.reply_input_token_count", len(tokens))
         _trace.trace("Brain.known_word_token_count", len(pivot_set))
@@ -315,17 +329,7 @@ class Brain:
         reply = list(prev_token_ids)
         reply.extend(next_token_ids)
 
-        if log.isEnabledFor(logging.DEBUG):
-            assert reply[pivot_idx] == pivot_token_id
-
-            words = self._fetch_text(reply, memo)
-            words[pivot_idx] = "[%s]" % words[pivot_idx]
-
-            text = self.tokenizer.join(words)
-
-            log.debug(text.encode("utf-8"))
-
-        return reply
+        return reply, pivot_idx
 
     def _evaluate_reply(self, input_tokens, output_tokens, memo, c):
         if output_tokens is None or len(output_tokens) == 0:
