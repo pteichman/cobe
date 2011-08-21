@@ -11,6 +11,7 @@ from .brain import Brain
 
 log = logging.getLogger("cobe")
 
+
 class InitCommand:
     @classmethod
     def add_subparser(cls, parser):
@@ -39,6 +40,7 @@ class InitCommand:
 
         Brain.init(filename, order=args.order, tokenizer=tokenizer)
 
+
 def progress_generator(filename):
     s = os.stat(filename)
     size_left = s.st_size
@@ -51,6 +53,7 @@ def progress_generator(filename):
         yield line, progress
 
     fd.close()
+
 
 class LearnCommand:
     @classmethod
@@ -76,7 +79,7 @@ class LearnCommand:
                 if show_progress:
                     elapsed = time.time() - now
                     sys.stdout.write("\r%.0f%% (%d/s)" % (progress,
-                                                          count/elapsed))
+                                                          count / elapsed))
                     sys.stdout.flush()
 
                 b.learn(line.strip())
@@ -84,7 +87,8 @@ class LearnCommand:
 
             b.stop_batch_learning()
             elapsed = time.time() - now
-            print "\r100%% (%d/s)" % (count/elapsed)
+            print "\r100%% (%d/s)" % (count / elapsed)
+
 
 class LearnIrcLogCommand:
     @classmethod
@@ -98,7 +102,8 @@ class LearnIrcLogCommand:
                                dest="only_nicks",
                                help="Only learn from specified nicks")
         subparser.add_argument("-r", "--reply-to", action="append",
-                               help="Reply (invisibly) to things said to specified nick")
+                               help="Reply (invisibly) to things said " \
+                                   "to specified nick")
         subparser.add_argument("file", nargs="+")
         subparser.set_defaults(run=cls.run)
 
@@ -119,7 +124,7 @@ class LearnIrcLogCommand:
                 if show_progress:
                     elapsed = time.time() - now
                     sys.stdout.write("\r%.0f%% (%d/s)" % (progress,
-                                                          count/elapsed))
+                                                          count / elapsed))
                     sys.stdout.flush()
 
                 count = count + 1
@@ -138,7 +143,7 @@ class LearnIrcLogCommand:
 
             b.stop_batch_learning()
             elapsed = time.time() - now
-            print "\r100%% (%d/s)" % (count/elapsed)
+            print "\r100%% (%d/s)" % (count / elapsed)
 
     @staticmethod
     def _parse_irc_message(msg, ignored_nicks=None, only_nicks=None):
@@ -170,6 +175,7 @@ class LearnIrcLogCommand:
 
         return to, msg
 
+
 class ConsoleCommand:
     @classmethod
     def add_subparser(cls, parser):
@@ -189,6 +195,7 @@ class ConsoleCommand:
 
             b.learn(cmd)
             print b.reply(cmd).encode("utf-8")
+
 
 class IrcClientCommand:
     @classmethod
@@ -226,6 +233,7 @@ class IrcClientCommand:
         b = Brain(args.brain)
         Runner().run(b, args)
 
+
 class SetStemmerCommand:
     @classmethod
     def add_subparser(cls, parser):
@@ -245,6 +253,7 @@ class SetStemmerCommand:
         b = Brain(args.brain)
 
         b.set_stemmer(args.language)
+
 
 class DelStemmerCommand:
     @classmethod

@@ -4,6 +4,7 @@ import re
 import Stemmer
 import types
 
+
 class MegaHALTokenizer:
     """A traditional MegaHAL style tokenizer. This considers any of these
 to be a token:
@@ -23,7 +24,8 @@ This tokenizer ignores differences in capitalization."""
         if phrase[-1] not in ".!?":
             phrase = phrase + "."
 
-        words = re.findall("([A-Z']+|[0-9]+|[^A-Z'0-9]+)", phrase.upper(), re.UNICODE)
+        words = re.findall("([A-Z']+|[0-9]+|[^A-Z'0-9]+)", phrase.upper(),
+                           re.UNICODE)
         return words
 
     def join(self, words):
@@ -43,10 +45,11 @@ This tokenizer ignores differences in capitalization."""
 
                 start = False
             else:
-                if i > 2 and chars[i-1] in ".?!" and char.isspace():
+                if i > 2 and chars[i - 1] in ".?!" and char.isspace():
                     start = True
 
         return u"".join(chars)
+
 
 class CobeTokenizer:
     """A tokenizer that is somewhat improved from MegaHAL. These are
@@ -83,6 +86,7 @@ tokens."""
 
     def join(self, words):
         return u"".join(words)
+
 
 class CobeStemmer:
     def __init__(self, name):

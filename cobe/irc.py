@@ -8,6 +8,7 @@ from twisted.words.protocols import irc
 from twisted.internet import reactor, protocol
 from twisted.python import log
 
+
 class CobeBot(irc.IRCClient):
     def connectionMade(self):
         irc.IRCClient.connectionMade(self)
@@ -70,6 +71,7 @@ class CobeBot(irc.IRCClient):
         log.msg("nick changed to %s" % nick)
         self.nickname = nick
 
+
 class CobeBotFactory(protocol.ReconnectingClientFactory):
     # the class of the protocol to build when new connection is made
     protocol = CobeBot
@@ -98,6 +100,7 @@ class CobeBotFactory(protocol.ReconnectingClientFactory):
         protocol.ReconnectingClientFactory.clientConnectionFailed(self,
                                                                   connector,
                                                                   reason)
+
 
 class Runner:
     def run(self, brain, args):

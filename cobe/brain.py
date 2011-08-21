@@ -22,6 +22,7 @@ _PREV_TOKEN_TABLE = "prev_token"
 
 _trace = Instatrace()
 
+
 class Brain:
     """The main interface for Cobe."""
     def __init__(self, filename, instatrace=None):
@@ -37,7 +38,7 @@ class Brain:
 
         _start = _trace.now()
         self._db = db = _Db(sqlite3.connect(filename))
-        _trace.trace("Brain.connect_us", _trace.now()-_start)
+        _trace.trace("Brain.connect_us", _trace.now() - _start)
 
         self.order = int(db.get_info_text("order"))
 
@@ -109,15 +110,15 @@ class Brain:
         c = db.cursor()
 
         token_ids = self._get_or_register_tokens(c, tokens)
-        n_exprs = len(token_ids)-self.order
+        n_exprs = len(token_ids) - self.order
 
         # increment seen count for each token
         db.inc_token_counts(token_ids, c=c)
 
         links = []
 
-        for i in xrange(n_exprs+1):
-            expr = token_ids[i:i+self.order]
+        for i in xrange(n_exprs + 1):
+            expr = token_ids[i:i + self.order]
             expr_id = self._get_or_register_expr(c, expr)
 
             # increment the expr count
@@ -129,12 +130,12 @@ class Brain:
 
             if i > 0:
                 # link prev token to this expr
-                prev_token = token_ids[i-1]
+                prev_token = token_ids[i - 1]
                 links.append((_PREV_TOKEN_TABLE, expr_id, prev_token))
 
             if i < n_exprs:
                 # link next token to this expr
-                next_token = token_ids[i+self.order]
+                next_token = token_ids[i + self.order]
                 links.append((_NEXT_TOKEN_TABLE, expr_id, next_token))
 
             if i == n_exprs:
@@ -192,11 +193,11 @@ class Brain:
         while best_reply is None or time.time() < end:
             _now = _trace.now()
             reply = self._generate_reply(pivot_set, memo)
-            _trace.trace("Brain.generate_reply_us", _trace.now()-_now)
+            _trace.trace("Brain.generate_reply_us", _trace.now() - _now)
 
             _now = _trace.now()
             score = self._evaluate_reply(input_ids, reply, memo, c)
-            _trace.trace("Brain.evaluate_reply_us", _trace.now()-_now)
+            _trace.trace("Brain.evaluate_reply_us", _trace.now() - _now)
 
             _trace.trace("Brain.reply_output_token_count", len(reply))
 
@@ -213,18 +214,19 @@ class Brain:
         _trace.trace("Brain.reply_input_token_count", len(tokens))
         _trace.trace("Brain.known_word_token_count", len(pivot_set))
 
-        _time = _trace.now()-_start
+        _time = _trace.now() - _start
         _trace.trace("Brain.reply_us", _time)
         _trace.trace("Brain.reply_count", count, _time)
         _trace.trace("Brain.similar_reply_count", similar_count, _time)
-        _trace.trace("Brain.best_reply_score", int(best_score*1000))
+        _trace.trace("Brain.best_reply_score", int(best_score * 1000))
         _trace.trace("Brain.best_reply_length", len(best_reply))
-        log.debug("made %d replies in %f seconds" % (count, time.time()-start))
+        log.debug("made %d replies in %f seconds" % (count,
+                                                     time.time() - start))
 
         # look up the words for these tokens
         _now = _trace.now()
         text = self._fetch_text(best_reply, memo)
-        _trace.trace("Brain.reply_words_lookup_us", _trace.now()-_now)
+        _trace.trace("Brain.reply_words_lookup_us", _trace.now() - _now)
 
         return self.tokenizer.join(text)
 
@@ -364,10 +366,10 @@ class Brain:
         prev_memo = memo.setdefault(_PREV_TOKEN_TABLE, {})
 
         # evaluate forward probabilities
-        for output_idx in xrange(len(output_tokens)-self.order):
-            output_token = output_tokens[output_idx+self.order]
+        for output_idx in xrange(len(output_tokens) - self.order):
+            output_token = output_tokens[output_idx + self.order]
             if output_token in input_tokens:
-                expr = output_tokens[output_idx:output_idx+self.order]
+                expr = output_tokens[output_idx:output_idx + self.order]
 
                 try:
                     key = (tuple(expr), output_token)
@@ -381,10 +383,13 @@ class Brain:
                     score -= math.log(p, 2)
 
         # evaluate reverse probabilities
-        for output_idx in xrange(len(output_tokens)-self.order):
+        for output_idx in xrange(len(output_tokens) - self.order):
             output_token = output_tokens[output_idx]
             if output_token in input_tokens:
-                expr = output_tokens[output_idx+1:output_idx+self.order+1]
+                start = output_idx + 1
+                end = start + self.order
+
+                expr = output_tokens[start:end]
 
                 try:
                     key = (tuple(expr), output_token)
@@ -404,18 +409,18 @@ class Brain:
         score_divider = 1
         n_tokens = len(output_tokens)
         if n_tokens >= 8:
-            score_divider = math.sqrt(n_tokens-1)
+            score_divider = math.sqrt(n_tokens - 1)
         elif n_tokens >= 16:
             score_divider = n_tokens
 
         score = score / score_divider
         _trace.trace("Brain.reply_score_divider", math.floor(score_divider))
 
-        _trace.trace("Brain.reply_score", int(raw_score*1000))
+        _trace.trace("Brain.reply_score", int(raw_score * 1000))
 
         if score != raw_score:
-            _trace.trace("Brain.adjusted_reply_score", int(score*1000),
-                         raw_score/score)
+            _trace.trace("Brain.adjusted_reply_score", int(score * 1000),
+                         raw_score / score)
 
         return score
 
@@ -488,7 +493,8 @@ tokenizer -- One of Cobe, MegaHAL (default Cobe). See documentation
 
         _now = _trace.now()
         db.init(order, tokenizer)
-        _trace.trace("Brain.init_time_us", _trace.now()-_now)
+        _trace.trace("Brain.init_time_us", _trace.now() - _now)
+
 
 class _Db:
     """Database functions to support a Cobe brain. This is not meant
@@ -513,22 +519,23 @@ class _Db:
             # construct partial subqueries for use when following chains
             next_parts = []
             prev_parts = []
-            for i in xrange(self._order-1):
+            for i in xrange(self._order - 1):
                 next_parts.append("next_expr.token%d_id = expr.token%d_id" %
-                                  (i, i+1))
+                                  (i, i + 1))
                 prev_parts.append("prev_expr.token%d_id = expr.token%d_id" %
-                                  (i+1, i))
+                                  (i + 1, i))
             next_query = " AND ".join(next_parts)
             prev_query = " AND ".join(prev_parts)
 
-            self._next_chain_q = "SELECT next_expr.token%(last_token)d_id, next_expr.id FROM expr, expr AS next_expr WHERE expr.id = :expr_id AND next_expr.token%(last_token)d_id = (SELECT token_id FROM %(table)s WHERE expr_id = :expr_id LIMIT 1 OFFSET ifnull(random()%%(SELECT count(*) FROM %(table)s WHERE expr_id = :expr_id), 0)) AND %(subquery)s" \
-                % { "last_token" : self._order-1,
-                    "subquery" : next_query,
-                    "table" : _NEXT_TOKEN_TABLE }
+            self._next_chain_q = \
+                "SELECT next_expr.token%(last_token)d_id, next_expr.id FROM expr, expr AS next_expr WHERE expr.id = :expr_id AND next_expr.token%(last_token)d_id = (SELECT token_id FROM %(table)s WHERE expr_id = :expr_id LIMIT 1 OFFSET ifnull(random()%%(SELECT count(*) FROM %(table)s WHERE expr_id = :expr_id), 0)) AND %(subquery)s" \
+                % {"last_token": self._order - 1,
+                   "subquery": next_query,
+                   "table": _NEXT_TOKEN_TABLE}
 
             self._prev_chain_q = "SELECT prev_expr.token0_id, prev_expr.id FROM expr, expr AS prev_expr WHERE expr.id = :expr_id AND prev_expr.token0_id = (SELECT token_id FROM %(table)s WHERE expr_id = :expr_id LIMIT 1 OFFSET ifnull(random()%%(SELECT count(*) FROM %(table)s WHERE expr_id = :expr_id), 0)) AND %(subquery)s" \
-                % { "subquery" : prev_query,
-                    "table" : _PREV_TOKEN_TABLE }
+                % {"subquery": prev_query,
+                   "table": _PREV_TOKEN_TABLE}
 
     def cursor(self):
         return self._conn.cursor()
@@ -536,7 +543,7 @@ class _Db:
     def commit(self):
         _start = _trace.now()
         ret = self._conn.commit()
-        _trace.trace("Brain.db_commit_us", _trace.now()-_start)
+        _trace.trace("Brain.db_commit_us", _trace.now() - _start)
         return ret
 
     def close(self):
@@ -774,7 +781,7 @@ class _Db:
 
         while True:
             # get the token
-            c.execute(query, {"expr_id" : expr_id})
+            c.execute(query, {"expr_id": expr_id})
 
             row = c.fetchone()
             if not row or row[0] == self._end_token_id:
@@ -871,13 +878,13 @@ CREATE INDEX prev_token_expr_id ON prev_token (expr_id, token_id)""")
         try:
             c.execute("""
 DROP INDEX token_stems_stem""")
-        except sqlite3.OperationalError: # no such index: tokens_stems_stem
+        except sqlite3.OperationalError:  # no such index: tokens_stems_stem
             pass
 
         try:
             c.execute("""
 DROP INDEX token_stems_id""")
-        except sqlite3.OperationalError: # no such index: tokens_stems_id
+        except sqlite3.OperationalError:  # no such index: tokens_stems_id
             pass
 
         # delete all the existing stems from the table
@@ -903,20 +910,20 @@ SELECT id, text FROM tokens WHERE is_word = 1""")
 
         self.commit()
 
-        _trace.trace("Db.update_token_stems_us", _trace.now_ms()-_start)
+        _trace.trace("Db.update_token_stems_us", _trace.now_ms() - _start)
 
         _start = _trace.now_ms()
         c.execute("""
 CREATE INDEX token_stems_id on token_stems (token_id)""")
         c.execute("""
 CREATE INDEX token_stems_stem on token_stems (stem)""")
-        _trace.trace("Db.index_token_stems_us", _trace.now_ms()-_start)
+        _trace.trace("Db.index_token_stems_us", _trace.now_ms() - _start)
 
     def _run_migrations(self):
         _start = _trace.now()
         self._maybe_add_token_counts()
         self._maybe_add_token_stems()
-        _trace.trace("Db.run_migrations_us", _trace.now()-_start)
+        _trace.trace("Db.run_migrations_us", _trace.now() - _start)
 
     def _maybe_add_token_counts(self):
         c = self.cursor()
@@ -924,7 +931,7 @@ CREATE INDEX token_stems_stem on token_stems (stem)""")
         try:
             c.execute("""
 SELECT count FROM tokens LIMIT 1""")
-        except sqlite3.OperationalError: # no such column: count
+        except sqlite3.OperationalError:  # no such column: count
             self._add_token_counts(c)
 
         c.close()
@@ -966,7 +973,7 @@ UPDATE tokens SET count = ? WHERE id = ?""", tuple(row))
 UPDATE tokens SET count = 1 WHERE count IS NULL""")
 
         self.commit()
-        _trace.trace("Db.add_token_counts_us", _trace.now_ms()-_start)
+        _trace.trace("Db.add_token_counts_us", _trace.now_ms() - _start)
 
     def _maybe_add_token_stems(self):
         c = self.cursor()
@@ -974,7 +981,7 @@ UPDATE tokens SET count = 1 WHERE count IS NULL""")
         try:
             c.execute("""
 SELECT stem FROM token_stems LIMIT 1""")
-        except sqlite3.OperationalError: # no such table: token_stems
+        except sqlite3.OperationalError:  # no such table: token_stems
             self._add_token_stems(c)
 
         c.close()
@@ -990,4 +997,4 @@ CREATE TABLE token_stems (
 
         self.commit()
 
-        _trace.trace("Db.add_token_stems_us", _trace.now_ms()-_start)
+        _trace.trace("Db.add_token_stems_us", _trace.now_ms() - _start)

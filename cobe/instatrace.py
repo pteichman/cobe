@@ -5,13 +5,16 @@ import math
 import os
 import time
 
+
 def singleton(cls):
     instances = {}
+
     def getinstance():
         if cls not in instances:
             instances[cls] = cls()
         return instances[cls]
     return getinstance
+
 
 @singleton
 class Instatrace:
@@ -40,13 +43,13 @@ class Instatrace:
         """Microsecond resolution, integer now"""
         if not self.is_enabled():
             return 0
-        return int(time.time()*100000)
+        return int(time.time() * 100000)
 
     def now_ms(self):
         """Millisecond resolution, integer now"""
         if not self.is_enabled():
             return 0
-        return int(time.time()*1000)
+        return int(time.time() * 1000)
 
     def trace(self, statName, statValue, userData=None):
         if not self.is_enabled():
