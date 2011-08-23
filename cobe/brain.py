@@ -160,8 +160,6 @@ class Brain:
             # should be somewhat safe in the modern world.
             text = text.decode("utf-8", "ignore")
 
-        c = self._db.cursor()
-
         # each reply gets its own database cache for now
         db_cache = DbCache(self._db)
 
@@ -178,7 +176,7 @@ class Brain:
         # If we didn't recognize any word tokens in the input, pick
         # something random from the database and babble.
         if len(pivot_set) == 0:
-            pivot_set = self._babble(c)
+            pivot_set = self._babble()
 
         if len(pivot_set) == 0:
             # we couldn't find any pivot words in _babble(), so we're
@@ -263,16 +261,16 @@ class Brain:
                     except KeyError:
                         pass
 
-    def _babble(self, c):
-        babble = set()
+    def _babble(self):
+        token_ids = []
         for i in xrange(5):
             # Generate a few random tokens that can be used as pivots
-            token_id = self._db.get_random_word_token(c=c)
+            token_id = self._db.get_random_word_token()
 
             if token_id is not None:
-                babble.add(token_id)
+                token_ids.append(token_id)
 
-        return babble
+        return token_ids
 
     def _filter_pivots(self, pivot_set):
         # remove pivots that might not give good results
