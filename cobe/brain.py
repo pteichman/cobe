@@ -38,7 +38,7 @@ class Brain:
             _trace.init(instatrace)
 
         _start = _trace.now()
-        self._db = db = _Db(sqlite3.connect(filename))
+        self._db = db = _Sql(sqlite3.connect(filename))
         _trace.trace("Brain.connect_us", _trace.now() - _start)
 
         self.order = int(db.get_info_text("order"))
@@ -160,14 +160,16 @@ class Brain:
             # should be somewhat safe in the modern world.
             text = text.decode("utf-8", "ignore")
 
-        memo = {}
         c = self._db.cursor()
 
+        # each reply gets its own database cache for now
+        db_cache = DbCache(self._db)
+
         tokens = self.tokenizer.split(text)
-        input_ids = self._get_token_ids(tokens, memo, c)
+        input_ids = db_cache.get_token_ids(tokens)
 
         # filter out unknown words and non-words from the potential pivots
-        pivot_set = self._filter_pivots(input_ids, c)
+        pivot_set = self._filter_pivots(input_ids)
 
         # Conflate the known ids with the stems of their words
         if self.stemmer is not None:
@@ -197,11 +199,11 @@ class Brain:
         _start = _trace.now()
         while best_reply is None or time.time() < end:
             _now = _trace.now()
-            reply, pivot_idx = self._generate_reply(pivot_set, memo)
+            reply, pivot_idx = self._generate_reply(pivot_set, db_cache)
             _trace.trace("Brain.generate_reply_us", _trace.now() - _now)
 
             _now = _trace.now()
-            score = self._evaluate_reply(input_ids, reply, memo, c)
+            score = self._evaluate_reply(input_ids, reply, db_cache)
             _trace.trace("Brain.evaluate_reply_us", _trace.now() - _now)
 
             _trace.trace("Brain.reply_output_token_count", len(reply))
@@ -218,7 +220,7 @@ class Brain:
 
         all_replies.sort()
         for score, reply, pivot_idx in all_replies:
-            words = self._fetch_text(reply, memo)
+            words = db_cache.get_token_texts(reply)
             words[pivot_idx] = "[%s]" % words[pivot_idx]
 
             text = self.tokenizer.join(words)
@@ -237,26 +239,10 @@ class Brain:
 
         # look up the words for these tokens
         _now = _trace.now()
-        text = self._fetch_text(best_reply, memo)
+        text = db_cache.get_token_texts(best_reply)
         _trace.trace("Brain.reply_words_lookup_us", _trace.now() - _now)
 
         return self.tokenizer.join(text)
-
-    def _fetch_text(self, token_ids, memo):
-        memo = memo.setdefault("token_text", {})
-
-        text = []
-        db = self._db
-
-        for token_id in token_ids:
-            try:
-                token_text = memo[token_id]
-            except KeyError:
-                token_text = db.get_token_text(token_id)
-                memo[token_id] = token_text
-            text.append(token_text)
-
-        return text
 
     def _conflate_stems(self, pivot_set, tokens):
         for token in tokens:
@@ -283,13 +269,13 @@ class Brain:
 
         return babble
 
-    def _filter_pivots(self, pivot_set, c):
+    def _filter_pivots(self, pivot_set):
         # remove pivots that might not give good results
         filtered = set()
 
         for pivot_id in pivot_set:
             if pivot_id is not None \
-                    and self._db.get_token_is_word(pivot_id, c=c):
+                    and self._db.get_token_is_word(pivot_id):
                 filtered.add(pivot_id)
 
         return filtered
@@ -303,7 +289,7 @@ class Brain:
 
         return pivot
 
-    def _generate_reply(self, token_probs, memo):
+    def _generate_reply(self, token_probs, db_cache):
         if len(token_probs) == 0:
             return None
 
@@ -318,10 +304,10 @@ class Brain:
         if pivot_expr_id is None:
             return
 
-        next_token_ids = db.follow_chain(_NEXT_TOKEN_TABLE, pivot_expr_id,
-                                         memo, c=c)
-        prev_token_ids = db.follow_chain(_PREV_TOKEN_TABLE, pivot_expr_id,
-                                         memo, c=c)
+        next_token_ids = db_cache.follow_chain(_NEXT_TOKEN_TABLE,
+                                               pivot_expr_id)
+        prev_token_ids = db_cache.follow_chain(_PREV_TOKEN_TABLE,
+                                               pivot_expr_id)
 
         # Save the index of the pivot token in the reply.
         pivot_idx = len(prev_token_ids) - self.order + pivot_expr_idx
@@ -335,26 +321,17 @@ class Brain:
 
         return reply, pivot_idx
 
-    def _evaluate_reply(self, input_tokens, output_tokens, memo, c):
-        reply_memo = memo.setdefault("reply_memo", {})
+    def _evaluate_reply(self, input_tokens, output_tokens, db_cache):
+        score_memo = db_cache.cache.setdefault("score_memo", {})
 
         # use hash(tuple()) to reduce output_tokens to an integer for storage
         reply_key = hash(tuple(output_tokens))
-        if reply_key in reply_memo:
+        if reply_key in score_memo:
             return -1.0
-        reply_memo[reply_key] = True
 
-        return self.scorer.score(input_tokens, output_tokens, self._db, memo)
-
-    def _get_token_ids(self, tokens, memo, c):
-        memo = memo.setdefault("token_ids", {})
-        token_ids = []
-
-        for token in tokens:
-            token_id = memo.setdefault(token, self._db.get_token_id(token, c))
-            token_ids.append(token_id)
-
-        return token_ids
+        score = self.scorer.score(input_tokens, output_tokens, db_cache)
+        score_memo[reply_key] = score
+        return score
 
     def _get_or_register_tokens(self, c, tokens):
         db = self._db
@@ -411,14 +388,114 @@ tokenizer -- One of Cobe, MegaHAL (default Cobe). See documentation
             log.info("Unknown tokenizer: %s. Using CobeTokenizer", tokenizer)
             tokenizer = "Cobe"
 
-        db = _Db(sqlite3.connect(filename))
+        db = _Sql(sqlite3.connect(filename))
 
         _now = _trace.now()
         db.init(order, tokenizer)
         _trace.trace("Brain.init_time_us", _trace.now() - _now)
 
 
-class _Db:
+class DbCache:
+    """A class to memoize database functions within the context of one reply"""
+    def __init__(self, db):
+        self.db = db
+        self.cache = {}
+
+    def get_token_id(self, word):
+        memo = self.cache.setdefault("token_id", {})
+
+        try:
+            token_id = memo[word]
+        except KeyError:
+            token_id = self.db.get_token_id(word)
+            memo[word] = token_id
+
+        return token_id
+
+    def get_token_ids(self, words):
+        return [self.get_token_id(word) for word in words]
+
+    def get_token_text(self, token_id):
+        memo = self.cache.setdefault("token_text", {})
+
+        try:
+            text = memo[token_id]
+        except KeyError:
+            text = self.db.get_token_text(token_id)
+            memo[token_id] = text
+
+        return text
+
+    def get_token_texts(self, token_ids):
+        return [self.get_token_text(token_id) for token_id in token_ids]
+
+    def get_expr_token_ids(self, expr_id):
+        memo = self.cache.setdefault("expr_token_ids", {})
+
+        try:
+            token_ids = memo[expr_id]
+        except KeyError:
+            token_ids = tuple(self.db.get_expr_token_ids(expr_id))
+            memo[expr_id] = token_ids
+
+        return token_ids
+
+    def get_expr_token_probability(self, table, expr, token_id):
+        memo = self.cache.setdefault("%s_p" % table, {})
+
+        # FIXME: it's possible we could save some DB action by looking
+        # up the expr_id for this expr first?
+
+        key = (tuple(expr), token_id)
+        try:
+            p = memo[key]
+        except KeyError:
+            p = self.db.get_expr_token_probability(table, expr, token_id)
+            memo[key] = p
+
+        return p
+
+    def get_expr_token_ids(self, expr_id):
+        memo = self.cache.setdefault("expr_token_ids", {})
+
+        try:
+            token_ids = memo[expr_id]
+        except KeyError:
+            token_ids = tuple(self.db.get_expr_token_ids(expr_id))
+            memo[expr_id] = token_ids
+
+        return token_ids
+
+    def follow_chain(self, table, expr_id):
+        expr = self.get_expr_token_ids(expr_id)
+
+        # initialize the chain with the current expr's tokens
+        chain = collections.deque(expr)
+
+        if table == _NEXT_TOKEN_TABLE:
+            append = chain.append
+            query = self.db.next_chain_q
+        else:
+            append = chain.appendleft
+            query = self.db.prev_chain_q
+
+        c = self.db.cursor()
+
+        while True:
+            # get the token
+            c.execute(query, {"expr_id": expr_id})
+
+            row = c.fetchone()
+            if not row or row[0] == self.db._end_token_id:
+                break
+
+            next_token_id, expr_id = row
+            append(next_token_id)
+
+        return chain
+
+
+class _Sql:
     """Database functions to support a Cobe brain. This is not meant
     to be used from outside."""
     def __init__(self, conn, run_migrations=True):
@@ -449,13 +526,13 @@ class _Db:
             next_query = " AND ".join(next_parts)
             prev_query = " AND ".join(prev_parts)
 
-            self._next_chain_q = \
+            self.next_chain_q = \
                 "SELECT next_expr.token%(last_token)d_id, next_expr.id FROM expr, expr AS next_expr WHERE expr.id = :expr_id AND next_expr.token%(last_token)d_id = (SELECT token_id FROM %(table)s WHERE expr_id = :expr_id LIMIT 1 OFFSET ifnull(random()%%(SELECT count(*) FROM %(table)s WHERE expr_id = :expr_id), 0)) AND %(subquery)s" \
                 % {"last_token": self._order - 1,
                    "subquery": next_query,
                    "table": _NEXT_TOKEN_TABLE}
 
-            self._prev_chain_q = "SELECT prev_expr.token0_id, prev_expr.id FROM expr, expr AS prev_expr WHERE expr.id = :expr_id AND prev_expr.token0_id = (SELECT token_id FROM %(table)s WHERE expr_id = :expr_id LIMIT 1 OFFSET ifnull(random()%%(SELECT count(*) FROM %(table)s WHERE expr_id = :expr_id), 0)) AND %(subquery)s" \
+            self.prev_chain_q = "SELECT prev_expr.token0_id, prev_expr.id FROM expr, expr AS prev_expr WHERE expr.id = :expr_id AND prev_expr.token0_id = (SELECT token_id FROM %(table)s WHERE expr_id = :expr_id LIMIT 1 OFFSET ifnull(random()%%(SELECT count(*) FROM %(table)s WHERE expr_id = :expr_id), 0)) AND %(subquery)s" \
                 % {"subquery": prev_query,
                    "table": _PREV_TOKEN_TABLE}
 
@@ -562,7 +639,10 @@ class _Db:
         if row:
             return row[0]
 
-    def _get_expr_token_ids(self, expr_id, c):
+    def get_expr_token_ids(self, expr_id, c=None):
+        if c is None:
+            c = self.cursor()
+
         q = "SELECT %s FROM expr WHERE id = ?" % self._all_tokens
         return c.execute(q, (expr_id,)).fetchone()
 
@@ -678,41 +758,6 @@ class _Db:
         row = c.fetchone()
         if row:
             return row[0]
-
-    def follow_chain(self, table, expr_id, memo, c=None):
-        if c is None:
-            c = self.cursor()
-
-        memo = memo.setdefault("follow_chain", {})
-
-        try:
-            expr = memo[expr_id]
-        except KeyError:
-            expr = tuple(self._get_expr_token_ids(expr_id, c))
-            memo[expr_id] = expr
-
-        # initialize the chain with the current expr's tokens
-        chain = collections.deque(expr)
-
-        if table == _NEXT_TOKEN_TABLE:
-            append = chain.append
-            query = self._next_chain_q
-        else:
-            append = chain.appendleft
-            query = self._prev_chain_q
-
-        while True:
-            # get the token
-            c.execute(query, {"expr_id": expr_id})
-
-            row = c.fetchone()
-            if not row or row[0] == self._end_token_id:
-                break
-
-            next_token_id, expr_id = row
-            append(next_token_id)
-
-        return chain
 
     def init(self, order, tokenizer, run_migrations=True):
         c = self.cursor()

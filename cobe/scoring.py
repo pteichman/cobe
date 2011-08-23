@@ -1,6 +1,7 @@
 # Copyright (C) 2011 Peter Teichman
 
 import math
+import re
 
 
 class Scorer:
@@ -20,7 +21,7 @@ class Scorer:
 
         return 1.0 - 1.0 / (1.0 + score)
 
-    def score(self, input_tokens, output_tokens, db, memo):
+    def score(self, input_tokens, output_tokens, db_cache):
         return NotImplementedError
 
 
@@ -31,12 +32,11 @@ class ScorerGroup:
     def add_scorer(self, weight, scorer):
         self.scorers.append((weight, scorer))
 
-    def score(self, input_tokens, output_tokens, db, memo):
+    def score(self, input_tokens, output_tokens, db):
         score = 0.
 
         for weight, scorer in self.scorers:
-            score += weight * scorer.score(input_tokens, output_tokens, db,
-                                           memo)
+            score += weight * scorer.score(input_tokens, output_tokens, db)
 
         return score
 
@@ -47,7 +47,7 @@ class CobeScorer(Scorer):
         Scorer.__init__(self, **kwargs)
         self.order = order
 
-    def score(self, input_tokens, output_tokens, db, memo):
+    def score(self, input_tokens, output_tokens, db):
         # If input_tokens is empty (i.e. we didn't know any words in
         # the input), use output == input to make sure we still check
         # scoring
@@ -55,10 +55,6 @@ class CobeScorer(Scorer):
             input_tokens = output_tokens
 
         score = 0.
-        c = db.cursor()
-
-        next_memo = memo.setdefault("next_token", {})
-        prev_memo = memo.setdefault("prev_token", {})
 
         # evaluate forward probabilities
         for output_idx in xrange(len(output_tokens) - self.order):
@@ -66,13 +62,8 @@ class CobeScorer(Scorer):
             if output_token in input_tokens:
                 expr = output_tokens[output_idx:output_idx + self.order]
 
-                try:
-                    key = (tuple(expr), output_token)
-                    p = next_memo[key]
-                except KeyError:
-                    p = db.get_expr_token_probability("next_token", expr,
-                                                      output_token, c)
-                    next_memo[key] = p
+                p = db.get_expr_token_probability("next_token", expr,
+                                                  output_token)
 
                 if p > 0:
                     score -= math.log(p, 2)
@@ -86,13 +77,8 @@ class CobeScorer(Scorer):
 
                 expr = output_tokens[start:end]
 
-                try:
-                    key = (tuple(expr), output_token)
-                    p = prev_memo[key]
-                except KeyError:
-                    p = db.get_expr_token_probability("prev_token", expr,
-                                                      output_token, c)
-                    prev_memo[key] = p
+                p = db.get_expr_token_probability("prev_token", expr,
+                                                  output_token)
 
                 if p > 0:
                     score -= math.log(p, 2)
