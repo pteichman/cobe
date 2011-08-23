@@ -24,6 +24,23 @@ class Scorer:
         return NotImplementedError
 
 
+class ScorerGroup:
+    def __init__(self):
+        self.scorers = []
+
+    def add_scorer(self, weight, scorer):
+        self.scorers.append((weight, scorer))
+
+    def score(self, input_tokens, output_tokens, db, memo):
+        score = 0.
+
+        for weight, scorer in self.scorers:
+            score += weight * scorer.score(input_tokens, output_tokens, db,
+                                           memo)
+
+        return score
+
+
 class CobeScorer(Scorer):
     """Classic Cobe scorer, similar to MegaHAL's scorer but with bugs"""
     def __init__(self, order, **kwargs):

@@ -43,7 +43,8 @@ class Brain:
 
         self.order = int(db.get_info_text("order"))
 
-        self.scorer = scoring.CobeScorer(self.order)
+        self.scorer = scoring.ScorerGroup()
+        self.scorer.add_scorer(1.0, scoring.CobeScorer(self.order))
 
         tokenizer_name = db.get_info_text("tokenizer")
         if tokenizer_name == "MegaHAL":
