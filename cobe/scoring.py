@@ -97,3 +97,25 @@ class CobeScorer(Scorer):
         score = score / score_divider
 
         return self.finish(self.normalize(score))
+
+
+class LengthScorer(Scorer):
+    def score(self, input_tokens, output_tokens, db):
+        return self.finish(self.normalize(len(output_tokens)))
+
+
+class ShoutyScorer(Scorer):
+    def score(self, input_tokens, output_tokens, db):
+        infos = [db.get_token_info(token_id) for token_id in output_tokens]
+
+        words = []
+        for info in infos:
+            if info["is_word"] and len(info["text"]) > 1:
+                words.append(info["text"])
+
+        shouty_count = 0
+        for word in words:
+            if word == word.upper():
+                shouty_count += 1
+
+        return self.finish(float(shouty_count) / len(words))
