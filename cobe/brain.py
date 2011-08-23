@@ -113,7 +113,7 @@ class Brain:
         db = self._db
         c = db.cursor()
 
-        token_ids = self._get_or_register_tokens(c, tokens)
+        token_ids = self._get_or_register_tokens(tokens, c)
         n_exprs = len(token_ids) - self.order
 
         # increment seen count for each token
@@ -123,7 +123,7 @@ class Brain:
 
         for i in xrange(n_exprs + 1):
             expr = token_ids[i:i + self.order]
-            expr_id = self._get_or_register_expr(c, expr)
+            expr_id = self._get_or_register_expr(expr, c=c)
 
             # increment the expr count
             db.inc_expr_count(expr_id, c=c)
@@ -329,17 +329,11 @@ class Brain:
         score_memo[reply_key] = score
         return score
 
-    def _get_or_register_tokens(self, c, tokens):
-        db = self._db
-
+    def _get_or_register_tokens(self, tokens, c):
         token_ids = []
         memo = {}
         for token in tokens:
-            try:
-                token_id = memo[token]
-            except KeyError:
-                token_id = db.get_token_id(token, c=c)
-                memo[token] = token_id
+            token_id = self._db.get_token_id(token)
 
             if token_id is None:
                 if re.search("\w", token, re.UNICODE):
@@ -347,10 +341,10 @@ class Brain:
                 else:
                     is_word = False
 
-                token_id = db.insert_token(token, is_word, c=c)
+                token_id = self._db.insert_token(token, is_word, c=c)
 
                 if is_word and self.stemmer is not None:
-                    db.insert_stem(token_id, self.stemmer.stem(token))
+                    self._db.insert_stem(token_id, self.stemmer.stem(token))
 
                 memo[token] = token_id
 
@@ -358,12 +352,11 @@ class Brain:
 
         return token_ids
 
-    def _get_or_register_expr(self, c, token_ids):
-        db = self._db
-        expr_id = db.get_expr_by_token_ids(token_ids, c=c)
+    def _get_or_register_expr(self, token_ids, c):
+        expr_id = self._db.get_expr_by_token_ids(token_ids, c=c)
 
         if expr_id is None:
-            expr_id = db.insert_expr(token_ids, c=c)
+            expr_id = self._db.insert_expr(token_ids, c=c)
 
         return expr_id
 
