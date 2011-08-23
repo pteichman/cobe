@@ -2,8 +2,8 @@
 
 import collections
 import logging
-import math
 import os
+import pprint
 import random
 import re
 import sqlite3
@@ -17,9 +17,7 @@ from . import tokenizers
 log = logging.getLogger("cobe")
 
 # use an empty string to denote the start/end of a chain
-_END_TOKEN_TEXT = ""
-_NEXT_TOKEN_TABLE = "next_token"
-_PREV_TOKEN_TABLE = "prev_token"
+_END_TOKEN = ""
 
 _trace = Instatrace()
 
@@ -38,22 +36,22 @@ class Brain:
             _trace.init(instatrace)
 
         _start = _trace.now()
-        self._db = db = _Sql(sqlite3.connect(filename))
+        self.graph = graph = Graph(sqlite3.connect(filename))
         _trace.trace("Brain.connect_us", _trace.now() - _start)
 
-        self.order = int(db.get_info_text("order"))
+        self.order = int(graph.get_info_text("order"))
 
         self.scorer = scoring.ScorerGroup()
-        self.scorer.add_scorer(1.0, scoring.CobeScorer(self.order))
+        self.scorer.add_scorer(1.0, scoring.CobeScorer())
 
-        tokenizer_name = db.get_info_text("tokenizer")
+        tokenizer_name = graph.get_info_text("tokenizer")
         if tokenizer_name == "MegaHAL":
             self.tokenizer = tokenizers.MegaHALTokenizer()
         else:
             self.tokenizer = tokenizers.CobeTokenizer()
 
         self.stemmer = None
-        stemmer_name = db.get_info_text("stemmer")
+        stemmer_name = graph.get_info_text("stemmer")
 
         if stemmer_name is not None:
             try:
@@ -61,7 +59,11 @@ class Brain:
             except Exception, e:
                 log.error("Error creating stemmer: %s", str(e))
 
-        self._end_token_id = db.get_token_id(_END_TOKEN_TEXT)
+        self._end_token_id = graph.get_token_by_text(_END_TOKEN, create=True)
+
+        self._end_context = [self._end_token_id] * self.order
+        self._end_context_id = graph.get_node_by_tokens(self._end_context)
+
         self._learning = False
 
     def start_batch_learning(self):
@@ -73,7 +75,7 @@ class Brain:
     def stop_batch_learning(self):
         """Finish a series of batch learn operations."""
         self._learning = False
-        self._db.commit()
+        self.graph.commit()
 
     def del_stemmer(self):
         self.stemmer = None
@@ -86,11 +88,11 @@ class Brain:
     def set_stemmer(self, language):
         self.stemmer = tokenizers.CobeStemmer(language)
 
-        self._db.delete_token_stems()
-        self._db.update_token_stems(self.stemmer)
+        self.graph.delete_token_stems()
+        self.graph.update_token_stems(self.stemmer)
 
-        self._db.set_info_text("stemmer", language)
-        self._db.commit()
+        self.graph.set_info_text("stemmer", language)
+        self.graph.commit()
 
     def learn(self, text):
         """Learn a string of text. If the input is not already
@@ -103,54 +105,74 @@ class Brain:
         tokens = self.tokenizer.split(text)
         _trace.trace("Brain.learn_input_token_count", len(tokens))
 
-        if len(tokens) < self.order:
-            log.debug("Input too short to learn: %s", text)
-            return
-
         self._learn_tokens(tokens)
 
+    def _to_edges(self, tokens):
+        """This is an iterator that returns the nodes of our graph:
+"This is a test" -> "None This" "This is" "is a" "a test" "test None"
+
+Each is annotated with a boolean that tracks whether whitespace was
+found between the two tokens."""
+        # prepend self.order Nones
+        chain = self._end_context + tokens + self._end_context
+
+        # look up the whitespace token id
+        space_id = self.graph.get_token_by_text(" ")
+        has_space = False
+
+        context = []
+
+        for i in xrange(len(chain)):
+            context.append(chain[i])
+
+            if len(context) == self.order:
+                if chain[i] == space_id:
+                    context.pop()
+                    has_space = True
+                    continue
+
+                yield tuple(context), has_space
+
+                context.pop(0)
+                has_space = False
+
+    def _to_graph(self, contexts):
+        """This is an iterator that returns each edge of our graph
+with its two nodes"""
+        prev = None
+
+        for context in contexts:
+            if prev is None:
+                prev = context
+                continue
+
+            yield prev[0], context[1], context[0]
+            prev = context
+
     def _learn_tokens(self, tokens):
-        db = self._db
-        c = db.cursor()
+        token_count = len([token for token in tokens if token != " "])
+        if token_count < 3:
+            return
 
-        token_ids = self._get_or_register_tokens(tokens, c)
-        n_exprs = len(token_ids) - self.order
+        token_ids = [self.graph.get_token_by_text(text, create=True)
+                     for text in tokens]
 
-        # increment seen count for each token
-        db.inc_token_counts(token_ids, c=c)
+        # increment the seen count on each token
+        self.graph.add_token_counts(token_ids)
 
-        links = []
+        edges = list(self._to_edges(token_ids))
 
-        for i in xrange(n_exprs + 1):
-            expr = token_ids[i:i + self.order]
-            expr_id = self._get_or_register_expr(expr, c=c)
+        prev_id = None
+        for prev, has_space, next in self._to_graph(edges):
+            if prev_id is None:
+                prev_id = self.graph.get_node_by_tokens(prev)
+            next_id = self.graph.get_node_by_tokens(next)
 
-            # increment the expr count
-            db.inc_expr_count(expr_id, c=c)
-
-            if i == 0:
-                # add link to boundary on prev_token
-                links.append((_PREV_TOKEN_TABLE, expr_id, self._end_token_id))
-
-            if i > 0:
-                # link prev token to this expr
-                prev_token = token_ids[i - 1]
-                links.append((_PREV_TOKEN_TABLE, expr_id, prev_token))
-
-            if i < n_exprs:
-                # link next token to this expr
-                next_token = token_ids[i + self.order]
-                links.append((_NEXT_TOKEN_TABLE, expr_id, next_token))
-
-            if i == n_exprs:
-                # add link to boundary on next_token
-                links.append((_NEXT_TOKEN_TABLE, expr_id, self._end_token_id))
-
-        if len(links) > 0:
-            db.add_or_inc_links(links, c=c)
+            self.graph.add_edge(prev_id, next_id, has_space)
+            prev_id = next_id
 
         if not self._learning:
-            db.commit()
+            self.graph.commit()
 
     def reply(self, text):
         """Reply to a string of text. If the input is not already
@@ -160,14 +182,13 @@ class Brain:
             # should be somewhat safe in the modern world.
             text = text.decode("utf-8", "ignore")
 
-        # each reply gets its own database cache for now
-        db_cache = DbCache(self._db)
-
         tokens = self.tokenizer.split(text)
-        input_ids = db_cache.get_token_ids(tokens)
+
+        input_ids = [self.graph.get_token_by_text(text)
+                     for text in tokens]
 
         # filter out unknown words and non-words from the potential pivots
-        pivot_set = self._filter_pivots(input_ids, db_cache)
+        pivot_set = self._filter_pivots(input_ids)
 
         # Conflate the known ids with the stems of their words
         if self.stemmer is not None:
@@ -184,6 +205,8 @@ class Brain:
             # MegaHAL reply:
             return "I don't know enough to answer you yet!"
 
+        score_cache = {}
+
         best_score = -1.0
         best_reply = None
 
@@ -194,62 +217,72 @@ class Brain:
 
         all_replies = []
 
-        _start = _trace.now()
+        _start = time.time()
         while best_reply is None or time.time() < end:
             _now = _trace.now()
-            reply = self._generate_reply(pivot_set, db_cache)
+            candidate = self._generate_reply(pivot_set)
             _trace.trace("Brain.generate_reply_us", _trace.now() - _now)
 
-            if reply is None:
+            if candidate is None:
                 continue
 
-            token_ids, pivot_idx = reply
-
-            _now = _trace.now()
-            score = self._evaluate_reply(input_ids, token_ids, db_cache)
-            _trace.trace("Brain.evaluate_reply_us", _trace.now() - _now)
-
-            _trace.trace("Brain.reply_output_token_count", len(token_ids))
-
             count += 1
+            edges, pivot_node = candidate
+            reply = Reply(self.graph, tokens, input_ids, pivot_node, edges)
+
+            key = self._get_reply_key(reply)
+            if key not in score_cache:
+                _now = _trace.now()
+                score = self.scorer.score(reply)
+                score_cache[key] = score
+                _trace.trace("Brain.evaluate_reply_us", _trace.now() - _now)
+            else:
+                # skip scoring, we've already seen this reply
+                score = -1
 
             if score > best_score:
+                best_reply = reply
                 best_score = score
-                best_reply = token_ids
 
             # dump all replies to the console if debugging is enabled
             if log.isEnabledFor(logging.DEBUG):
-                all_replies.append((score, token_ids, pivot_idx))
+                all_replies.append((score, reply))
 
-        all_replies.sort()
-        for score, token_ids, pivot_idx in all_replies:
-            words = db_cache.get_token_texts(token_ids)
-            words[pivot_idx] = "[%s]" % words[pivot_idx]
+        _time = time.time() - _start
 
-            text = self.tokenizer.join(words)
-            log.debug("%f %s", score, text.encode("utf-8"))
+        self.scorer.end(best_reply)
+
+        if log.isEnabledFor(logging.DEBUG):
+            replies = [(score, reply.to_text())
+                       for score, reply in all_replies]
+            replies.sort()
+
+            for score, text in replies:
+                log.debug("%f %s", score, text.encode("utf-8"))
+
+            log.debug(best_reply.to_graph())
 
         _trace.trace("Brain.reply_input_token_count", len(tokens))
         _trace.trace("Brain.known_word_token_count", len(pivot_set))
 
-        _time = _trace.now() - _start
         _trace.trace("Brain.reply_us", _time)
         _trace.trace("Brain.reply_count", count, _time)
         _trace.trace("Brain.best_reply_score", int(best_score * 1000))
-        _trace.trace("Brain.best_reply_length", len(best_reply))
-        log.debug("made %d replies in %f seconds" % (count,
-                                                     time.time() - start))
+        _trace.trace("Brain.best_reply_length", len(best_reply.edges))
+
+        log.debug("made %d replies (%d unique) in %f seconds" \
+                      % (count, len(score_cache), _time))
 
         # look up the words for these tokens
         _now = _trace.now()
-        text = db_cache.get_token_texts(best_reply)
+        text = best_reply.to_text()
         _trace.trace("Brain.reply_words_lookup_us", _trace.now() - _now)
 
-        return self.tokenizer.join(text)
+        return text
 
     def _conflate_stems(self, pivot_set, tokens):
         for token in tokens:
-            stem_ids = self._db.get_token_stem_ids(self.stemmer.stem(token))
+            stem_ids = self.graph.get_token_stem_ids(self.stemmer.stem(token))
             if len(stem_ids) == 0:
                 continue
 
@@ -263,25 +296,29 @@ class Brain:
                 except KeyError:
                     pass
 
+    def _get_reply_key(self, reply):
+        return tuple([(edge.prev, edge.next) for edge in reply.edges])
+
     def _babble(self):
         token_ids = []
         for i in xrange(5):
             # Generate a few random tokens that can be used as pivots
-            token_id = self._db.get_random_word_token()
+            token_id = self.graph.get_random_node()
 
             if token_id is not None:
                 token_ids.append(token_id)
 
         return token_ids
 
-    def _filter_pivots(self, pivot_set, db_cache):
+    def _filter_pivots(self, pivots):
         # remove pivots that might not give good results
+        tokens = []
+        for pivot in pivots:
+            if pivot is not None:
+                tokens.append(pivot)
+
         filtered = set()
-
-        for pivot_id in pivot_set:
-            if pivot_id is not None and db_cache.get_token_is_word(pivot_id):
-                filtered.add(pivot_id)
-
+        filtered.update(self.graph.get_word_tokens(tokens))
         return filtered
 
     def _choose_pivot(self, pivot_ids):
@@ -293,77 +330,27 @@ class Brain:
 
         return pivot
 
-    def _generate_reply(self, token_probs, db_cache):
-        if len(token_probs) == 0:
+    def _generate_reply(self, pivot_ids):
+        if len(pivot_ids) == 0:
             return
 
         # generate a reply containing one of token_ids
-        token_id = self._choose_pivot(token_probs)
-        expr_id, expr_idx = self._db.get_random_expr(token_id)
+        pivot_id = self._choose_pivot(pivot_ids)
+        node = self.graph.get_random_node_with_token(pivot_id)
 
-        if expr_id is None:
+        if node is None:
             return
 
-        next_token_ids = db_cache.follow_chain(_NEXT_TOKEN_TABLE, expr_id)
-        prev_token_ids = db_cache.follow_chain(_PREV_TOKEN_TABLE, expr_id)
+        next_edges = self.graph.walk(node, self._end_context_id, "next")
+        prev_edges = self.graph.walk(node, self._end_context_id, "prev")
 
-        # Save the index of the pivot token in the reply.
-        pivot_idx = len(prev_token_ids) - self.order + expr_idx
+        edges = list(prev_edges)
+        edges.extend(next_edges)
 
-        # strip the original expr from the prev reply
-        for i in xrange(self.order):
-            prev_token_ids.pop()
-
-        reply = list(prev_token_ids)
-        reply.extend(next_token_ids)
-
-        return reply, pivot_idx
-
-    def _evaluate_reply(self, input_tokens, output_tokens, db_cache):
-        score_memo = db_cache.cache.setdefault("score_memo", {})
-
-        # use hash(tuple()) to reduce output_tokens to an integer for storage
-        reply_key = hash(tuple(output_tokens))
-        if reply_key in score_memo:
-            return -1.0
-
-        score = self.scorer.score(input_tokens, output_tokens, db_cache)
-        score_memo[reply_key] = score
-        return score
-
-    def _get_or_register_tokens(self, tokens, c):
-        token_ids = []
-        memo = {}
-        for token in tokens:
-            token_id = self._db.get_token_id(token)
-
-            if token_id is None:
-                if re.search("\w", token, re.UNICODE):
-                    is_word = True
-                else:
-                    is_word = False
-
-                token_id = self._db.insert_token(token, is_word, c=c)
-
-                if is_word and self.stemmer is not None:
-                    self._db.insert_stem(token_id, self.stemmer.stem(token))
-
-                memo[token] = token_id
-
-            token_ids.append(token_id)
-
-        return token_ids
-
-    def _get_or_register_expr(self, token_ids, c):
-        expr_id = self._db.get_expr_by_token_ids(token_ids, c=c)
-
-        if expr_id is None:
-            expr_id = self._db.insert_expr(token_ids, c=c)
-
-        return expr_id
+        return edges, node
 
     @staticmethod
-    def init(filename, order=5, tokenizer=None):
+    def init(filename, order=3, tokenizer=None):
         """Initialize a brain. This brain's file must not already exist.
 
 Keyword arguments:
@@ -379,122 +366,60 @@ tokenizer -- One of Cobe, MegaHAL (default Cobe). See documentation
             log.info("Unknown tokenizer: %s. Using CobeTokenizer", tokenizer)
             tokenizer = "Cobe"
 
-        db = _Sql(sqlite3.connect(filename))
+        graph = Graph(sqlite3.connect(filename))
 
         _now = _trace.now()
-        db.init(order, tokenizer)
+        graph.init(order, tokenizer)
         _trace.trace("Brain.init_time_us", _trace.now() - _now)
 
 
-class DbCache:
-    """A class to memoize database functions within the context of one reply"""
-    def __init__(self, db):
-        self.db = db
-        self.cache = {}
+class Reply:
+    """Provide useful support for scoring functions"""
+    def __init__(self, graph, tokens, token_ids, pivot_node, edges):
+        self.graph = graph
+        self.tokens = tokens
+        self.token_ids = token_ids
+        self.pivot_node = pivot_node
+        self.edges = edges
 
-    def get_token_id(self, word):
-        memo = self.cache.setdefault("token_id", {})
+    def to_graph(self):
+        text = []
+        for edge in self.edges:
+            text.append(edge.pretty())
 
-        try:
-            token_id = memo[word]
-        except KeyError:
-            token_id = self.db.get_token_id(word)
-            memo[word] = token_id
+        return pprint.pformat(text)
 
-        return token_id
-
-    def get_token_ids(self, words):
-        return [self.get_token_id(word) for word in words]
-
-    def get_token_info(self, token_id):
-        memo = self.cache.setdefault("token_info", {})
-
-        try:
-            info = memo[token_id]
-        except KeyError:
-            info = self.db.get_token_info(token_id)
-            memo[token_id] = info
-
-        return info
-
-    def get_token_text(self, token_id):
-        return self.get_token_info(token_id)["text"]
-
-    def get_token_texts(self, token_ids):
-        return [self.get_token_text(token_id) for token_id in token_ids]
-
-    def get_token_is_word(self, token_id):
-        return self.get_token_info(token_id)["is_word"]
-
-    def get_expr_token_ids(self, expr_id):
-        memo = self.cache.setdefault("expr_token_ids", {})
-
-        try:
-            token_ids = memo[expr_id]
-        except KeyError:
-            token_ids = tuple(self.db.get_expr_token_ids(expr_id))
-            memo[expr_id] = token_ids
-
-        return token_ids
-
-    def get_expr_token_probability(self, table, expr, token_id):
-        memo = self.cache.setdefault("%s_p" % table, {})
-
-        # FIXME: it's possible we could save some DB action by looking
-        # up the expr_id for this expr first?
-
-        key = (tuple(expr), token_id)
-        try:
-            p = memo[key]
-        except KeyError:
-            p = self.db.get_expr_token_probability(table, expr, token_id)
-            memo[key] = p
-
-        return p
-
-    def get_expr_token_ids(self, expr_id):
-        memo = self.cache.setdefault("expr_token_ids", {})
-
-        try:
-            token_ids = memo[expr_id]
-        except KeyError:
-            token_ids = tuple(self.db.get_expr_token_ids(expr_id))
-            memo[expr_id] = token_ids
-
-        return token_ids
-
-    def follow_chain(self, table, expr_id):
-        expr = self.get_expr_token_ids(expr_id)
-
-        # initialize the chain with the current expr's tokens
-        chain = collections.deque(expr)
-
-        if table == _NEXT_TOKEN_TABLE:
-            append = chain.append
-            query = self.db.next_chain_q
-        else:
-            append = chain.appendleft
-            query = self.db.prev_chain_q
-
-        c = self.db.cursor()
-
-        while True:
-            # get the token
-            c.execute(query, {"expr_id": expr_id})
-
-            row = c.fetchone()
-            if not row or row[0] == self.db._end_token_id:
-                break
-
-            next_token_id, expr_id = row
-            append(next_token_id)
-
-        return chain
+    def to_text(self):
+        text = []
+        for edge in self.edges:
+            text.append(edge.get_prev_word())
+            if edge.has_space:
+                text.append(" ")
+        return "".join(text)
 
 
-class _Sql:
-    """Database functions to support a Cobe brain. This is not meant
-    to be used from outside."""
+class Edge:
+    def __init__(self, graph, edge_id, prev, next, has_space):
+        self.graph = graph
+
+        self.edge_id = edge_id
+        self.prev = prev
+        self.next = next
+        self.has_space = has_space
+
+    def get_prev_word(self):
+        # get the last word in the prev context
+        return self.graph.get_word_by_node(self.prev)
+
+    def pretty(self):
+        prev = "|".join(self.graph.get_node_text(self.prev))
+        next = "|".join(self.graph.get_node_text(self.next))
+
+        return "%s -> %s (%s -> %s)" % (prev, next, self.prev, self.next)
+
+
+class Graph:
+    """A special-purpose graph class, stored in a sqlite3 database"""
     def __init__(self, conn, run_migrations=True):
         self._conn = conn
         conn.row_factory = sqlite3.Row
@@ -504,34 +429,22 @@ class _Sql:
                 self._run_migrations()
 
             self._order = int(self.get_info_text("order"))
-            self._end_token_id = self.get_token_id(_END_TOKEN_TEXT)
 
             self._all_tokens = ",".join(["token%d_id" % i
                                          for i in xrange(self._order)])
-            self._all_token_args = " AND ".join(["token%d_id = ?" % i
-                                                 for i in xrange(self._order)])
-            self._all_token_q = ",".join(["?" for i in xrange(self._order)])
+            self._all_tokens_args = " AND ".join(
+                ["token%d_id = ?" % i for i in xrange(self._order)])
+            self._all_tokens_q = ",".join(["?" for i in xrange(self._order)])
+            self._last_token = "token%d_id" % (self._order - 1)
 
-            # construct partial subqueries for use when following chains
-            next_parts = []
-            prev_parts = []
-            for i in xrange(self._order - 1):
-                next_parts.append("next_expr.token%d_id = expr.token%d_id" %
-                                  (i, i + 1))
-                prev_parts.append("prev_expr.token%d_id = expr.token%d_id" %
-                                  (i + 1, i))
-            next_query = " AND ".join(next_parts)
-            prev_query = " AND ".join(prev_parts)
+            # Use a 10M cache by default. This speeds replies quite a bit.
+            self.cursor().execute("PRAGMA cache_size=10000")
 
-            self.next_chain_q = \
-                "SELECT next_expr.token%(last_token)d_id, next_expr.id FROM expr, expr AS next_expr WHERE expr.id = :expr_id AND next_expr.token%(last_token)d_id = (SELECT token_id FROM %(table)s WHERE expr_id = :expr_id LIMIT 1 OFFSET ifnull(random()%%(SELECT count(*) FROM %(table)s WHERE expr_id = :expr_id), 0)) AND %(subquery)s" \
-                % {"last_token": self._order - 1,
-                   "subquery": next_query,
-                   "table": _NEXT_TOKEN_TABLE}
-
-            self.prev_chain_q = "SELECT prev_expr.token0_id, prev_expr.id FROM expr, expr AS prev_expr WHERE expr.id = :expr_id AND prev_expr.token0_id = (SELECT token_id FROM %(table)s WHERE expr_id = :expr_id LIMIT 1 OFFSET ifnull(random()%%(SELECT count(*) FROM %(table)s WHERE expr_id = :expr_id), 0)) AND %(subquery)s" \
-                % {"subquery": prev_query,
-                   "table": _PREV_TOKEN_TABLE}
+            # Each of these speed-for-reliability tradeoffs is useful for
+            # bulk learning.
+            self.cursor().execute("PRAGMA synchronous=OFF")
+            self.cursor().execute("PRAGMA journal_mode=truncate")
+            self.cursor().execute("PRAGMA temp_store=memory")
 
     def cursor(self):
         return self._conn.cursor()
@@ -589,14 +502,38 @@ class _Sql:
 
         return default
 
-    def get_token_id(self, token, c=None):
+    def get_seq_expr(self, seq):
+        # Format the sequence seq as (item1, item2, item2) as appropriate
+        # for an IN () clause in SQL
+        if len(seq) == 1:
+            return "(%s)" % seq[0]
+
+        return str(tuple(seq))
+
+    def get_token_by_text(self, text, create=False, c=None):
         if c is None:
             c = self.cursor()
 
         q = "SELECT id FROM tokens WHERE text = ?"
-        row = c.execute(q, (token,)).fetchone()
+
+        row = c.execute(q, (text,)).fetchone()
         if row:
-            return int(row[0])
+            return row[0]
+        elif create:
+            q = "INSERT INTO tokens (text, is_word, count) VALUES (?, ?, 0)"
+
+            is_word = bool(re.search("\w", text, re.UNICODE))
+            c.execute(q, (text, is_word))
+            return c.lastrowid
+
+    def get_token_by_id(self, token_id, c=None):
+        if c is None:
+            c = self.cursor()
+
+        q = "SELECT text FROM tokens WHERE id = ?"
+        row = c.execute(q, (token_id,)).fetchone()
+        if row:
+            return row[0]
 
     def get_token_stem_ids(self, stem, c=None):
         if c is None:
@@ -607,145 +544,168 @@ class _Sql:
         if rows:
             return tuple(val[0] for val in rows)
 
-    def get_random_word_token(self, c=None):
+    def get_word_by_node(self, node_id, c=None):
+        # return the last word in the node
         if c is None:
             c = self.cursor()
 
-        # select a random row from tokens
-        q = "SELECT id FROM tokens WHERE is_word = 1 AND id >= abs(random()) % (SELECT MAX(id) FROM tokens) + 1"
-        row = c.execute(q).fetchone()
+        q = "SELECT tokens.text FROM nodes, tokens WHERE nodes.id = ? " \
+            "AND %s = tokens.id" % self._last_token
 
+        row = c.execute(q, (node_id,)).fetchone()
+        if row:
+            return row[0]
+
+    def get_word_tokens(self, token_ids, c=None):
+        if c is None:
+            c = self.cursor()
+
+        q = "SELECT id FROM tokens WHERE id IN %s AND is_word = 1" % \
+            self.get_seq_expr(token_ids)
+
+        rows = c.execute(q)
+        if rows:
+            return [row["id"] for row in rows]
+
+        return []
+
+    def add_token_counts(self, tokens, c=None):
+        if c is None:
+            c = self.cursor()
+
+        q = "UPDATE tokens SET count = count + 1 WHERE id IN %s" % \
+            self.get_seq_expr(tokens)
+
+        c.execute(q)
+
+    def get_node_by_tokens(self, tokens, c=None):
+        if c is None:
+            c = self.cursor()
+
+        q = "SELECT id FROM nodes WHERE %s" % self._all_tokens_args
+
+        row = c.execute(q, tokens).fetchone()
+        if row:
+            return int(row[0])
+
+        # if not found, create the node
+        q = "INSERT INTO nodes (count, %s) " \
+            "VALUES (0, %s)" % (self._all_tokens, self._all_tokens_q)
+        c.execute(q, tokens)
+        return c.lastrowid
+
+    def get_node_tokens(self, node_id, c=None):
+        if c is None:
+            c = self.cursor()
+
+        q = "SELECT %s FROM nodes WHERE id = ?" % self._all_tokens
+
+        row = c.execute(q, (node_id,)).fetchone()
+        assert row is not None
+
+        return tuple(row)
+
+    def get_node_text(self, node_id, c=None):
+        if c is None:
+            c = self.cursor()
+
+        tokens = self.get_node_tokens(node_id, c)
+        return [self.get_token_by_id(token_id) for token_id in tokens]
+
+    def get_random_node(self, c=None):
+        if c is None:
+            c = self.cursor()
+
+        q = "SELECT id FROM nodes WHERE " \
+            "id >= abs(random()) % (SELECT MAX(id) FROM tokens) + 1 LIMIT 1"
+        row = c.execute(q).fetchone()
         if row:
             return row["id"]
 
-    def get_token_info(self, token_id, c=None):
+    def get_random_node_with_token(self, token_id, c=None):
         if c is None:
             c = self.cursor()
 
-        q = "SELECT text, is_word FROM tokens WHERE id = ?"
-        row = c.execute(q, (token_id,)).fetchone()
-        if row:
-            return row
-
-    def get_expr_token_ids(self, expr_id, c=None):
-        if c is None:
-            c = self.cursor()
-
-        q = "SELECT %s FROM expr WHERE id = ?" % self._all_tokens
-        return c.execute(q, (expr_id,)).fetchone()
-
-    def insert_token(self, token, is_word, c=None):
-        if c is None:
-            c = self.cursor()
-
-        q = "INSERT INTO tokens (text, is_word, count) VALUES (?, ?, 0)"
-        c.execute(q, (token, is_word))
-
-        return c.lastrowid
-
-    def insert_stem(self, token_id, stem, c=None):
-        if c is None:
-            c = self.cursor()
-
-        q = "INSERT INTO token_stems (token_id, stem) VALUES (?, ?)"
-        c.execute(q, (token_id, stem))
-
-    def insert_expr(self, token_ids, c=None):
-        if c is None:
-            c = self.cursor()
-
-        q = "INSERT INTO expr (count,%s) VALUES (0,%s)" % (self._all_tokens,
-                                                           self._all_token_q)
-
-        c.execute(q, token_ids)
-        return c.lastrowid
-
-    def inc_token_counts(self, token_ids, c=None):
-        if c is None:
-            c = self.cursor()
-
-        q = "UPDATE tokens SET count = count + 1 WHERE id = ?"
-        for token_id in token_ids:
-            c.execute(q, (token_id,))
-
-    def inc_expr_count(self, expr_id, c=None):
-        if c is None:
-            c = self.cursor()
-
-        q = "UPDATE expr SET count = count + 1 WHERE id = ?"
-        c.execute(q, (expr_id,))
-
-    def add_or_inc_links(self, links, c=None):
-        if c is None:
-            c = self.cursor()
-
-        for (table, expr_id, token_id) in links:
-            update_q = "UPDATE %s SET count = count + 1 WHERE expr_id = ? AND token_id = ?" % table
-            c.execute(update_q, (expr_id, token_id))
-
-            if c.rowcount == 0:
-                insert_q = "INSERT INTO %s (expr_id, token_id, count) VALUES (?, ?, ?)" % table
-                c.execute(insert_q, (expr_id, token_id, 1))
-
-    def get_random_expr(self, token_id, c=None):
-        if c is None:
-            c = self.cursor()
-
-        # try looking for the token in a random spot in the exprs
+        # try looking for the token in a random spot in the node
         positions = range(self._order)
         random.shuffle(positions)
 
         for pos in positions:
-            q = "SELECT id FROM expr WHERE token%d_id = ? LIMIT 1 OFFSET ifnull(abs(random())%%(SELECT count(*) from expr WHERE token%d_id = ?), 0)" \
-                % (pos, pos)
+            q = "SELECT id FROM nodes WHERE token%d_id = ? " \
+                "ORDER BY RANDOM() LIMIT 1" % pos
 
-            row = c.execute(q, (token_id, token_id)).fetchone()
+            row = c.execute(q, (token_id,)).fetchone()
             if row:
-                return int(row[0]), pos
+                return int(row[0])
 
-        return None, None
-
-    def get_expr_by_token_ids(self, token_ids, c):
-        q = "SELECT id FROM expr WHERE %s" % self._all_token_args
-
-        row = c.execute(q, token_ids).fetchone()
-        if row:
-            return int(row[0])
-
-    def _get_expr_token_count(self, table, expr_id, token_id, c):
-        q = "SELECT count FROM %s WHERE expr_id = ? AND token_id = ?" % table
-
-        row = c.execute(q, (expr_id, token_id)).fetchone()
-        if row:
-            return int(row[0])
-
-    def get_expr_token_probability(self, table, expr, token_id, c=None):
+    def add_edge(self, prev_node, next_node, has_space, c=None):
         if c is None:
             c = self.cursor()
 
-        expr_id, expr_count = self._get_expr_and_count_by_token_ids(expr, c)
-        token_count = self._get_expr_token_count(table, expr_id, token_id, c)
+        assert type(has_space) == types.BooleanType
 
-        if token_count is None:
-            return 0.
+        update_q = "UPDATE edges SET count = count + 1 " \
+            "WHERE prev_node = ? AND next_node = ? AND has_space = ?"
 
-        return float(token_count) / float(expr_count)
+        q = "INSERT INTO edges (prev_node, next_node, count, has_space) " \
+            "VALUES (?, ?, 1, ?)"
 
-    def _get_expr_and_count_by_token_ids(self, token_ids, c):
-        q = "SELECT id, count FROM expr WHERE %s" % self._all_token_args
+        args = (prev_node, next_node, has_space)
 
-        row = c.execute(q, token_ids).fetchone()
-        if row:
-            return int(row[0]), int(row[1])
+        c.execute(update_q, args)
+        if c.rowcount == 0:
+            c.execute(q, args)
 
-    def _get_random_next_token(self, table, expr_id, c):
-        q = "SELECT token_id FROM %s WHERE expr_id = ? LIMIT 1 OFFSET ifnull(abs(random())%%(SELECT count(*) FROM %s WHERE expr_id = ?), 0)" % (table, table)
+        # and increment the count on the next node
+        q = "UPDATE nodes SET count = count + 1 WHERE id = ?"
+        c.execute(q, (next_node,))
 
-        c.execute(q, (expr_id, expr_id))
+    def get_edge_probability(self, edge, c=None):
+        """Return the probability of edge following its prev_node"""
+        if c is None:
+            c = self.cursor()
 
-        row = c.fetchone()
-        if row:
-            return row[0]
+        q = "SELECT edges.count AS edges_count, nodes.count AS nodes_count " \
+            "FROM edges, nodes " \
+            "WHERE edges.id = ? AND nodes.id = edges.prev_node"
+
+        row = c.execute(q, (edge.edge_id,)).fetchone()
+        assert row
+
+        return float(row[0]) / row[1]
+
+    def walk(self, node, end_id, direction):
+        """Perform a random walk on the graph starting at node"""
+        c = self.cursor()
+
+        edges = collections.deque()
+
+        if direction == "next":
+            q = "SELECT id, next_node, prev_node, has_space " \
+                "FROM edges WHERE prev_node = ? " \
+                "LIMIT 1 OFFSET abs(random())%(SELECT count(*) from edges WHERE prev_node = ?)"
+            append = edges.append
+        elif direction == "prev":
+            q = "SELECT id, prev_node, next_node, has_space " \
+                "FROM edges WHERE next_node = ? " \
+                "LIMIT 1 OFFSET abs(random())%(SELECT count(*) from edges WHERE next_node = ?)"
+            append = edges.appendleft
+
+        last_node = node
+        while True:
+            if last_node == end_id:
+                break
+
+            row = c.execute(q, (last_node, last_node)).fetchone()
+            assert row is not None
+
+            edge = Edge(self, row["id"], row["prev_node"], row["next_node"],
+                        row["has_space"])
+            append(edge)
+
+            last_node = row[1]
+
+        return edges
 
     def init(self, order, tokenizer, run_migrations=True):
         c = self.cursor()
@@ -761,40 +721,37 @@ CREATE TABLE info (
 CREATE TABLE tokens (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     text TEXT UNIQUE NOT NULL,
-    is_word INTEGER NOT NULL)""")
+    is_word INTEGER NOT NULL,
+    count INTEGER NOT NULL)""")
 
         tokens = []
         for i in xrange(order):
-            tokens.append("token%d_id INTEGER NOT NULL REFERENCES token(id)" % i)
+            tokens.append("token%d_id INTEGER REFERENCES token(id)" % i)
 
-        log.debug("Creating table: expr")
+        log.debug("Creating table: token_stems")
         c.execute("""
-CREATE TABLE expr (
+CREATE TABLE token_stems (
+    token_id INTEGER,
+    stem TEXT NOT NULL)""")
+
+        log.debug("Creating table: nodes")
+        c.execute("""
+CREATE TABLE nodes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     count INTEGER NOT NULL,
     %s)""" % ',\n    '.join(tokens))
 
-        log.debug("Creating table: next_token")
+        log.debug("Creating table: edges")
         c.execute("""
-CREATE TABLE next_token (
+CREATE TABLE edges (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    expr_id INTEGER NOT NULL REFERENCES expr (id),
-    token_id INTEGER NOT NULL REFERENCES token (id),
-    count INTEGER NOT NULL)""")
-
-        log.debug("Creating table: prev_token")
-        c.execute("""
-CREATE TABLE prev_token (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    expr_id INTEGER NOT NULL REFERENCES expr (id),
-    token_id INTEGER NOT NULL REFERENCES token (id),
-    count INTEGER NOT NULL)""")
+    prev_node INTEGER NOT NULL REFERENCES nodes(id),
+    next_node INTEGER NOT NULL REFERENCES nodes(id),
+    count INTEGER NOT NULL,
+    has_space INTEGER NOT NULL)""")
 
         if run_migrations:
             self._run_migrations()
-
-        # create a token for the end of a chain
-        self.insert_token(_END_TOKEN_TEXT, 0, c=c)
 
         # save the order of this brain
         self.set_info_text("order", str(order), c=c)
@@ -803,24 +760,24 @@ CREATE TABLE prev_token (
         self.set_info_text("tokenizer", tokenizer)
 
         # save the brain/schema version
-        self.set_info_text("version", "1")
+        self.set_info_text("version", "2")
 
         c.execute("""
 CREATE INDEX tokens_text on tokens (text)""")
 
-        for i in xrange(order):
-            c.execute("""
-CREATE INDEX expr_token%d_id on expr (token%d_id)""" % (i, i))
-
         token_ids = ",".join(["token%d_id" % i for i in xrange(order)])
         c.execute("""
-CREATE INDEX expr_token_ids on expr (%s)""" % token_ids)
+CREATE INDEX nodes_token_ids on nodes (%s)""" % token_ids)
+
+        # used for finding random nodes for each token
+        for i in xrange(1, order):
+            c.execute("""
+CREATE INDEX nodes_token%d_id on nodes (token%d_id)""" % (i, i))
 
         c.execute("""
-CREATE INDEX next_token_expr_id ON next_token (expr_id, token_id)""")
-
+CREATE INDEX edges_all_next ON edges (next_node, prev_node, has_space)""")
         c.execute("""
-CREATE INDEX prev_token_expr_id ON prev_token (expr_id, token_id)""")
+CREATE INDEX edges_all_prev ON edges (prev_node, next_node, has_space)""")
 
         self.commit()
         c.close()
@@ -876,80 +833,7 @@ CREATE INDEX token_stems_stem on token_stems (stem)""")
 
     def _run_migrations(self):
         _start = _trace.now()
-        self._maybe_add_token_counts()
-        self._maybe_add_token_stems()
+
+        # no migrations yet in the 2.0 codebase
+
         _trace.trace("Db.run_migrations_us", _trace.now() - _start)
-
-    def _maybe_add_token_counts(self):
-        c = self.cursor()
-
-        try:
-            c.execute("""
-SELECT count FROM tokens LIMIT 1""")
-        except sqlite3.OperationalError:  # no such column: count
-            self._add_token_counts(c)
-
-        c.close()
-
-    def _add_token_counts(self, c):
-        log.info("SCHEMA UPDATE: adding token counts")
-        _start = _trace.now_ms()
-
-        c.execute("""
-ALTER TABLE tokens ADD COLUMN count INTEGER""")
-
-        read_c = self.cursor()
-
-        log.info("extracting next token counts")
-
-        q = read_c.execute("""
-SELECT count(*) AS count, token_id AS id FROM next_token GROUP BY id""")
-
-        for row in q:
-            c.execute("""
-UPDATE tokens SET count = ? WHERE id = ?""", (row[0], row[1]))
-
-        self.commit()
-
-        log.info("extracting prev token counts")
-
-        # add counts for tokens that were never in next_token
-        q = read_c.execute("""
-SELECT count(*) AS count, token_id AS id FROM prev_token,tokens WHERE tokens.count IS NULL AND tokens.id = prev_token.token_id GROUP BY id""")
-
-        for row in q:
-            c.execute("""
-UPDATE tokens SET count = ? WHERE id = ?""", tuple(row))
-
-        # Some tokens can still have NULL counts, if they have only been
-        # found in training input shorter than the current Markov order.
-        # Set their counts to 1 to have valid data.
-        c.execute("""
-UPDATE tokens SET count = 1 WHERE count IS NULL""")
-
-        self.commit()
-        _trace.trace("Db.add_token_counts_us", _trace.now_ms() - _start)
-
-    def _maybe_add_token_stems(self):
-        c = self.cursor()
-
-        try:
-            c.execute("""
-SELECT stem FROM token_stems LIMIT 1""")
-        except sqlite3.OperationalError:  # no such table: token_stems
-            self._add_token_stems(c)
-
-        c.close()
-
-    def _add_token_stems(self, c):
-        log.info("SCHEMA UPDATE: adding token stems")
-        _start = _trace.now_ms()
-
-        c.execute("""
-CREATE TABLE token_stems (
-    token_id INTEGER,
-    stem TEXT NOT NULL)""")
-
-        self.commit()
-
-        _trace.trace("Db.add_token_stems_us", _trace.now_ms() - _start)

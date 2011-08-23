@@ -79,6 +79,46 @@ class testLearn(unittest.TestCase):
         if os.path.exists(TEST_BRAIN_FILE):
             os.remove(TEST_BRAIN_FILE)
 
+    def testExpandContexts(self):
+        Brain.init(TEST_BRAIN_FILE, order=2)
+        brain = Brain(TEST_BRAIN_FILE)
+
+        tokens = ["this", " ", "is", " ", "a", " ", "test"]
+        self.assertEquals(list(brain._to_contexts(tokens)),
+                          [((None, None), False),
+                           ((None, "this"), False),
+                           (("this", "is"), True),
+                           (("is", "a"), True),
+                           (("a", "test"), True),
+                           (("test", None), False),
+                           ((None, None), False)])
+
+        tokens = ["this", "is", "a", "test"]
+        self.assertEquals(list(brain._to_contexts(tokens)),
+                          [((None, None), False),
+                           ((None, "this"), False),
+                           (("this", "is"), False),
+                           (("is", "a"), False),
+                           (("a", "test"), False),
+                           (("test", None), False),
+                           ((None, None), False)])
+
+    def testExpandGraph(self):
+        Brain.init(TEST_BRAIN_FILE, order=2)
+        brain = Brain(TEST_BRAIN_FILE)
+
+        tokens = ["this", " ", "is", " ", "a", " ", "test"]
+
+        print list(brain._to_graph(brain._to_contexts(tokens)))
+
+        self.assertEquals(list(brain._to_graph(brain._to_contexts(tokens))),
+                          [((None, None), False, (None, "this")),
+                           ((None, "this"), True, ("this", "is")),
+                           (("this", "is"), True, ("is", "a")),
+                           (("is", "a"), True, ("a", "test")),
+                           (("a", "test"), False, ("test", None)),
+                           (("test", None), False, (None, None))])
+
     def testLearn(self):
         Brain.init(TEST_BRAIN_FILE, order=2)
         brain = Brain(TEST_BRAIN_FILE)

@@ -1,7 +1,6 @@
 # Copyright (C) 2010 Peter Teichman
 
 import datetime
-import math
 import os
 import time
 

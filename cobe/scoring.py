@@ -1,12 +1,14 @@
 # Copyright (C) 2011 Peter Teichman
 
 import math
-import re
 
 
 class Scorer:
     def __init__(self, reverse=False):
         self.reverse = reverse
+
+    def end(self, reply):
+        pass
 
     def finish(self, score):
         if self.reverse:
@@ -21,7 +23,7 @@ class Scorer:
 
         return 1.0 - 1.0 / (1.0 + score)
 
-    def score(self, input_tokens, output_tokens, db_cache):
+    def score(self, reply):
         return NotImplementedError
 
 
@@ -32,90 +34,66 @@ class ScorerGroup:
     def add_scorer(self, weight, scorer):
         self.scorers.append((weight, scorer))
 
-    def score(self, input_tokens, output_tokens, db):
+    def end(self, reply):
+        for scorer in self.scorers:
+            scorer[1].end(reply)
+
+    def score(self, reply):
         score = 0.
 
         for weight, scorer in self.scorers:
-            score += weight * scorer.score(input_tokens, output_tokens, db)
+            score += weight * scorer.score(reply)
 
         return score
 
 
 class CobeScorer(Scorer):
-    """Classic Cobe scorer, similar to MegaHAL's scorer but with bugs"""
-    def __init__(self, order, **kwargs):
-        Scorer.__init__(self, **kwargs)
-        self.order = order
+    """Classic Cobe scorer"""
+    def __init__(self):
+        Scorer.__init__(self)
 
-    def score(self, input_tokens, output_tokens, db):
-        # If input_tokens is empty (i.e. we didn't know any words in
-        # the input), use output == input to make sure we still check
-        # scoring
-        if len(input_tokens) == 0:
-            input_tokens = output_tokens
+        self.cache = {}
 
-        score = 0.
+    def score(self, reply):
+        info = 0.
 
-        # evaluate forward probabilities
-        for output_idx in xrange(len(output_tokens) - self.order):
-            output_token = output_tokens[output_idx + self.order]
-            if output_token in input_tokens:
-                expr = output_tokens[output_idx:output_idx + self.order]
+        get_probability = reply.graph.get_edge_probability
+        c = reply.graph.cursor()
 
-                p = db.get_expr_token_probability("next_token", expr,
-                                                  output_token)
+        cache = self.cache
+        for edge in reply.edges:
+            try:
+                p = cache[edge.edge_id]
+            except KeyError:
+                p = get_probability(edge, c)
+                cache[edge.edge_id] = p
 
-                if p > 0:
-                    score -= math.log(p, 2)
+            info += -math.log(p, 2)
 
-        # evaluate reverse probabilities
-        for output_idx in xrange(len(output_tokens) - self.order):
-            output_token = output_tokens[output_idx]
-            if output_token in input_tokens:
-                start = output_idx + 1
-                end = start + self.order
+        n_edges = len(reply.edges)
+        if n_edges > 8:
+            info /= math.sqrt(n_edges - 1)
+        elif n_edges >= 16:
+            info /= n_edges
 
-                expr = output_tokens[start:end]
+        return self.finish(self.normalize(info))
 
-                p = db.get_expr_token_probability("prev_token", expr,
-                                                  output_token)
+    def end(self, reply):
+        self.cache = {}
 
-                if p > 0:
-                    score -= math.log(p, 2)
+class InformationScorer(Scorer):
+    """Score based on the information of each edge in the graph"""
+    def score(self, reply):
+        info = 0.
+        for edge in reply.edges:
+            info += -math.log(edge.probability, 2)
 
-        raw_score = score
+        # return the average information per word
+        info /= len(reply.edges)
 
-        # Prefer smaller replies. This behavior is present but not
-        # documented in recent MegaHAL.
-        score_divider = 1
-        n_tokens = len(output_tokens)
-        if n_tokens >= 8:
-            score_divider = math.sqrt(n_tokens - 1)
-        elif n_tokens >= 16:
-            score_divider = n_tokens
-
-        score = score / score_divider
-
-        return self.finish(self.normalize(score))
+        return self.finish(self.normalize(info))
 
 
 class LengthScorer(Scorer):
-    def score(self, input_tokens, output_tokens, db):
-        return self.finish(self.normalize(len(output_tokens)))
-
-
-class ShoutyScorer(Scorer):
-    def score(self, input_tokens, output_tokens, db):
-        infos = [db.get_token_info(token_id) for token_id in output_tokens]
-
-        words = []
-        for info in infos:
-            if info["is_word"] and len(info["text"]) > 1:
-                words.append(info["text"])
-
-        shouty_count = 0
-        for word in words:
-            if word == word.upper():
-                shouty_count += 1
-
-        return self.finish(float(shouty_count) / len(words))
+    def score(self, reply):
+        return self.finish(self.normalize(len(reply.edges)))

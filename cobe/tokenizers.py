@@ -3,6 +3,7 @@
 import re
 import Stemmer
 import types
+import unicodedata
 
 
 class MegaHALTokenizer:
@@ -51,8 +52,10 @@ This tokenizer ignores differences in capitalization."""
         return u"".join(chars)
 
 
-class CobeTokenizer:
-    """A tokenizer that is somewhat improved from MegaHAL. These are
+class CobeRegexTokenizer:
+    """This tokenizer is deprecated in favor of the non-regex version below
+
+A tokenizer that is somewhat improved from MegaHAL. These are
 considered tokens:
   * one or more consecutive Unicode word characters (plus apostrophe)
   * one or more consecutive Unicode non-word characters
@@ -86,6 +89,72 @@ tokens."""
 
     def join(self, words):
         return u"".join(words)
+
+
+class CobeTokenizer:
+    def _tokentype(self, char):
+        cat = unicodedata.category(char)
+        if cat.startswith("L") or cat.startswith("N") or char == "_":
+            # word character
+            return "W"
+
+        return cat[0]
+
+    def _tokens(self, phrase):
+        start = 0
+        tokentype = self._tokentype(phrase[0])
+        in_url = False
+
+        for i in xrange(len(phrase)):
+            char = phrase[i]
+
+            if char == ":" and tokentype == "W":
+                # URL detection. When we hit a colon in a word token,
+                # grab everything until the next whitespace.
+                in_url = True
+                continue
+
+            if char == "-" or char == "'":
+                # dash and single quote are part of whatever token
+                # they're within
+                continue
+
+            char_tokentype = self._tokentype(char)
+
+            # urls accumulate until they're terminated with a space
+            if char_tokentype != "Z" and in_url:
+                continue
+
+            # spaces accumulate in the middle of punctuation tokens
+            if char_tokentype == "Z" and tokentype == "P":
+                # if the next character isn't another space or punctuation,
+                # stop accumulating spaces and yield the previous token
+                if (i == len(phrase) - 1) \
+                        or self._tokentype(phrase[i+1]) not in "ZP":
+                    tmp = phrase[start:i].rstrip()
+                    start = start + len(tmp)
+                    yield tmp
+
+                continue
+
+            if char_tokentype != tokentype:
+                yield phrase[start:i]
+
+                # start tracking the next token
+                tokentype = char_tokentype
+                in_url = False
+                start = i
+
+        yield phrase[start:]
+
+    def split(self, phrase):
+        if type(phrase) != types.UnicodeType:
+            raise TypeError("Input must be Unicode")
+
+        if len(phrase) == 0:
+            return []
+
+        return list(self._tokens(phrase))
 
 
 class CobeStemmer:

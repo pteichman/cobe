@@ -19,7 +19,7 @@ class InitCommand:
         subparser = parser.add_parser("init", help="Initialize a new brain")
 
         subparser.add_argument("--force", action="store_true")
-        subparser.add_argument("--order", type=int, default=5)
+        subparser.add_argument("--order", type=int, default=3)
         subparser.add_argument("--megahal", action="store_true",
                                help="Use MegaHAL-compatible tokenizer")
         subparser.set_defaults(run=cls.run)
@@ -127,6 +127,7 @@ class LearnIrcLogCommand:
                     sys.stdout.write("\r%.0f%% (%d/s)" % (progress,
                                                           count / elapsed))
                     sys.stdout.flush()
+                    b.graph.commit()
 
                 count = count + 1
 

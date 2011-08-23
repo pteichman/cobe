@@ -2,7 +2,6 @@
 
 import re
 import sys
-import time
 
 from twisted.words.protocols import irc
 from twisted.internet import reactor, protocol
