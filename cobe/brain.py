@@ -250,16 +250,18 @@ class Brain:
     def _conflate_stems(self, pivot_set, tokens):
         for token in tokens:
             stem_ids = self._db.get_token_stem_ids(self.stemmer.stem(token))
-            if stem_ids is not None:
-                # add the tuple of stems to the pivot set, and then
-                # remove the individual token_ids
-                pivot_set.add(tuple(stem_ids))
+            if len(stem_ids) == 0:
+                continue
 
-                for stem_id in stem_ids:
-                    try:
-                        pivot_set.remove(stem_id)
-                    except KeyError:
-                        pass
+            # add the tuple of stems to the pivot set, and then
+            # remove the individual token_ids
+            pivot_set.add(stem_ids)
+
+            for stem_id in stem_ids:
+                try:
+                    pivot_set.remove(stem_id)
+                except KeyError:
+                    pass
 
     def _babble(self):
         token_ids = []
@@ -601,9 +603,9 @@ class _Sql:
             c = self.cursor()
 
         q = "SELECT token_id FROM token_stems WHERE token_stems.stem = ?"
-        row = c.execute(q, (stem,)).fetchall()
-        if row:
-            return [val[0] for val in row]
+        rows = c.execute(q, (stem,))
+        if rows:
+            return tuple(val[0] for val in rows)
 
     def get_random_word_token(self, c=None):
         if c is None:
