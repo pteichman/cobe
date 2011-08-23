@@ -199,28 +199,33 @@ class Brain:
         _start = _trace.now()
         while best_reply is None or time.time() < end:
             _now = _trace.now()
-            reply, pivot_idx = self._generate_reply(pivot_set, db_cache)
+            reply = self._generate_reply(pivot_set, db_cache)
             _trace.trace("Brain.generate_reply_us", _trace.now() - _now)
 
+            if reply is None:
+                continue
+
+            token_ids, pivot_idx = reply
+
             _now = _trace.now()
-            score = self._evaluate_reply(input_ids, reply, db_cache)
+            score = self._evaluate_reply(input_ids, token_ids, db_cache)
             _trace.trace("Brain.evaluate_reply_us", _trace.now() - _now)
 
-            _trace.trace("Brain.reply_output_token_count", len(reply))
+            _trace.trace("Brain.reply_output_token_count", len(token_ids))
 
             count += 1
 
             if score > best_score:
                 best_score = score
-                best_reply = reply
+                best_reply = token_ids
 
             # dump all replies to the console if debugging is enabled
             if log.isEnabledFor(logging.DEBUG):
-                all_replies.append((score, reply, pivot_idx))
+                all_replies.append((score, token_ids, pivot_idx))
 
         all_replies.sort()
-        for score, reply, pivot_idx in all_replies:
-            words = db_cache.get_token_texts(reply)
+        for score, token_ids, pivot_idx in all_replies:
+            words = db_cache.get_token_texts(token_ids)
             words[pivot_idx] = "[%s]" % words[pivot_idx]
 
             text = self.tokenizer.join(words)
@@ -291,26 +296,20 @@ class Brain:
 
     def _generate_reply(self, token_probs, db_cache):
         if len(token_probs) == 0:
-            return None
-
-        # generate a reply containing one of token_ids
-        db = self._db
-        c = db.cursor()
-        c.arraysize = 200
-
-        pivot_token_id = self._choose_pivot(token_probs)
-        pivot_expr_id, pivot_expr_idx = db.get_random_expr(pivot_token_id, c=c)
-
-        if pivot_expr_id is None:
             return
 
-        next_token_ids = db_cache.follow_chain(_NEXT_TOKEN_TABLE,
-                                               pivot_expr_id)
-        prev_token_ids = db_cache.follow_chain(_PREV_TOKEN_TABLE,
-                                               pivot_expr_id)
+        # generate a reply containing one of token_ids
+        token_id = self._choose_pivot(token_probs)
+        expr_id, expr_idx = self._db.get_random_expr(token_id)
+
+        if expr_id is None:
+            return
+
+        next_token_ids = db_cache.follow_chain(_NEXT_TOKEN_TABLE, expr_id)
+        prev_token_ids = db_cache.follow_chain(_PREV_TOKEN_TABLE, expr_id)
 
         # Save the index of the pivot token in the reply.
-        pivot_idx = len(prev_token_ids) - self.order + pivot_expr_idx
+        pivot_idx = len(prev_token_ids) - self.order + expr_idx
 
         # strip the original expr from the prev reply
         for i in xrange(self.order):
