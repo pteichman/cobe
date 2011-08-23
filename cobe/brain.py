@@ -167,7 +167,7 @@ class Brain:
         input_ids = db_cache.get_token_ids(tokens)
 
         # filter out unknown words and non-words from the potential pivots
-        pivot_set = self._filter_pivots(input_ids)
+        pivot_set = self._filter_pivots(input_ids, db_cache)
 
         # Conflate the known ids with the stems of their words
         if self.stemmer is not None:
@@ -272,13 +272,12 @@ class Brain:
 
         return token_ids
 
-    def _filter_pivots(self, pivot_set):
+    def _filter_pivots(self, pivot_set, db_cache):
         # remove pivots that might not give good results
         filtered = set()
 
         for pivot_id in pivot_set:
-            if pivot_id is not None \
-                    and self._db.get_token_is_word(pivot_id):
+            if pivot_id is not None and db_cache.get_token_is_word(pivot_id):
                 filtered.add(pivot_id)
 
         return filtered
@@ -425,6 +424,17 @@ class DbCache:
 
     def get_token_texts(self, token_ids):
         return [self.get_token_text(token_id) for token_id in token_ids]
+
+    def get_token_is_word(self, pivot_id):
+        memo = self.cache.setdefault("is_word", {})
+
+        try:
+            is_word = memo[pivot_id]
+        except KeyError:
+            is_word = self.db.get_token_is_word(pivot_id)
+            memo[pivot_id] = is_word
+
+        return is_word
 
     def get_expr_token_ids(self, expr_id):
         memo = self.cache.setdefault("expr_token_ids", {})
