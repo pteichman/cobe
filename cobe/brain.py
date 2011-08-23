@@ -411,30 +411,25 @@ class DbCache:
     def get_token_ids(self, words):
         return [self.get_token_id(word) for word in words]
 
-    def get_token_text(self, token_id):
-        memo = self.cache.setdefault("token_text", {})
+    def get_token_info(self, token_id):
+        memo = self.cache.setdefault("token_info", {})
 
         try:
-            text = memo[token_id]
+            info = memo[token_id]
         except KeyError:
-            text = self.db.get_token_text(token_id)
-            memo[token_id] = text
+            info = self.db.get_token_info(token_id)
+            memo[token_id] = info
 
-        return text
+        return info
+
+    def get_token_text(self, token_id):
+        return self.get_token_info(token_id)["text"]
 
     def get_token_texts(self, token_ids):
         return [self.get_token_text(token_id) for token_id in token_ids]
 
-    def get_token_is_word(self, pivot_id):
-        memo = self.cache.setdefault("is_word", {})
-
-        try:
-            is_word = memo[pivot_id]
-        except KeyError:
-            is_word = self.db.get_token_is_word(pivot_id)
-            memo[pivot_id] = is_word
-
-        return is_word
+    def get_token_is_word(self, token_id):
+        return self.get_token_info(token_id)["is_word"]
 
     def get_expr_token_ids(self, expr_id):
         memo = self.cache.setdefault("expr_token_ids", {})
@@ -628,23 +623,14 @@ class _Sql:
         if row:
             return row["id"]
 
-    def get_token_is_word(self, token_id, c=None):
+    def get_token_info(self, token_id, c=None):
         if c is None:
             c = self.cursor()
 
-        q = "SELECT is_word FROM tokens WHERE id = ?"
+        q = "SELECT text, is_word FROM tokens WHERE id = ?"
         row = c.execute(q, (token_id,)).fetchone()
         if row:
-            return row["is_word"]
-
-    def get_token_text(self, token_id, c=None):
-        if c is None:
-            c = self.cursor()
-
-        q = "SELECT text FROM tokens WHERE id = ?"
-        row = c.execute(q, (token_id,)).fetchone()
-        if row:
-            return row[0]
+            return row
 
     def get_expr_token_ids(self, expr_id, c=None):
         if c is None:
