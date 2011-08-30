@@ -142,6 +142,10 @@ class testCobeTokenizer(unittest.TestCase):
         words = self.tokenizer.split(u"hi - cobe")
         self.assertEquals(words, ["hi", " ", "-", " ", "cobe"])
 
+    def testSplitMultipleSpacesWithDash(self):
+        words = self.tokenizer.split(u"hi  -  cobe")
+        self.assertEquals(words, ["hi", " ", "-", " ", "cobe"])
+
     def testSplitUrl(self):
         words = self.tokenizer.split(u"http://www.google.com/")
         self.assertEquals(words, ["http://www.google.com/"])
@@ -161,14 +165,14 @@ class testCobeTokenizer(unittest.TestCase):
 
     def testSplitMultipleSpaces(self):
         words = self.tokenizer.split(u"this is  a test")
-        self.assertEquals(words, ["this", " ", "is", "  ", "a", " ", "test"])
+        self.assertEquals(words, ["this", " ", "is", " ", "a", " ", "test"])
 
     def testSplitVerySadFrown(self):
         words = self.tokenizer.split(u"testing :    (")
         self.assertEquals(words, ["testing", " ", ":    ("])
 
         words = self.tokenizer.split(u"testing          :    (  ")
-        self.assertEquals(words, ["testing", "          ", ":    (", "  "])
+        self.assertEquals(words, ["testing", " ", ":    (", " "])
 
     def testSplitHyphenatedWord(self):
         words = self.tokenizer.split(u"test-ing")

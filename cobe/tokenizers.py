@@ -155,7 +155,15 @@ class CobeTokenizer:
         if len(phrase) == 0:
             return []
 
-        return list(self._tokens(phrase))
+        tokens = []
+        for i, token in enumerate(self._tokens(phrase)):
+            # collapse any run of whitespace into a single space
+            if len(token) > 1 and token[0] == " ":
+                tokens.append(" ")
+            else:
+                tokens.append(token)
+
+        return tokens
 
 
 class CobeStemmer:
