@@ -439,13 +439,14 @@ class Graph:
             self._last_token = "token%d_id" % (self.order - 1)
 
             # Use a 10M cache by default. This speeds replies quite a bit.
-            self.cursor().execute("PRAGMA cache_size=10000")
+            c = self.cursor()
+            c.execute("PRAGMA cache_size=10000")
 
             # Each of these speed-for-reliability tradeoffs is useful for
             # bulk learning.
-            self.cursor().execute("PRAGMA synchronous=OFF")
-            self.cursor().execute("PRAGMA journal_mode=truncate")
-            self.cursor().execute("PRAGMA temp_store=memory")
+            c.execute("PRAGMA journal_mode=truncate")
+            c.execute("PRAGMA temp_store=memory")
+            c.execute("PRAGMA synchronous=OFF")
 
     def cursor(self):
         return self._conn.cursor()
@@ -459,9 +460,8 @@ class Graph:
     def close(self):
         return self._conn.close()
 
-    def is_initted(self, c=None):
-        if c is None:
-            c = self.cursor()
+    def is_initted(self):
+        c = self.cursor()
 
         try:
             self.get_info_text("order")
@@ -469,9 +469,8 @@ class Graph:
         except sqlite3.OperationalError:
             return False
 
-    def set_info_text(self, attribute, text, c=None):
-        if c is None:
-            c = self.cursor()
+    def set_info_text(self, attribute, text):
+        c = self.cursor()
 
         if text is None:
             q = "DELETE FROM info WHERE attribute = ?"
@@ -484,9 +483,8 @@ class Graph:
                 q = "INSERT INTO info (attribute, text) VALUES (?, ?)"
                 c.execute(q, (attribute, text))
 
-    def get_info_text(self, attribute, default=None, text_factory=None, c=None):
-        if c is None:
-            c = self.cursor()
+    def get_info_text(self, attribute, default=None, text_factory=None):
+        c = self.cursor()
 
         if text_factory is not None:
             old_text_factory = self._conn.text_factory
@@ -511,9 +509,8 @@ class Graph:
 
         return str(tuple(seq))
 
-    def get_token_by_text(self, text, create=False, c=None):
-        if c is None:
-            c = self.cursor()
+    def get_token_by_text(self, text, create=False):
+        c = self.cursor()
 
         q = "SELECT id FROM tokens WHERE text = ?"
 
@@ -527,65 +524,49 @@ class Graph:
             c.execute(q, (text, is_word))
             return c.lastrowid
 
-    def get_token_by_id(self, token_id, c=None):
-        if c is None:
-            c = self.cursor()
-
+    def get_token_by_id(self, token_id):
         q = "SELECT text FROM tokens WHERE id = ?"
-        row = c.execute(q, (token_id,)).fetchone()
+        row = self._conn.execute(q, (token_id,)).fetchone()
         if row:
             return row[0]
 
-    def get_token_stem_ids(self, stem, c=None):
-        if c is None:
-            c = self.cursor()
-
+    def get_token_stem_ids(self, stem):
         q = "SELECT token_id FROM token_stems WHERE token_stems.stem = ?"
-        rows = c.execute(q, (stem,))
+        rows = self._conn.execute(q, (stem,))
         if rows:
             return tuple(val[0] for val in rows)
 
-    def get_word_by_node(self, node_id, c=None):
+    def get_word_by_node(self, node_id):
         # return the last word in the node
-        if c is None:
-            c = self.cursor()
-
         q = "SELECT tokens.text FROM nodes, tokens WHERE nodes.id = ? " \
             "AND %s = tokens.id" % self._last_token
 
-        row = c.execute(q, (node_id,)).fetchone()
+        row = self._conn.execute(q, (node_id,)).fetchone()
         if row:
             return row[0]
 
-    def get_word_tokens(self, token_ids, c=None):
-        if c is None:
-            c = self.cursor()
-
+    def get_word_tokens(self, token_ids):
         q = "SELECT id FROM tokens WHERE id IN %s AND is_word = 1" % \
             self.get_seq_expr(token_ids)
 
-        rows = c.execute(q)
+        rows = self._conn.execute(q)
         if rows:
             return [row["id"] for row in rows]
 
         return []
 
-    def get_tokens(self, token_ids, c=None):
-        if c is None:
-            c = self.cursor()
-
+    def get_tokens(self, token_ids):
         q = "SELECT id FROM tokens WHERE id IN %s" % \
             self.get_seq_expr(token_ids)
 
-        rows = c.execute(q)
+        rows = self._conn.execute(q)
         if rows:
             return [row["id"] for row in rows]
 
         return []
 
-    def get_node_by_tokens(self, tokens, c=None):
-        if c is None:
-            c = self.cursor()
+    def get_node_by_tokens(self, tokens):
+        c = self.cursor()
 
         q = "SELECT id FROM nodes WHERE %s" % self._all_tokens_args
 
@@ -599,37 +580,27 @@ class Graph:
         c.execute(q, tokens)
         return c.lastrowid
 
-    def get_node_tokens(self, node_id, c=None):
-        if c is None:
-            c = self.cursor()
-
+    def get_node_tokens(self, node_id):
         q = "SELECT %s FROM nodes WHERE id = ?" % self._all_tokens
 
-        row = c.execute(q, (node_id,)).fetchone()
+        row = self._conn.execute(q, (node_id,)).fetchone()
         assert row is not None
 
         return tuple(row)
 
-    def get_node_text(self, node_id, c=None):
-        if c is None:
-            c = self.cursor()
-
-        tokens = self.get_node_tokens(node_id, c)
+    def get_node_text(self, node_id):
+        tokens = self.get_node_tokens(node_id)
         return [self.get_token_by_id(token_id) for token_id in tokens]
 
-    def get_random_node(self, c=None):
-        if c is None:
-            c = self.cursor()
-
+    def get_random_node(self):
         q = "SELECT id FROM nodes WHERE " \
             "id >= abs(random()) % (SELECT MAX(id) FROM tokens) + 1 LIMIT 1"
-        row = c.execute(q).fetchone()
+        row = self._conn.execute(q).fetchone()
         if row:
             return row["id"]
 
-    def get_random_node_with_token(self, token_id, c=None):
-        if c is None:
-            c = self.cursor()
+    def get_random_node_with_token(self, token_id):
+        c = self.cursor()
 
         # try looking for the token in a random spot in the node
         positions = range(self.order)
@@ -643,9 +614,8 @@ class Graph:
             if row:
                 return int(row[0])
 
-    def add_edge(self, prev_node, next_node, has_space, c=None):
-        if c is None:
-            c = self.cursor()
+    def add_edge(self, prev_node, next_node, has_space):
+        c = self.cursor()
 
         assert type(has_space) == types.BooleanType
 
@@ -665,16 +635,13 @@ class Graph:
         q = "UPDATE nodes SET count = count + 1 WHERE id = ?"
         c.execute(q, (next_node,))
 
-    def get_edge_probability(self, edge, c=None):
+    def get_edge_probability(self, edge):
         """Return the probability of edge following its prev_node"""
-        if c is None:
-            c = self.cursor()
-
         q = "SELECT edges.count AS edges_count, nodes.count AS nodes_count " \
             "FROM edges, nodes " \
             "WHERE edges.id = ? AND nodes.id = edges.prev_node"
 
-        row = c.execute(q, (edge.edge_id,)).fetchone()
+        row = self._conn.execute(q, (edge.edge_id,)).fetchone()
         assert row
 
         return float(row[0]) / row[1]
@@ -758,7 +725,7 @@ CREATE TABLE edges (
             self._run_migrations()
 
         # save the order of this brain
-        self.set_info_text("order", str(order), c=c)
+        self.set_info_text("order", str(order))
 
         # save the tokenizer
         self.set_info_text("tokenizer", tokenizer)

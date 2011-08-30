@@ -58,14 +58,13 @@ class CobeScorer(Scorer):
         info = 0.
 
         get_probability = reply.graph.get_edge_probability
-        c = reply.graph.cursor()
 
         cache = self.cache
         for edge in reply.edges:
             try:
                 p = cache[edge.edge_id]
             except KeyError:
-                p = get_probability(edge, c)
+                p = get_probability(edge)
                 cache[edge.edge_id] = p
 
             info += -math.log(p, 2)
