@@ -157,9 +157,6 @@ with its two nodes"""
         token_ids = [self.graph.get_token_by_text(text, create=True)
                      for text in tokens]
 
-        # increment the seen count on each token
-        self.graph.add_token_counts(token_ids)
-
         edges = list(self._to_edges(token_ids))
 
         prev_id = None
@@ -520,7 +517,7 @@ class Graph:
         if row:
             return row[0]
         elif create:
-            q = "INSERT INTO tokens (text, is_word, count) VALUES (?, ?, 0)"
+            q = "INSERT INTO tokens (text, is_word) VALUES (?, ?)"
 
             is_word = bool(re.search("\w", text, re.UNICODE))
             c.execute(q, (text, is_word))
@@ -568,15 +565,6 @@ class Graph:
             return [row["id"] for row in rows]
 
         return []
-
-    def add_token_counts(self, tokens, c=None):
-        if c is None:
-            c = self.cursor()
-
-        q = "UPDATE tokens SET count = count + 1 WHERE id IN %s" % \
-            self.get_seq_expr(tokens)
-
-        c.execute(q)
 
     def get_node_by_tokens(self, tokens, c=None):
         if c is None:
@@ -721,8 +709,7 @@ CREATE TABLE info (
 CREATE TABLE tokens (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     text TEXT UNIQUE NOT NULL,
-    is_word INTEGER NOT NULL,
-    count INTEGER NOT NULL)""")
+    is_word INTEGER NOT NULL)""")
 
         tokens = []
         for i in xrange(order):
