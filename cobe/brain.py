@@ -297,7 +297,7 @@ with its two nodes"""
                     pass
 
     def _get_reply_key(self, reply):
-        return tuple([(edge.prev, edge.next) for edge in reply.edges])
+        return tuple([edge.edge_id for edge in reply.edges])
 
     def _babble(self):
         token_ids = []
