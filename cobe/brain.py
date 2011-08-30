@@ -400,13 +400,14 @@ class Reply:
 
 
 class Edge:
-    def __init__(self, graph, edge_id, prev, next, has_space):
+    def __init__(self, graph, edge_id, prev, next, has_space, count):
         self.graph = graph
 
         self.edge_id = edge_id
         self.prev = prev
         self.next = next
         self.has_space = has_space
+        self.count = count
 
     def get_prev_word(self):
         # get the last word in the prev context
@@ -635,16 +636,13 @@ class Graph:
         q = "UPDATE nodes SET count = count + 1 WHERE id = ?"
         c.execute(q, (next_node,))
 
-    def get_edge_probability(self, edge):
-        """Return the probability of edge following its prev_node"""
-        q = "SELECT edges.count AS edges_count, nodes.count AS nodes_count " \
-            "FROM edges, nodes " \
-            "WHERE edges.id = ? AND nodes.id = edges.prev_node"
+    def get_node_count(self, node_id):
+        q = "SELECT count FROM nodes WHERE nodes.id = ?"
 
-        row = self._conn.execute(q, (edge.edge_id,)).fetchone()
+        row = self._conn.execute(q, (node_id,)).fetchone()
         assert row
 
-        return float(row[0]) / row[1]
+        return row[0]
 
     def walk(self, node, end_id, direction):
         """Perform a random walk on the graph starting at node"""
@@ -653,14 +651,16 @@ class Graph:
         edges = collections.deque()
 
         if direction == "next":
-            q = "SELECT id, next_node, prev_node, has_space " \
-                "FROM edges WHERE prev_node = ? " \
-                "LIMIT 1 OFFSET abs(random())%(SELECT count(*) from edges WHERE prev_node = ?)"
+            q = "SELECT id, next_node, prev_node, has_space, count " \
+                "FROM edges WHERE prev_node = :last " \
+                "LIMIT 1 OFFSET abs(random())%(SELECT count(*) from edges " \
+                "                              WHERE prev_node = :last)"
             append = edges.append
         elif direction == "prev":
-            q = "SELECT id, prev_node, next_node, has_space " \
-                "FROM edges WHERE next_node = ? " \
-                "LIMIT 1 OFFSET abs(random())%(SELECT count(*) from edges WHERE next_node = ?)"
+            q = "SELECT id, prev_node, next_node, has_space, count " \
+                "FROM edges WHERE next_node = :last " \
+                "LIMIT 1 OFFSET abs(random())%(SELECT count(*) from edges " \
+                "                              WHERE next_node = :last)"
             append = edges.appendleft
 
         last_node = node
@@ -668,11 +668,11 @@ class Graph:
             if last_node == end_id:
                 break
 
-            row = c.execute(q, (last_node, last_node)).fetchone()
+            row = c.execute(q, dict(last=last_node)).fetchone()
             assert row is not None
 
             edge = Edge(self, row["id"], row["prev_node"], row["next_node"],
-                        row["has_space"])
+                        row["has_space"], row["count"])
             append(edge)
 
             last_node = row[1]
@@ -746,9 +746,9 @@ CREATE INDEX nodes_token_ids on nodes (%s)""" % token_ids)
 CREATE INDEX nodes_token%d_id on nodes (token%d_id)""" % (i, i))
 
         c.execute("""
-CREATE INDEX edges_all_next ON edges (next_node, prev_node, has_space)""")
+CREATE INDEX edges_all_next ON edges (next_node, prev_node, has_space, count)""")
         c.execute("""
-CREATE INDEX edges_all_prev ON edges (prev_node, next_node, has_space)""")
+CREATE INDEX edges_all_prev ON edges (prev_node, next_node, has_space, count)""")
 
         self.commit()
         c.close()

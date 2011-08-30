@@ -57,17 +57,18 @@ class CobeScorer(Scorer):
     def score(self, reply):
         info = 0.
 
-        get_probability = reply.graph.get_edge_probability
+        get_node_count = reply.graph.get_node_count
 
         cache = self.cache
         for edge in reply.edges:
+            node_id = edge.prev
             try:
-                p = cache[edge.edge_id]
+                node_count = cache[node_id]
             except KeyError:
-                p = get_probability(edge)
-                cache[edge.edge_id] = p
+                node_count = get_node_count(node_id)
+                cache[node_id] = node_count
 
-            info += -math.log(p, 2)
+            info += -math.log(float(edge.count) / node_count, 2)
 
         # Approximate the number of cobe 1.2 contexts in this reply, so the
         # scorer will have similar results.
