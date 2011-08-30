@@ -428,14 +428,14 @@ class Graph:
             if run_migrations:
                 self._run_migrations()
 
-            self._order = int(self.get_info_text("order"))
+            self.order = int(self.get_info_text("order"))
 
             self._all_tokens = ",".join(["token%d_id" % i
-                                         for i in xrange(self._order)])
+                                         for i in xrange(self.order)])
             self._all_tokens_args = " AND ".join(
-                ["token%d_id = ?" % i for i in xrange(self._order)])
-            self._all_tokens_q = ",".join(["?" for i in xrange(self._order)])
-            self._last_token = "token%d_id" % (self._order - 1)
+                ["token%d_id = ?" % i for i in xrange(self.order)])
+            self._all_tokens_q = ",".join(["?" for i in xrange(self.order)])
+            self._last_token = "token%d_id" % (self.order - 1)
 
             # Use a 10M cache by default. This speeds replies quite a bit.
             self.cursor().execute("PRAGMA cache_size=10000")
@@ -627,7 +627,7 @@ class Graph:
             c = self.cursor()
 
         # try looking for the token in a random spot in the node
-        positions = range(self._order)
+        positions = range(self.order)
         random.shuffle(positions)
 
         for pos in positions:
