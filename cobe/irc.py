@@ -47,7 +47,7 @@ class CobeBot(irc.IRCClient):
             msg = match.group(1)
 
         # look for messages directed to a user
-        match = re.match("\s*(\S+)\s*[,:]\s+(.*?)\s*$", msg)
+        match = re.match("\s*(\S+)[,:]\s+(.*?)\s*$", msg)
 
         if match:
             to = match.group(1)
