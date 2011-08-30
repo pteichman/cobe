@@ -316,6 +316,10 @@ with its two nodes"""
 
         filtered = set()
         filtered.update(self.graph.get_word_tokens(tokens))
+
+        if len(filtered) == 0:
+            filtered.update(self.graph.get_tokens(tokens))
+
         return filtered
 
     def _choose_pivot(self, pivot_ids):
@@ -558,6 +562,19 @@ class Graph:
             c = self.cursor()
 
         q = "SELECT id FROM tokens WHERE id IN %s AND is_word = 1" % \
+            self.get_seq_expr(token_ids)
+
+        rows = c.execute(q)
+        if rows:
+            return [row["id"] for row in rows]
+
+        return []
+
+    def get_tokens(self, token_ids, c=None):
+        if c is None:
+            c = self.cursor()
+
+        q = "SELECT id FROM tokens WHERE id IN %s" % \
             self.get_seq_expr(token_ids)
 
         rows = c.execute(q)
