@@ -19,6 +19,10 @@ log = logging.getLogger("cobe")
 # use an empty string to denote the start/end of a chain
 _END_TOKEN = ""
 
+# use a magic token id for (single) whitespace, so space is never in
+# the tokens table
+_SPACE_TOKEN_ID = -1
+
 _trace = Instatrace()
 
 
@@ -116,8 +120,6 @@ found between the two tokens."""
         # prepend self.order Nones
         chain = self._end_context + tokens + self._end_context
 
-        # look up the whitespace token id
-        space_id = self.graph.get_token_by_text(" ")
         has_space = False
 
         context = []
@@ -126,7 +128,7 @@ found between the two tokens."""
             context.append(chain[i])
 
             if len(context) == self.order:
-                if chain[i] == space_id:
+                if chain[i] == _SPACE_TOKEN_ID:
                     context.pop()
                     has_space = True
                     continue
@@ -154,8 +156,14 @@ with its two nodes"""
         if token_count < 3:
             return
 
-        token_ids = [self.graph.get_token_by_text(text, create=True)
-                     for text in tokens]
+        # create each of the non-whitespace tokens
+        token_ids = []
+        for text in tokens:
+            if text == " ":
+                token_ids.append(_SPACE_TOKEN_ID)
+                continue
+
+            token_ids.append(self.graph.get_token_by_text(text, create=True))
 
         edges = list(self._to_edges(token_ids))
 
@@ -196,12 +204,6 @@ with its two nodes"""
         if len(pivot_set) == 0:
             pivot_set = self._babble()
 
-        if len(pivot_set) == 0:
-            # we couldn't find any pivot words in _babble(), so we're
-            # working with an essentially empty brain. Use the classic
-            # MegaHAL reply:
-            return "I don't know enough to answer you yet!"
-
         score_cache = {}
 
         best_score = -1.0
@@ -215,7 +217,7 @@ with its two nodes"""
         all_replies = []
 
         _start = time.time()
-        while best_reply is None or time.time() < end:
+        while time.time() < end:
             _now = _trace.now()
             candidate = self._generate_reply(pivot_set)
             _trace.trace("Brain.generate_reply_us", _trace.now() - _now)
@@ -246,6 +248,12 @@ with its two nodes"""
                 all_replies.append((score, reply))
 
         _time = time.time() - _start
+
+        if best_reply is None:
+            # we couldn't find any pivot words in _babble(), so we're
+            # working with an essentially empty brain. Use the classic
+            # MegaHAL reply:
+            return "I don't know enough to answer you yet!"
 
         self.scorer.end(best_reply)
 
