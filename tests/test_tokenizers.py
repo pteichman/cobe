@@ -138,6 +138,10 @@ class testCobeTokenizer(unittest.TestCase):
         words = self.tokenizer.split(u"hi, cobe")
         self.assertEquals(words, ["hi", ",", " ", "cobe"])
 
+    def testSplitDash(self):
+        words = self.tokenizer.split(u"hi - cobe")
+        self.assertEquals(words, ["hi", " ", "-", " ", "cobe"])
+
     def testSplitUrl(self):
         words = self.tokenizer.split(u"http://www.google.com/")
         self.assertEquals(words, ["http://www.google.com/"])

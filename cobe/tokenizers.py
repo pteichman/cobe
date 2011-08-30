@@ -115,9 +115,10 @@ class CobeTokenizer:
                 continue
 
             if char == "-" or char == "'":
-                # dash and single quote are part of whatever token
-                # they're within
-                continue
+                # Dash and single quote are part of whatever non-whitespace
+                # token they're within
+                if tokentype != "Z":
+                    continue
 
             char_tokentype = self._tokentype(char)
 
