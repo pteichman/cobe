@@ -70,11 +70,23 @@ class CobeScorer(Scorer):
 
             info += -math.log(p, 2)
 
-        n_edges = len(reply.edges)
-        if n_edges > 8:
-            info /= math.sqrt(n_edges - 1)
-        elif n_edges >= 16:
-            info /= n_edges
+        # Approximate the number of cobe 1.2 contexts in this reply, so the
+        # scorer will have similar results.
+
+        # First, we have (graph.order - 1) extra edges on either end of the
+        # reply, since cobe 2.0 learns from (_END_TOKEN, _END_TOKEN, ...).
+        n_words = len(reply.edges) - (reply.graph.order - 1) * 2
+
+        # Add back one word for each space between edges, since cobe 1.2
+        # treated those as separate parts of a context.
+        for edge in reply.edges:
+            if edge.has_space:
+                n_words += 1
+
+        if n_words > 8:
+            info /= math.sqrt(n_words - 1)
+        elif n_words >= 16:
+            info /= n_words
 
         return self.finish(self.normalize(info))
 
