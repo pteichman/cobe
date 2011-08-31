@@ -612,13 +612,16 @@ class Graph:
 
         # try looking for the token in a random spot in the node
         positions = range(self.order)
+
+        queries = [
+            "SELECT id FROM nodes WHERE token%s_id = ? "
+            "LIMIT 1 OFFSET abs(random())%%(SELECT count(*) from nodes "
+            "                               WHERE token%s_id = ?)" % (pos, pos)
+            for pos in positions]
+
         random.shuffle(positions)
-
         for pos in positions:
-            q = "SELECT id FROM nodes WHERE token%d_id = ? " \
-                "ORDER BY RANDOM() LIMIT 1" % pos
-
-            row = c.execute(q, (token_id,)).fetchone()
+            row = c.execute(queries[pos], (token_id, token_id)).fetchone()
             if row:
                 return int(row[0])
 
