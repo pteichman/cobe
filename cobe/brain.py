@@ -350,11 +350,10 @@ with its two nodes"""
         if node is None:
             return
 
-        next_edges = self.graph.walk(node, self._end_context_id, "next")
-        prev_edges = self.graph.walk(node, self._end_context_id, "prev")
+        edges = collections.deque()
 
-        edges = list(prev_edges)
-        edges.extend(next_edges)
+        next_edges = self.graph.walk(node, self._end_context_id, "next", edges)
+        prev_edges = self.graph.walk(node, self._end_context_id, "prev", edges)
 
         return edges, node
 
@@ -652,11 +651,9 @@ class Graph:
 
         return row[0]
 
-    def walk(self, node, end_id, direction):
+    def walk(self, node, end_id, direction, edges):
         """Perform a random walk on the graph starting at node"""
         c = self.cursor()
-
-        edges = collections.deque()
 
         if direction == "next":
             q = "SELECT id, next_node, prev_node, has_space, count " \
