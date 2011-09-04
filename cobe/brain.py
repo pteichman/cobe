@@ -16,18 +16,19 @@ from . import tokenizers
 
 log = logging.getLogger("cobe")
 
-# use an empty string to denote the start/end of a chain
-_END_TOKEN = ""
-
-# use a magic token id for (single) whitespace, so space is never in
-# the tokens table
-_SPACE_TOKEN_ID = -1
-
 _trace = Instatrace()
 
 
 class Brain:
     """The main interface for Cobe."""
+
+    # use an empty string to denote the start/end of a chain
+    END_TOKEN = ""
+
+    # use a magic token id for (single) whitespace, so space is never
+    # in the tokens table
+    SPACE_TOKEN_ID = -1
+
     def __init__(self, filename, instatrace=None):
         """Construct a brain for the specified filename. If that file
         doesn't exist, it will be initialized with the default brain
@@ -63,7 +64,8 @@ class Brain:
             except Exception, e:
                 log.error("Error creating stemmer: %s", str(e))
 
-        self._end_token_id = graph.get_token_by_text(_END_TOKEN, create=True)
+        self._end_token_id = \
+            graph.get_token_by_text(self.END_TOKEN, create=True)
 
         self._end_context = [self._end_token_id] * self.order
         self._end_context_id = graph.get_node_by_tokens(self._end_context)
@@ -128,7 +130,7 @@ found between the two tokens."""
             context.append(chain[i])
 
             if len(context) == self.order:
-                if chain[i] == _SPACE_TOKEN_ID:
+                if chain[i] == self.SPACE_TOKEN_ID:
                     context.pop()
                     has_space = True
                     continue
@@ -160,7 +162,7 @@ with its two nodes"""
         token_ids = []
         for text in tokens:
             if text == " ":
-                token_ids.append(_SPACE_TOKEN_ID)
+                token_ids.append(self.SPACE_TOKEN_ID)
                 continue
 
             token_ids.append(self.graph.get_token_by_text(text, create=True))
