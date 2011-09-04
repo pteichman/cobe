@@ -633,8 +633,8 @@ class Graph:
         update_q = "UPDATE edges SET count = count + 1 " \
             "WHERE prev_node = ? AND next_node = ? AND has_space = ?"
 
-        q = "INSERT INTO edges (prev_node, next_node, count, has_space) " \
-            "VALUES (?, ?, 1, ?)"
+        q = "INSERT INTO edges (prev_node, next_node, has_space, count) " \
+            "VALUES (?, ?, ?, 1)"
 
         args = (prev_node, next_node, has_space)
 
