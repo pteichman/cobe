@@ -352,8 +352,8 @@ with its two nodes"""
 
         edges = collections.deque()
 
-        next_edges = self.graph.walk(node, self._end_context_id, "next", edges)
-        prev_edges = self.graph.walk(node, self._end_context_id, "prev", edges)
+        self.graph.walk(node, self._end_context_id, "next", edges)
+        self.graph.walk(node, self._end_context_id, "prev", edges)
 
         return edges, node
 
@@ -469,8 +469,6 @@ class Graph:
         return self._conn.close()
 
     def is_initted(self):
-        c = self.cursor()
-
         try:
             self.get_info_text("order")
             return True
