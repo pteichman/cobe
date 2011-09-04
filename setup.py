@@ -14,8 +14,18 @@ setup(
     description = "A conversation simulator similar to MegaHAL",
     packages = ["cobe"],
     test_suite = "tests",
-    setup_requires = ["nose==1.1.2", "coverage==3.5"],
-    install_requires = ["argparse==1.2.1", "PyStemmer==1.1.0"],
+
+    setup_requires = [
+        "nose==1.1.2",
+        "coverage==3.5"
+        ],
+
+    install_requires = [
+        "PyStemmer==1.1.0",
+        "argparse==1.2.1",
+        "python-irclib==0.4.8"
+        ],
+
     classifiers = [
         "Development Status :: 5 - Production/Stable",
         "Environment :: Console",
@@ -26,6 +36,7 @@ setup(
         "Programming Language :: Python",
         "Topic :: Scientific/Engineering :: Artificial Intelligence"
     ],
+
     entry_points = {
         "console_scripts" : [
             "cobe = cobe.control:main"

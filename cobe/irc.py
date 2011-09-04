@@ -1,42 +1,33 @@
 # Copyright (C) 2010 Peter Teichman
 
+import irclib
+import logging
 import re
-import sys
 
-from twisted.words.protocols import irc
-from twisted.internet import reactor, protocol
-from twisted.python import log
+log = logging.getLogger("cobe.irc")
 
 
-class CobeBot(irc.IRCClient):
-    def connectionMade(self):
-        irc.IRCClient.connectionMade(self)
-        log.msg("[connected]")
-        self.setNick(self.factory.nickname)
+class Bot(irclib.SimpleIRCClient):
+    def __init__(self, brain, nick, ignored_nicks, only_nicks):
+        irclib.SimpleIRCClient.__init__(self)
 
-    def connectionLost(self, reason):
-        irc.IRCClient.connectionLost(self, reason)
-        log.msg("[disconnected]")
+        self.brain = brain
+        self.nick = nick
+        self.ignored_nicks = ignored_nicks
+        self.only_nicks = only_nicks
 
-    def signedOn(self):
-        """Called when bot has succesfully signed on to server."""
-        self.join(self.factory.channel)
-
-    def joined(self, channel):
-        """This will get called when the bot joins the channel."""
-        log.msg("[joined %s]" % channel)
-
-    def privmsg(self, user, channel, msg):
-        """This will get called when the bot receives a message."""
-        user = user.split('!', 1)[0]
+    def on_pubmsg(self, conn, event):
+        user = irclib.nm_to_n(event.source())
 
         # ignore specified nicks
-        if self.factory.ignored_nicks and user in self.factory.ignored_nicks:
+        if self.ignored_nicks and user in self.ignored_nicks:
             return
 
         # only respond on channels
-        if not channel.startswith("#"):
+        if not irclib.is_channel(event.target()):
             return
+
+        msg = event.arguments()[0]
 
         # strip pasted nicks from messages
         msg = re.sub("<\S+>\s+", "", msg)
@@ -59,53 +50,20 @@ class CobeBot(irc.IRCClient):
         # convert message to unicode
         text = text.decode("utf-8")
 
-        if not self.factory.only_nicks or user in self.factory.only_nicks:
-            self.factory.brain.learn(text)
+        if not self.only_nicks or user in self.only_nicks:
+            self.brain.learn(text)
 
-        if to == self.nickname:
-            reply = self.factory.brain.reply(text).encode("utf-8")
-            self.say(channel, "%s: %s" % (user, reply))
-
-    def nickChanged(self, nick):
-        log.msg("nick changed to %s" % nick)
-        self.nickname = nick
-
-
-class CobeBotFactory(protocol.ReconnectingClientFactory):
-    # the class of the protocol to build when new connection is made
-    protocol = CobeBot
-
-    def __init__(self, brain, channel, nickname, ignored_nicks, only_nicks):
-        self.brain = brain
-        self.channel = channel
-        self.nickname = nickname
-
-        self.ignored_nicks = ignored_nicks
-        self.only_nicks = only_nicks
-
-    def buildProtocol(self, addr):
-        self.resetDelay()
-        return protocol.ReconnectingClientFactory.buildProtocol(self, addr)
-
-    def clientConnectionLost(self, connector, reason):
-        """If we get disconnected, reconnect to server."""
-        log.err("lost connection: ", reason)
-        protocol.ReconnectingClientFactory.clientConnectionLost(self,
-                                                                connector,
-                                                                reason)
-
-    def clientConnectionFailed(self, connector, reason):
-        log.err("connection failed: ", reason)
-        protocol.ReconnectingClientFactory.clientConnectionFailed(self,
-                                                                  connector,
-                                                                  reason)
+        if to == self.nick:
+            reply = self.brain.reply(text).encode("utf-8")
+            conn.privmsg(event.target(), "%s: %s" % (user, reply))
 
 
 class Runner:
     def run(self, brain, args):
-        log.startLogging(sys.stdout)
-        f = CobeBotFactory(brain, args.channel, args.nick, args.ignored_nicks,
-                           args.only_nicks)
+        bot = Bot(brain, args.nick, args.ignored_nicks, args.only_nicks)
+        bot.connect(args.server, args.port, args.nick)
+        log.info("connected to %s:%s", args.server, args.port)
 
-        reactor.connectTCP(args.server, args.port, f)
-        reactor.run()
+        bot.connection.join(args.channel)
+
+        bot.start()
