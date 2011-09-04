@@ -83,41 +83,41 @@ class testLearn(unittest.TestCase):
         Brain.init(TEST_BRAIN_FILE, order=2)
         brain = Brain(TEST_BRAIN_FILE)
 
-        tokens = ["this", " ", "is", " ", "a", " ", "test"]
-        self.assertEquals(list(brain._to_contexts(tokens)),
-                          [((None, None), False),
-                           ((None, "this"), False),
+        tokens = ["this", Brain.SPACE_TOKEN_ID, "is", Brain.SPACE_TOKEN_ID,
+                  "a", Brain.SPACE_TOKEN_ID, "test"]
+        self.assertEquals(list(brain._to_edges(tokens)),
+                          [((1, 1), False),
+                           ((1, "this"), False),
                            (("this", "is"), True),
                            (("is", "a"), True),
                            (("a", "test"), True),
-                           (("test", None), False),
-                           ((None, None), False)])
+                           (("test", 1), False),
+                           ((1, 1), False)])
 
         tokens = ["this", "is", "a", "test"]
-        self.assertEquals(list(brain._to_contexts(tokens)),
-                          [((None, None), False),
-                           ((None, "this"), False),
+        self.assertEquals(list(brain._to_edges(tokens)),
+                          [((1, 1), False),
+                           ((1, "this"), False),
                            (("this", "is"), False),
                            (("is", "a"), False),
                            (("a", "test"), False),
-                           (("test", None), False),
-                           ((None, None), False)])
+                           (("test", 1), False),
+                           ((1, 1), False)])
 
     def testExpandGraph(self):
         Brain.init(TEST_BRAIN_FILE, order=2)
         brain = Brain(TEST_BRAIN_FILE)
 
-        tokens = ["this", " ", "is", " ", "a", " ", "test"]
+        tokens = ["this", Brain.SPACE_TOKEN_ID, "is", Brain.SPACE_TOKEN_ID,
+                  "a", Brain.SPACE_TOKEN_ID, "test"]
 
-        print list(brain._to_graph(brain._to_contexts(tokens)))
-
-        self.assertEquals(list(brain._to_graph(brain._to_contexts(tokens))),
-                          [((None, None), False, (None, "this")),
-                           ((None, "this"), True, ("this", "is")),
+        self.assertEquals(list(brain._to_graph(brain._to_edges(tokens))),
+                          [((1, 1), False, (1, "this")),
+                           ((1, "this"), True, ("this", "is")),
                            (("this", "is"), True, ("is", "a")),
                            (("is", "a"), True, ("a", "test")),
-                           (("a", "test"), False, ("test", None)),
-                           (("test", None), False, (None, None))])
+                           (("a", "test"), False, ("test", 1)),
+                           (("test", 1), False, (1, 1))])
 
     def testLearn(self):
         Brain.init(TEST_BRAIN_FILE, order=2)
