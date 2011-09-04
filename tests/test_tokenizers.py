@@ -118,6 +118,10 @@ class testCobeRegexTokenizer(unittest.TestCase):
     def testSplitNonUnicode(self):
         self.assertRaises(TypeError, self.tokenizer.split, "foo")
 
+    def testJoin(self):
+        self.assertEquals("foo bar baz",
+                          self.tokenizer.join(["foo", " ", "bar", " ", "baz"]))
+
 
 class testCobeTokenizer(unittest.TestCase):
     def setUp(self):
