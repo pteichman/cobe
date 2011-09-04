@@ -41,7 +41,7 @@ class testInit(unittest.TestCase):
 
         brain = Brain(TEST_BRAIN_FILE)
 
-        db = brain._db
+        db = brain.graph
         key = "test_text"
 
         self.assertEqual(None, db.get_info_text(key))
@@ -61,7 +61,7 @@ class testInit(unittest.TestCase):
 
         brain = Brain(TEST_BRAIN_FILE)
 
-        db = brain._db
+        db = brain.graph
         key = "pickle_test"
         obj = self
 

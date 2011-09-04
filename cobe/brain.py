@@ -84,10 +84,10 @@ class Brain:
     def del_stemmer(self):
         self.stemmer = None
 
-        self._db.delete_token_stems()
+        self.graph.delete_token_stems()
 
-        self._db.set_info_text("stemmer", None)
-        self._db.commit()
+        self.graph.set_info_text("stemmer", None)
+        self.graph.commit()
 
     def set_stemmer(self, language):
         self.stemmer = tokenizers.CobeStemmer(language)
