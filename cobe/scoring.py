@@ -106,15 +106,31 @@ class CobeScorer(Scorer):
 
 class InformationScorer(Scorer):
     """Score based on the information of each edge in the graph"""
+    def __init__(self):
+        Scorer.__init__(self)
+
+        self.cache = {}
+
     def score(self, reply):
         info = 0.
-        for edge in reply.edges:
-            info += -math.log(edge.probability, 2)
 
-        # return the average information per word
-        info /= len(reply.edges)
+        get_node_count = reply.graph.get_node_count
+
+        cache = self.cache
+        for edge in reply.edges:
+            node_id = edge.prev
+            try:
+                node_count = cache[node_id]
+            except KeyError:
+                node_count = get_node_count(node_id)
+                cache[node_id] = node_count
+
+            info += -math.log(float(edge.count) / node_count, 2)
 
         return self.finish(self.normalize(info))
+
+    def end(self, reply):
+        self.cache = {}
 
 
 class LengthScorer(Scorer):
