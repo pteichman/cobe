@@ -17,6 +17,11 @@ class Bot(irclib.SimpleIRCClient):
         self.ignored_nicks = ignored_nicks
         self.only_nicks = only_nicks
 
+    def _dispatcher(self, c, e):
+        log.debug("on_%s %s", e.eventtype(), (e.source(), e.target(),
+                                              e.arguments()))
+        irclib.SimpleIRCClient._dispatcher(self, c, e)
+
     def on_endofmotd(self, conn, event):
         self.connection.join(self.channel)
 
