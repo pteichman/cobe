@@ -610,20 +610,13 @@ class Graph:
     def get_random_node_with_token(self, token_id):
         c = self.cursor()
 
-        # try looking for the token in a random spot in the node
-        positions = range(self.order)
+        q = "SELECT id FROM nodes WHERE token0_id = ? " \
+            "LIMIT 1 OFFSET abs(random())%(SELECT count(*) FROM nodes " \
+            "                              WHERE token0_id = ?)"
 
-        queries = [
-            "SELECT id FROM nodes WHERE token%s_id = ? "
-            "LIMIT 1 OFFSET abs(random())%%(SELECT count(*) from nodes "
-            "                               WHERE token%s_id = ?)" % (pos, pos)
-            for pos in positions]
-
-        random.shuffle(positions)
-        for pos in positions:
-            row = c.execute(queries[pos], (token_id, token_id)).fetchone()
-            if row:
-                return int(row[0])
+        row = c.execute(q, (token_id, token_id)).fetchone()
+        if row:
+            return int(row[0])
 
     def add_edge(self, prev_node, next_node, has_space):
         c = self.cursor()
@@ -747,11 +740,6 @@ CREATE INDEX tokens_text on tokens (text)""")
         token_ids = ",".join(["token%d_id" % i for i in xrange(order)])
         c.execute("""
 CREATE INDEX nodes_token_ids on nodes (%s)""" % token_ids)
-
-        # used for finding random nodes for each token
-        for i in xrange(1, order):
-            c.execute("""
-CREATE INDEX nodes_token%d_id on nodes (token%d_id)""" % (i, i))
 
         c.execute("""
 CREATE INDEX edges_all_next ON edges (next_node, prev_node, has_space, count)""")
