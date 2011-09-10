@@ -23,7 +23,7 @@ setup(
     install_requires = [
         "PyStemmer==1.2.0",
         "argparse==1.2.1",
-        "python-irclib==0.4.8"
+        "python-irclib==0.4.6"
         ],
 
     classifiers = [
