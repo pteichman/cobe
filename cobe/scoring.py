@@ -83,9 +83,19 @@ class CobeScorer(Scorer):
             if edge.has_space:
                 n_words += 1
 
-        if n_words > 8:
+        # Double the score, since Cobe 1.x scored both forward and backward
+        info *= 2.0
+
+        # Comparing to Cobe 1.x scoring:
+        # At this point we have an extra count for every space token
+        # that adjoins punctuation. I'm tweaking the two checks below
+        # for replies longer than 16 and 32 tokens (rather than our
+        # original 8 and 16) as an adjustment. Scoring is an ongoing
+        # project.
+
+        if n_words > 16:
             info /= math.sqrt(n_words - 1)
-        elif n_words >= 16:
+        elif n_words >= 32:
             info /= n_words
 
         return self.finish(self.normalize(info))
