@@ -8,13 +8,17 @@ log = logging.getLogger("cobe.irc")
 
 
 class Bot(irclib.SimpleIRCClient):
-    def __init__(self, brain, nick, ignored_nicks, only_nicks):
+    def __init__(self, brain, nick, channel, ignored_nicks, only_nicks):
         irclib.SimpleIRCClient.__init__(self)
 
         self.brain = brain
         self.nick = nick
+        self.channel = channel
         self.ignored_nicks = ignored_nicks
         self.only_nicks = only_nicks
+
+    def on_endofmotd(self, conn, event):
+        self.connection.join(self.channel)
 
     def on_pubmsg(self, conn, event):
         user = irclib.nm_to_n(event.source())
@@ -60,10 +64,9 @@ class Bot(irclib.SimpleIRCClient):
 
 class Runner:
     def run(self, brain, args):
-        bot = Bot(brain, args.nick, args.ignored_nicks, args.only_nicks)
+        bot = Bot(brain, args.nick, args.channel, args.ignored_nicks,
+                  args.only_nicks)
         bot.connect(args.server, args.port, args.nick)
         log.info("connected to %s:%s", args.server, args.port)
-
-        bot.connection.join(args.channel)
 
         bot.start()
