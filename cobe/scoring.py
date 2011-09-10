@@ -104,58 +104,6 @@ class CobeScorer(Scorer):
         self.cache = {}
 
 
-class MegaHALScorer(Scorer):
-    """Classic MegaHAL scorer"""
-    def __init__(self):
-        Scorer.__init__(self)
-
-        self.cache = {}
-
-    def score(self, reply):
-        info = 0.
-
-        get_node_count = reply.graph.get_node_count
-
-        cache = self.cache
-        for edge in reply.edges:
-            node_id = edge.prev
-            token_ids = reply.graph.get_node_tokens(node_id)
-
-            if token_ids[-1] not in reply.token_ids:
-                continue
-
-            try:
-                node_count = cache[node_id]
-            except KeyError:
-                node_count = get_node_count(node_id)
-                cache[node_id] = node_count
-
-            info += -math.log(float(edge.count) / node_count, 2)
-
-        # Approximate the number of cobe 1.2 contexts in this reply, so the
-        # scorer will have similar results.
-
-        # First, we have (graph.order - 1) extra edges on either end of the
-        # reply, since cobe 2.0 learns from (_END_TOKEN, _END_TOKEN, ...).
-        n_words = len(reply.edges) - (reply.graph.order - 1) * 2
-
-        # Add back one word for each space between edges, since cobe 1.2
-        # treated those as separate parts of a context.
-        for edge in reply.edges:
-            if edge.has_space:
-                n_words += 1
-
-        if n_words > 8:
-            info /= math.sqrt(n_words - 1)
-        elif n_words >= 16:
-            info /= n_words
-
-        return self.finish(self.normalize(info))
-
-    def end(self, reply):
-        self.cache = {}
-
-
 class InformationScorer(Scorer):
     """Score based on the information of each edge in the graph"""
     def score(self, reply):
