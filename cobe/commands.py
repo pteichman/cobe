@@ -87,6 +87,9 @@ class LearnCommand:
                 b.learn(line.strip())
                 count = count + 1
 
+                if (count % 1000) == 0:
+                    b.graph.commit()
+
             b.stop_batch_learning()
             elapsed = time.time() - now
             print "\r100%% (%d/s)" % (count / elapsed)
@@ -131,6 +134,9 @@ class LearnIrcLogCommand:
                     b.graph.commit()
 
                 count = count + 1
+
+                if (count % 1000) == 0:
+                    b.graph.commit()
 
                 parsed = cls._parse_irc_message(line.strip(),
                                                 args.ignored_nicks,
