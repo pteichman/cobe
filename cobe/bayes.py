@@ -26,7 +26,7 @@ class BayesClass:
     def __repr__(self):
         return repr(self.token_counts)
 
-class Bayes:
+class BayesClassifier:
     def __init__(self):
         self.classes = {}
         self.train_total = 0
@@ -35,12 +35,16 @@ class Bayes:
         if len(tokens) == 0:
             return
 
+        tokens = set(tokens)
+
         cls = self.classes.setdefault(class_name, BayesClass(class_name))
         cls.train(tokens)
 
         self.train_total += 1
 
     def classify(self, tokens, class_name=None):
+        tokens = set(tokens)
+
         if class_name is None:
             classes = self.classes
         else:
@@ -53,7 +57,6 @@ class Bayes:
 
             p = 1.
             for token in tokens:
-                print token, counts.get(token, 1)
                 p *= float(counts.get(token, 0) + 1) / total
 
             results[name] = float(cls.train_total)/self.train_total * p

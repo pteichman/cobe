@@ -1,5 +1,7 @@
 # Copyright (C) 2011 Peter Teichman
 
+import Stemmer
+import bayes
 import math
 
 
@@ -140,3 +142,56 @@ class InformationScorer(Scorer):
 class LengthScorer(Scorer):
     def score(self, reply):
         return self.finish(self.normalize(len(reply.edges)))
+
+
+class BayesScorer(Scorer):
+    def __init__(self, pos_file, neg_file):
+        Scorer.__init__(self)
+
+        self.stemmer = Stemmer.Stemmer("english")
+        self.b = b = bayes.BayesClassifier()
+
+        with open(pos_file, "r") as fd:
+            for line in fd.xreadlines():
+                tokens = [ t for t in line.lower().split() if len(t) ]
+                b.train(tokens, "pos")
+
+        with open(neg_file, "r") as fd:
+            for line in fd.xreadlines():
+                tokens = [ t for t in line.lower().split() if len(t) ]
+                b.train(tokens, "neg")
+
+        self.cache = {}
+
+    def tokenize(self, text):
+        tokens = []
+        for t in line.lower().split():
+            if len(t) == 0:
+                continue
+
+            tokens.append(self.stemmer.stemWord(t))
+
+        return tokens
+
+    def score(self, reply):
+        # build word tokens
+        tokens = []
+
+        for edge in reply.edges:
+            try:
+                word = self.cache[edge]
+            except KeyError:
+                word = edge.get_prev_word()
+                self.cache[edge] = word
+
+            tokens.append(word)
+
+        scores = self.b.classify(tokens)
+
+        if scores["pos"] < scores["neg"]:
+            return 0.
+
+        return self.finish(scores["pos"] - scores["neg"])
+
+    def end(self, reply):
+        self.cache = {}
