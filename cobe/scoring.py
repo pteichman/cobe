@@ -39,12 +39,16 @@ class ScorerGroup:
             scorer[1].end(reply)
 
     def score(self, reply):
-        score = 0.
+        # normalize to 0..1
+        total = 0.
+        for weight, scorers in self.scorers:
+            total += weight
 
+        score = 0.
         for weight, scorer in self.scorers:
             score += weight * scorer.score(reply)
 
-        return score
+        return score / total
 
 
 class CobeScorer(Scorer):
