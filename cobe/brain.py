@@ -267,8 +267,6 @@ with its two nodes"""
             for score, text in replies:
                 log.debug("%f %s", score, text.encode("utf-8"))
 
-            log.debug(best_reply.to_graph())
-
         _trace.trace("Brain.reply_input_token_count", len(tokens))
         _trace.trace("Brain.known_word_token_count", len(pivot_set))
 
