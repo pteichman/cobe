@@ -19,6 +19,10 @@ log = logging.getLogger("cobe")
 _trace = Instatrace()
 
 
+class CobeError(Exception):
+    pass
+
+
 class Brain:
     """The main interface for Cobe."""
 
@@ -43,6 +47,10 @@ class Brain:
         _start = _trace.now()
         self.graph = graph = Graph(sqlite3.connect(filename))
         _trace.trace("Brain.connect_us", _trace.now() - _start)
+
+        version = graph.get_info_text("version")
+        if version != "2":
+            raise CobeError("cannot read a version %s brain" % version)
 
         self.order = int(graph.get_info_text("order"))
 

@@ -1,4 +1,4 @@
-from cobe.brain import Brain
+from cobe.brain import Brain, CobeError
 from cobe.tokenizers import MegaHALTokenizer
 import cPickle as pickle
 import os
@@ -27,6 +27,28 @@ class testInit(unittest.TestCase):
 
         brain = Brain(TEST_BRAIN_FILE)
         self.assertEqual(order, brain.order)
+
+    def testVersion(self):
+        Brain.init(TEST_BRAIN_FILE)
+
+        brain = Brain(TEST_BRAIN_FILE)
+        self.assertEqual("2", brain.graph.get_info_text("version"))
+
+    def testWrongVersion(self):
+        Brain.init(TEST_BRAIN_FILE)
+
+        # manually change the brain version to 1
+        brain = Brain(TEST_BRAIN_FILE)
+        brain.graph.set_info_text("version", "1")
+        brain.graph.commit()
+        brain.graph.close()
+
+        try:
+            Brain(TEST_BRAIN_FILE)
+        except CobeError, e:
+            self.assert_("cannot read a version" in str(e))
+        else:
+            self.fail("opened a wrong version brain file")
 
     def testInitWithTokenizer(self):
         tokenizer = "MegaHAL"
