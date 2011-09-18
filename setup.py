@@ -11,7 +11,7 @@ setup(
     author = "Peter Teichman",
     author_email = "peter@teichman.org",
     url = "http://wiki.github.com/pteichman/cobe/",
-    description = "A conversation simulator similar to MegaHAL",
+    description = "Markov chain based text generator library and chatbot",
     packages = ["cobe"],
     test_suite = "tests",
 
