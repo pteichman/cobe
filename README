@@ -13,11 +13,14 @@ http://megahal.alioth.debian.org/How.html
 In short, it uses Markov modeling to generate text responses after
 learning from input text.
 
-Cobe currently behaves similarly to MegaHAL 9.1.1. It uses 5th-order
-Markov chains by default, generates as many responses as it can in a
-constant amount of time, and scores those responses based on the
-surprise they create given the Markov probabilities. This is described
-in greater detail in the document linked above.
+Cobe creates a directed graph of word n-grams (default n=3) from the
+text it learns. When generating a response, it performs random walks
+on this graph to create as many candidate replies as it can in half a
+second.
+
+As the candidate responses are created, they're run through a scoring
+algorithm that identifies which is the best of the group. After the
+half second is over, the best candidate is returned as the response.
 
 Cobe installs a command line tool (called cobe) for interacting with a
 brain database, though it is also intended to be used as a Python
