@@ -108,6 +108,15 @@ class CobeScorer(Scorer):
         self.cache = {}
 
 
+class IdentityScorer(Scorer):
+    """Parrot the input exactly. Best used with reverse=true"""
+    def score(self, reply):
+        score = 0.0
+        if "".join(reply.tokens) == reply.to_text():
+            score = 1.0
+        return self.finish(score)
+
+
 class InformationScorer(Scorer):
     """Score based on the information of each edge in the graph"""
     def __init__(self):

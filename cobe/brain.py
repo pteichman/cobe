@@ -56,6 +56,7 @@ class Brain:
 
         self.scorer = scoring.ScorerGroup()
         self.scorer.add_scorer(1.0, scoring.CobeScorer())
+        self.scorer.add_scorer(1.0, scoring.IdentityScorer(reverse=True))
 
         tokenizer_name = graph.get_info_text("tokenizer")
         if tokenizer_name == "MegaHAL":
