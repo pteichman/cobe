@@ -4,8 +4,11 @@ import math
 
 
 class Scorer:
+    def __init__(self):
+        self.cache = {}
+
     def end(self, reply):
-        pass
+        self.cache = {}
 
     def normalize(self, score):
         # map high-valued scores into 0..1
@@ -55,9 +58,6 @@ class ScorerGroup:
 
 class CobeScorer(Scorer):
     """Classic Cobe scorer"""
-    def __init__(self):
-        self.cache = {}
-
     def score(self, reply):
         info = 0.
 
@@ -104,9 +104,6 @@ class CobeScorer(Scorer):
 
         return self.normalize(info)
 
-    def end(self, reply):
-        self.cache = {}
-
 
 class IdentityScorer(Scorer):
     """Parrot the input exactly. Best used with reverse=true"""
@@ -119,9 +116,6 @@ class IdentityScorer(Scorer):
 
 class InformationScorer(Scorer):
     """Score based on the information of each edge in the graph"""
-    def __init__(self):
-        self.cache = {}
-
     def score(self, reply):
         info = 0.
 
@@ -139,9 +133,6 @@ class InformationScorer(Scorer):
             info += -math.log(float(edge.count) / node_count, 2)
 
         return self.normalize(info)
-
-    def end(self, reply):
-        self.cache = {}
 
 
 class LengthScorer(Scorer):
