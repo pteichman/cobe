@@ -4,17 +4,8 @@ import math
 
 
 class Scorer:
-    def __init__(self, reverse=False):
-        self.reverse = reverse
-
     def end(self, reply):
         pass
-
-    def finish(self, score):
-        if self.reverse:
-            score = 1.0 - score
-
-        return score
 
     def normalize(self, score):
         # map high-valued scores into 0..1
@@ -32,13 +23,14 @@ class ScorerGroup:
         self.scorers = []
 
     def add_scorer(self, weight, scorer):
+        # add a scorer with a negative weight if you want to reverse
+        # its impact
         self.scorers.append((weight, scorer))
 
         total = 0.
         for weight, scorers in self.scorers:
-            total += weight
-        self.total = total
-
+            total += abs(weight)
+        self.total_weight = total
 
     def end(self, reply):
         for scorer in self.scorers:
@@ -48,16 +40,22 @@ class ScorerGroup:
         # normalize to 0..1
         score = 0.
         for weight, scorer in self.scorers:
-            score += weight * scorer.score(reply)
+            s = scorer.score(reply)
 
-        return score / self.total
+            # make sure score is in our accepted range
+            assert 0.0 <= score <= 1.0
+
+            if weight < 0.0:
+                s = 1.0 - s
+
+            score += abs(weight) * s
+
+        return score / self.total_weight
 
 
 class CobeScorer(Scorer):
     """Classic Cobe scorer"""
     def __init__(self):
-        Scorer.__init__(self)
-
         self.cache = {}
 
     def score(self, reply):
@@ -104,7 +102,7 @@ class CobeScorer(Scorer):
         elif n_words >= 32:
             info /= n_words
 
-        return self.finish(self.normalize(info))
+        return self.normalize(info)
 
     def end(self, reply):
         self.cache = {}
@@ -116,14 +114,12 @@ class IdentityScorer(Scorer):
         score = 0.0
         if "".join(reply.tokens) == reply.to_text():
             score = 1.0
-        return self.finish(score)
+        return score
 
 
 class InformationScorer(Scorer):
     """Score based on the information of each edge in the graph"""
     def __init__(self):
-        Scorer.__init__(self)
-
         self.cache = {}
 
     def score(self, reply):
@@ -142,7 +138,7 @@ class InformationScorer(Scorer):
 
             info += -math.log(float(edge.count) / node_count, 2)
 
-        return self.finish(self.normalize(info))
+        return self.normalize(info)
 
     def end(self, reply):
         self.cache = {}
@@ -150,4 +146,4 @@ class InformationScorer(Scorer):
 
 class LengthScorer(Scorer):
     def score(self, reply):
-        return self.finish(self.normalize(len(reply.edges)))
+        return self.normalize(len(reply.edges))
