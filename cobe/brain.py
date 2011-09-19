@@ -429,6 +429,10 @@ class Edge:
         # get the last word in the prev context
         return self.graph.get_word_by_node(self.prev)
 
+    def get_prev_token(self):
+        # get the last token in the prev context
+        return self.graph.get_token_by_node(self.prev)
+
     def pretty(self):
         prev = "|".join(self.graph.get_node_text(self.prev))
         next = "|".join(self.graph.get_node_text(self.next))
@@ -554,6 +558,15 @@ class Graph:
     def get_word_by_node(self, node_id):
         # return the last word in the node
         q = "SELECT tokens.text FROM nodes, tokens WHERE nodes.id = ? " \
+            "AND %s = tokens.id" % self._last_token
+
+        row = self._conn.execute(q, (node_id,)).fetchone()
+        if row:
+            return row[0]
+
+    def get_token_by_node(self, node_id):
+        # return the last token in the node
+        q = "SELECT tokens.id FROM nodes, tokens WHERE nodes.id = ? " \
             "AND %s = tokens.id" % self._last_token
 
         row = self._conn.execute(q, (node_id,)).fetchone()

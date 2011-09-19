@@ -2,6 +2,8 @@
 
 import math
 
+from itertools import islice, izip
+
 
 class Scorer:
     def __init__(self):
@@ -106,12 +108,28 @@ class CobeScorer(Scorer):
 
 
 class IdentityScorer(Scorer):
-    """Parrot the input exactly. Best used with reverse=true"""
+    """Parrot the input exactly. Best used with a negative weight."""
+    def token_iter(self, reply):
+        for edge in islice(reply.edges, 1, None):
+            try:
+                token = self.cache[edge.prev]
+            except KeyError:
+                token = edge.get_prev_token()
+                self.cache[edge.prev] = token
+
+            yield edge.get_prev_token()
+            if edge.has_space:
+                yield None
+
     def score(self, reply):
-        score = 0.0
-        if "".join(reply.tokens) == reply.to_text():
-            score = 1.0
-        return score
+        if len(reply.token_ids) != len(reply.edges) - 1:
+            return 0.0
+
+        for a, b in izip(reply.token_ids, self.token_iter(reply)):
+            if a != b:
+                return 0.0
+
+        return 1.0
 
 
 class InformationScorer(Scorer):
