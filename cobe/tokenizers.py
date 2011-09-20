@@ -74,7 +74,7 @@ tokens."""
 
         self.regex = re.compile("(\w+:\S+"  # urls
                                 "|[\w'-]+"  # words
-                                "|[^\w\s][^\w]+[^\w\s]" # multiple punctuation
+                                "|[^\w\s][^\w]*[^\w\s]" # multiple punctuation
                                 "|[^\w\s]"  # a single punctuation character
                                 "|\s+)",    # whitespace
                                 re.UNICODE)

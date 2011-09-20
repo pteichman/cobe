@@ -84,6 +84,20 @@ class testCobeTokenizer(unittest.TestCase):
         words = self.tokenizer.split(u"-foo")
         self.assertEquals(words, ["-foo"])
 
+    def testSplitSmiles(self):
+        words = self.tokenizer.split(u":)")
+        self.assertEquals(words, [":)"])
+
+        words = self.tokenizer.split(u";)")
+        self.assertEquals(words, [";)"])
+
+        # not smiles
+        words = self.tokenizer.split(u":(")
+        self.assertEquals(words, [":("])
+
+        words = self.tokenizer.split(u";(")
+        self.assertEquals(words, [";("])
+
     def testSplitUrl(self):
         words = self.tokenizer.split(u"http://www.google.com/")
         self.assertEquals(words, ["http://www.google.com/"])
