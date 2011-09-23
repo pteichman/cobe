@@ -754,9 +754,11 @@ CREATE INDEX tokens_text on tokens (text)""")
 CREATE INDEX nodes_token_ids on nodes (%s)""" % token_ids)
 
         c.execute("""
-CREATE INDEX edges_all_next ON edges (next_node, prev_node, has_space, count)""")
+CREATE INDEX edges_all_next ON edges (next_node, prev_node,
+                                      has_space, count)""")
         c.execute("""
-CREATE INDEX edges_all_prev ON edges (prev_node, next_node, has_space, count)""")
+CREATE INDEX edges_all_prev ON edges (prev_node, next_node,
+                                      has_space, count)""")
 
         self.commit()
         c.close()

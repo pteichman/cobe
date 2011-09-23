@@ -64,14 +64,17 @@ class Instatrace:
 
 _instatrace = Instatrace()
 
+
 def trace(stat, value, user_data=None):
     _instatrace.trace(stat, value, user_data)
+
 
 @contextmanager
 def trace_us(statName):
     now = _instatrace.now()
     yield
     _instatrace.trace(statName, _instatrace.now() - now)
+
 
 @contextmanager
 def trace_ms(statName):
