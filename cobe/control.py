@@ -35,7 +35,7 @@ def main():
         logging.root.setLevel(logging.INFO)
 
     if args.instatrace:
-        instatrace.Instatrace().init(args.instatrace)
+        instatrace.init_trace(args.instatrace)
 
     try:
         args.run(args)
