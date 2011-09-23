@@ -1,11 +1,17 @@
 COBE stands for Code of Business Ethics. Cobe is a conversation
-simulator, a database backed port of MegaHAL.
+simulator, originally a database backed port of MegaHAL but a bit
+more now.
 
-It has been inspired by the success of Hailo:
+There are a few relevant posts here:
+http://teichman.org/blog/2011/09/cobe-2.0.html
+http://teichman.org/blog/2011/05/singularity.html
+http://teichman.org/blog/2011/02/cobe.html
+
+Cobe has been inspired by the success of Hailo:
 http://blogs.perl.org/users/aevar_arnfjor_bjarmason/2010/01/hailo-a-perl-rewrite-of-megahal.html
 
-Our goals are similar: an on-disk data store for lower memory usage,
-better support for Unicode, and general stability.
+Our goals are similar to Hailo: an on-disk data store for lower memory
+usage, better support for Unicode, and general stability.
 
 You can read about the original MegaHAL here:
 http://megahal.alioth.debian.org/How.html
@@ -32,7 +38,8 @@ To install from a tarball:
 
 Or from the Python Package Index:
 
-  $ easy_install cobe
+  $ easy_install pip
+  # pip install cobe
 
 Usage:
 
