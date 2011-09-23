@@ -10,13 +10,11 @@ import sqlite3
 import time
 import types
 
-from .instatrace import Instatrace
+from .instatrace import trace, trace_ms, trace_us
 from . import scoring
 from . import tokenizers
 
 log = logging.getLogger("cobe")
-
-_trace = Instatrace()
 
 
 class CobeError(Exception):
@@ -42,11 +40,10 @@ class Brain:
             Brain.init(filename)
 
         if instatrace is not None:
-            _trace.init(instatrace)
+            Instatrace().init(instatrace)
 
-        _start = _trace.now()
-        self.graph = graph = Graph(sqlite3.connect(filename))
-        _trace.trace("Brain.connect_us", _trace.now() - _start)
+        with trace_us("Brain.connect_us"):
+            self.graph = graph = Graph(sqlite3.connect(filename))
 
         version = graph.get_info_text("version")
         if version != "2":
@@ -118,7 +115,7 @@ class Brain:
             text = text.decode("utf-8", "ignore")
 
         tokens = self.tokenizer.split(text)
-        _trace.trace("Brain.learn_input_token_count", len(tokens))
+        trace("Brain.learn_input_token_count", len(tokens))
 
         self._learn_tokens(tokens)
 
@@ -229,9 +226,8 @@ with its two nodes"""
 
         _start = time.time()
         while time.time() < end:
-            _now = _trace.now()
-            candidate = self._generate_reply(pivot_set)
-            _trace.trace("Brain.generate_reply_us", _trace.now() - _now)
+            with trace_us("Brain.generate_reply_us"):
+                candidate = self._generate_reply(pivot_set)
 
             if candidate is None:
                 continue
@@ -242,10 +238,9 @@ with its two nodes"""
 
             key = self._get_reply_key(reply)
             if key not in score_cache:
-                _now = _trace.now()
-                score = self.scorer.score(reply)
-                score_cache[key] = score
-                _trace.trace("Brain.evaluate_reply_us", _trace.now() - _now)
+                with trace_us("Brain.evaluate_reply_us"):
+                    score = self.scorer.score(reply)
+                    score_cache[key] = score
             else:
                 # skip scoring, we've already seen this reply
                 score = -1
@@ -276,21 +271,20 @@ with its two nodes"""
             for score, text in replies:
                 log.debug("%f %s", score, text.encode("utf-8"))
 
-        _trace.trace("Brain.reply_input_token_count", len(tokens))
-        _trace.trace("Brain.known_word_token_count", len(pivot_set))
+        trace("Brain.reply_input_token_count", len(tokens))
+        trace("Brain.known_word_token_count", len(pivot_set))
 
-        _trace.trace("Brain.reply_us", _time)
-        _trace.trace("Brain.reply_count", count, _time)
-        _trace.trace("Brain.best_reply_score", int(best_score * 1000))
-        _trace.trace("Brain.best_reply_length", len(best_reply.edges))
+        trace("Brain.reply_us", _time)
+        trace("Brain.reply_count", count, _time)
+        trace("Brain.best_reply_score", int(best_score * 1000))
+        trace("Brain.best_reply_length", len(best_reply.edges))
 
         log.debug("made %d replies (%d unique) in %f seconds" \
                       % (count, len(score_cache), _time))
 
         # look up the words for these tokens
-        _now = _trace.now()
-        text = best_reply.to_text()
-        _trace.trace("Brain.reply_words_lookup_us", _trace.now() - _now)
+        with trace_us("Brain.reply_words_lookup_us"):
+            text = best_reply.to_text()
 
         return text
 
@@ -385,9 +379,8 @@ tokenizer -- One of Cobe, MegaHAL (default Cobe). See documentation
 
         graph = Graph(sqlite3.connect(filename))
 
-        _now = _trace.now()
-        graph.init(order, tokenizer)
-        _trace.trace("Brain.init_time_us", _trace.now() - _now)
+        with trace_us("Brain.init_time_us"):
+            graph.init(order, tokenizer)
 
 
 class Reply:
@@ -473,9 +466,8 @@ class Graph:
         return self._conn.cursor()
 
     def commit(self):
-        _start = _trace.now()
-        ret = self._conn.commit()
-        _trace.trace("Brain.db_commit_us", _trace.now() - _start)
+        with trace_us("Brain.db_commit_us"):
+            ret = self._conn.commit()
         return ret
 
     def close(self):
@@ -794,33 +786,27 @@ DELETE FROM token_stems""")
 
     def update_token_stems(self, stemmer):
         # stemmer is a CobeStemmer
-        _start = _trace.now_ms()
+        with trace_ms("Db.update_token_stems_ms"):
+            c = self.cursor()
 
-        c = self.cursor()
-
-        q = c.execute("""
+            q = c.execute("""
 SELECT id, text FROM tokens WHERE is_word = 1""")
 
-        insert_q = "INSERT INTO token_stems (token_id, stem) VALUES (?, ?)"
-        insert_c = self.cursor()
+            insert_q = "INSERT INTO token_stems (token_id, stem) VALUES (?, ?)"
+            insert_c = self.cursor()
 
-        for row in q:
-            insert_c.execute(insert_q, (row[0], stemmer.stem(row[1])))
+            for row in q:
+                insert_c.execute(insert_q, (row[0], stemmer.stem(row[1])))
 
-        self.commit()
+                self.commit()
 
-        _trace.trace("Db.update_token_stems_us", _trace.now_ms() - _start)
-
-        _start = _trace.now_ms()
-        c.execute("""
+        with trace_ms("Db.index_token_stems_ms"):
+            c.execute("""
 CREATE INDEX token_stems_id on token_stems (token_id)""")
-        c.execute("""
+            c.execute("""
 CREATE INDEX token_stems_stem on token_stems (stem)""")
-        _trace.trace("Db.index_token_stems_us", _trace.now_ms() - _start)
 
     def _run_migrations(self):
-        _start = _trace.now()
-
-        # no migrations yet in the 2.0 codebase
-
-        _trace.trace("Db.run_migrations_us", _trace.now() - _start)
+        with trace_us("Db.run_migrations_us"):
+            # no migrations yet in the 2.0 codebase
+            pass

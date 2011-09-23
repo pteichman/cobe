@@ -4,6 +4,8 @@ import datetime
 import os
 import time
 
+from contextlib import contextmanager
+
 
 def singleton(cls):
     instances = {}
@@ -58,3 +60,21 @@ class Instatrace:
             extra = " " + repr(userData)
 
         self._fd.write("%s %d%s\n" % (statName, statValue, extra))
+
+
+_instatrace = Instatrace()
+
+def trace(stat, value, user_data=None):
+    _instatrace.trace(stat, value, user_data)
+
+@contextmanager
+def trace_us(statName):
+    now = _instatrace.now()
+    yield
+    _instatrace.trace(statName, _instatrace.now() - now)
+
+@contextmanager
+def trace_ms(statName):
+    now = _instatrace.now_ms()
+    yield
+    _instatrace.trace(statName, _instatrace.now_ms() - now)
