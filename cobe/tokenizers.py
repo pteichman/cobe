@@ -3,7 +3,6 @@
 import re
 import Stemmer
 import types
-import unicodedata
 
 
 class MegaHALTokenizer:
