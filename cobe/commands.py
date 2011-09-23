@@ -1,10 +1,11 @@
-# Copyright (C) 2010 Peter Teichman
+# Copyright (C) 2011 Peter Teichman
 
 import atexit
 import logging
 import os
 import re
 import readline
+import Stemmer
 import sys
 import time
 
@@ -245,13 +246,10 @@ class IrcClientCommand:
 class SetStemmerCommand:
     @classmethod
     def add_subparser(cls, parser):
-        subparser = parser.add_parser("set-stemmer", help="Configure a stemmer")
+        subparser = parser.add_parser("set-stemmer",
+                                      help="Configure a stemmer")
 
-        try:
-            import Stemmer
-            subparser.set_defaults(run=cls.run)
-        except ImportError:
-            subparser.set_defaults(run=cls.disabled)
+        subparser.set_defaults(run=cls.run)
 
         subparser.add_argument("language", choices=Stemmer.algorithms(),
                                help="Stemmer language")
@@ -267,12 +265,7 @@ class DelStemmerCommand:
     @classmethod
     def add_subparser(cls, parser):
         subparser = parser.add_parser("del-stemmer", help="Delete the stemmer")
-
-        try:
-            import Stemmer
-            subparser.set_defaults(run=cls.run)
-        except ImportError:
-            subparser.set_defaults(run=cls.disabled)
+        subparser.set_defaults(run=cls.run)
 
     @staticmethod
     def run(args):
