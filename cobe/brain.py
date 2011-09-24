@@ -465,8 +465,7 @@ class Graph:
 
     def commit(self):
         with trace_us("Brain.db_commit_us"):
-            ret = self._conn.commit()
-        return ret
+            self._conn.commit()
 
     def close(self):
         return self._conn.close()
