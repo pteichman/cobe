@@ -352,8 +352,8 @@ with its two nodes"""
 
         edges = collections.deque()
 
-        self.graph.walk(node, self._end_context_id, "next", edges)
-        self.graph.walk(node, self._end_context_id, "prev", edges)
+        self.graph.walk(node, self._end_context_id, 1, edges.append)
+        self.graph.walk(node, self._end_context_id, 0, edges.appendleft)
 
         if len(edges):
             return edges, node
@@ -657,38 +657,29 @@ class Graph:
 
         return row[0]
 
-    def walk(self, node, end_id, direction, edges):
+    def walk(self, node, end_id, direction, append):
         """Perform a random walk on the graph starting at node"""
-        c = self.cursor()
-
-        if direction == "next":
+        if direction:
             q = "SELECT id, next_node, prev_node, has_space, count " \
                 "FROM edges WHERE prev_node = :last " \
                 "LIMIT 1 OFFSET abs(random())%(SELECT count(*) from edges " \
                 "                              WHERE prev_node = :last)"
-            append = edges.append
-        elif direction == "prev":
+        else:
             q = "SELECT id, prev_node, next_node, has_space, count " \
                 "FROM edges WHERE next_node = :last " \
                 "LIMIT 1 OFFSET abs(random())%(SELECT count(*) from edges " \
                 "                              WHERE next_node = :last)"
-            append = edges.appendleft
 
+        c = self.cursor()
         last_node = node
-        while True:
-            if last_node == end_id:
-                break
 
+        while last_node != end_id:
             row = c.execute(q, dict(last=last_node)).fetchone()
-            assert row is not None
 
-            edge = Edge(self, row["id"], row["prev_node"], row["next_node"],
-                        row["has_space"], row["count"])
-            append(edge)
+            append(Edge(self, row["id"], row["prev_node"], row["next_node"],
+                        row["has_space"], row["count"]))
 
             last_node = row[1]
-
-        return edges
 
     def init(self, order, tokenizer, run_migrations=True):
         c = self.cursor()
