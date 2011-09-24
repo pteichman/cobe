@@ -355,7 +355,8 @@ with its two nodes"""
         self.graph.walk(node, self._end_context_id, "next", edges)
         self.graph.walk(node, self._end_context_id, "prev", edges)
 
-        return edges, node
+        if len(edges):
+            return edges, node
 
     @staticmethod
     def init(filename, order=3, tokenizer=None):

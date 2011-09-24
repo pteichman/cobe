@@ -34,6 +34,12 @@ class testInit(unittest.TestCase):
         brain = Brain(TEST_BRAIN_FILE)
         self.assertEqual("2", brain.graph.get_info_text("version"))
 
+    def testEmptyReply(self):
+        Brain.init(TEST_BRAIN_FILE)
+
+        brain = Brain(TEST_BRAIN_FILE)
+        self.assert_(brain.reply("") is not "")
+
     def testWrongVersion(self):
         Brain.init(TEST_BRAIN_FILE)
 
