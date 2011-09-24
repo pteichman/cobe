@@ -736,14 +736,14 @@ CREATE TABLE edges (
 
         token_ids = ",".join(["token%d_id" % i for i in xrange(order)])
         c.execute("""
-CREATE INDEX nodes_token_ids on nodes (%s)""" % token_ids)
+CREATE UNIQUE INDEX nodes_token_ids on nodes (%s)""" % token_ids)
 
         c.execute("""
-CREATE INDEX edges_all_next ON edges (next_node, prev_node,
-                                      has_space, count)""")
+CREATE UNIQUE INDEX edges_all_next ON edges (next_node, prev_node,
+                                             has_space, count)""")
         c.execute("""
-CREATE INDEX edges_all_prev ON edges (prev_node, next_node,
-                                      has_space, count)""")
+CREATE UNIQUE INDEX edges_all_prev ON edges (prev_node, next_node,
+                                             has_space, count)""")
 
         self.commit()
         c.close()
