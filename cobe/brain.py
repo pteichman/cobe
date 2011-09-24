@@ -734,9 +734,6 @@ CREATE TABLE edges (
         # save the brain/schema version
         self.set_info_text("version", "2")
 
-        c.execute("""
-CREATE INDEX tokens_text on tokens (text)""")
-
         token_ids = ",".join(["token%d_id" % i for i in xrange(order)])
         c.execute("""
 CREATE INDEX nodes_token_ids on nodes (%s)""" % token_ids)
