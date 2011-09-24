@@ -308,7 +308,7 @@ with its two nodes"""
         token_ids = []
         for i in xrange(5):
             # Generate a few random tokens that can be used as pivots
-            token_id = self.graph.get_random_node()
+            token_id = self.graph.get_random_token()
 
             if token_id is not None:
                 token_ids.append(token_id)
@@ -609,12 +609,13 @@ class Graph:
         tokens = self.get_node_tokens(node_id)
         return [self.get_token_by_id(token_id) for token_id in tokens]
 
-    def get_random_node(self):
-        q = "SELECT id FROM nodes WHERE " \
-            "id >= abs(random()) % (SELECT MAX(id) FROM tokens) + 1 LIMIT 1"
+    def get_random_token(self):
+        # token 1 is the end_token_id, so we want to generate a random token
+        # id from 2..max(id) inclusive.
+        q = "SELECT (abs(random()) % (MAX(id)-1)) + 2 FROM tokens"
         row = self._conn.execute(q).fetchone()
         if row:
-            return row["id"]
+            return row[0]
 
     def get_random_node_with_token(self, token_id):
         c = self.cursor()
