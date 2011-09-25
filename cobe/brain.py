@@ -645,9 +645,9 @@ class Graph:
         if c.rowcount == 0:
             c.execute(q, args)
 
-        # and increment the count on the next node
-        q = "UPDATE nodes SET count = count + 1 WHERE id = ?"
-        c.execute(q, (next_node,))
+        # The count on the next_node in the nodes table must be
+        # incremented here, to register that the node has been seen an
+        # additional time. This is now handled by database triggers.
 
     def get_node_count(self, node_id):
         q = "SELECT count FROM nodes WHERE nodes.id = ?"
@@ -797,9 +797,32 @@ CREATE INDEX token_stems_stem on token_stems (stem)""")
     def _run_migrations(self):
         with trace_us("Db.run_migrations_us"):
             self._maybe_drop_tokens_text_index()
+            self._maybe_create_node_count_triggers()
 
     def _maybe_drop_tokens_text_index(self):
         # tokens_text was an index on tokens.text, deemed redundant since
         # tokens.text is declared UNIQUE, and sqlite automatically creates
         # indexes for UNIQUE columns
         self._conn.execute("DROP INDEX IF EXISTS tokens_text")
+
+    def _maybe_create_node_count_triggers(self):
+        # Create triggers on the edges table to update nodes counts.
+        # In previous versions, the node counts were updated with a
+        # separate query. Moving them into triggers improves
+        # performance.
+        c = self.cursor()
+
+        c.execute("""
+CREATE TRIGGER IF NOT EXISTS edges_insert_trigger AFTER INSERT ON edges
+    BEGIN UPDATE nodes SET count = count + NEW.count
+        WHERE nodes.id = NEW.next_node; END;""")
+
+        c.execute("""
+CREATE TRIGGER IF NOT EXISTS edges_update_trigger AFTER UPDATE ON edges
+    BEGIN UPDATE nodes SET count = count + (NEW.count - OLD.count)
+        WHERE nodes.id = NEW.next_node; END;""")
+
+        c.execute("""
+CREATE TRIGGER IF NOT EXISTS edges_delete_trigger AFTER DELETE ON edges
+    BEGIN UPDATE nodes SET count = count - old.count
+        WHERE nodes.id = OLD.next_node; END;""")
