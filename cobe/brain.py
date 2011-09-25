@@ -193,9 +193,7 @@ with its two nodes"""
             text = text.decode("utf-8", "ignore")
 
         tokens = self.tokenizer.split(text)
-
-        input_ids = [self.graph.get_token_by_text(text)
-                     for text in tokens]
+        input_ids = map(self.graph.get_token_by_text, tokens)
 
         # filter out unknown words and non-words from the potential pivots
         pivot_set = self._filter_pivots(input_ids)
