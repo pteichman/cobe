@@ -81,10 +81,16 @@ class Brain:
         called. Learn text using the normal learn(text) method."""
         self._learning = True
 
+        self.graph.cursor().execute("PRAGMA journal_mode=memory")
+        self.graph.drop_reply_indexes()
+
     def stop_batch_learning(self):
         """Finish a series of batch learn operations."""
         self._learning = False
+
         self.graph.commit()
+        self.graph.cursor().execute("PRAGMA journal_mode=truncate")
+        self.graph.ensure_indexes()
 
     def del_stemmer(self):
         self.stemmer = None
@@ -738,6 +744,9 @@ CREATE TABLE edges (
         self.ensure_indexes()
 
         self.close()
+
+    def drop_reply_indexes(self):
+        self._conn.execute("DROP INDEX IF EXISTS edges_all_next")
 
     def ensure_indexes(self):
         c = self.cursor()
