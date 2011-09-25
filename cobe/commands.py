@@ -68,16 +68,15 @@ class LearnCommand:
     @staticmethod
     def run(args):
         b = Brain(args.brain)
+        b.start_batch_learning()
 
         for filename in args.file:
             now = time.time()
             print filename
 
-            b.start_batch_learning()
-
             count = 0
             for line, progress in progress_generator(filename):
-                show_progress = ((count % 100) == 0)
+                show_progress = ((count % 1000) == 0)
 
                 if show_progress:
                     elapsed = time.time() - now
@@ -88,12 +87,13 @@ class LearnCommand:
                 b.learn(line.strip())
                 count = count + 1
 
-                if (count % 1000) == 0:
+                if (count % 10000) == 0:
                     b.graph.commit()
 
-            b.stop_batch_learning()
             elapsed = time.time() - now
             print "\r100%% (%d/s)" % (count / elapsed)
+
+        b.stop_batch_learning()
 
 
 class LearnIrcLogCommand:
@@ -116,12 +116,11 @@ class LearnIrcLogCommand:
     @classmethod
     def run(cls, args):
         b = Brain(args.brain)
+        b.start_batch_learning()
 
         for filename in args.file:
             now = time.time()
             print filename
-
-            b.start_batch_learning()
 
             count = 0
             for line, progress in progress_generator(filename):
@@ -132,7 +131,6 @@ class LearnIrcLogCommand:
                     sys.stdout.write("\r%.0f%% (%d/s)" % (progress,
                                                           count / elapsed))
                     sys.stdout.flush()
-                    b.graph.commit()
 
                 count = count + 1
 
@@ -151,9 +149,10 @@ class LearnIrcLogCommand:
                 if args.reply_to is not None and to in args.reply_to:
                     b.reply(msg)
 
-            b.stop_batch_learning()
             elapsed = time.time() - now
             print "\r100%% (%d/s)" % (count / elapsed)
+
+        b.stop_batch_learning()
 
     @staticmethod
     def _parse_irc_message(msg, ignored_nicks=None, only_nicks=None):
