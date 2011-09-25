@@ -781,16 +781,16 @@ CREATE UNIQUE INDEX IF NOT EXISTS edges_all_prev ON edges
         with trace_ms("Db.update_token_stems_ms"):
             c = self.cursor()
 
+            insert_c = self.cursor()
+            insert_q = "INSERT INTO token_stems (token_id, stem) VALUES (?, ?)"
+
             q = c.execute("""
 SELECT id, text FROM tokens WHERE is_word = 1""")
-
-            insert_q = "INSERT INTO token_stems (token_id, stem) VALUES (?, ?)"
-            insert_c = self.cursor()
 
             for row in q:
                 insert_c.execute(insert_q, (row[0], stemmer.stem(row[1])))
 
-                self.commit()
+            self.commit()
 
         with trace_ms("Db.index_token_stems_ms"):
             c.execute("""
