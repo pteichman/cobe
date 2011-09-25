@@ -321,18 +321,13 @@ with its two nodes"""
 
     def _filter_pivots(self, pivots):
         # remove pivots that might not give good results
-        tokens = []
-        for pivot in pivots:
-            if pivot is not None:
-                tokens.append(pivot)
+        tokens = set(filter(None, pivots))
 
-        filtered = set()
-        filtered.update(self.graph.get_word_tokens(tokens))
-
+        filtered = self.graph.get_word_tokens(tokens)
         if len(filtered) == 0:
-            filtered.update(self.graph.get_tokens(tokens))
+            filtered = self.graph.get_tokens(tokens)
 
-        return filtered
+        return set(filtered)
 
     def _choose_pivot(self, pivot_ids):
         pivot = random.choice(tuple(pivot_ids))
@@ -517,7 +512,9 @@ class Graph:
         # Format the sequence seq as (item1, item2, item2) as appropriate
         # for an IN () clause in SQL
         if len(seq) == 1:
-            return "(%s)" % seq[0]
+            # Grab the first item from seq. Use an iterator so this works
+            # with sets as well as lists.
+            return "(%s)" % iter(seq).next()
 
         return str(tuple(seq))
 
