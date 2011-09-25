@@ -796,5 +796,10 @@ CREATE INDEX token_stems_stem on token_stems (stem)""")
 
     def _run_migrations(self):
         with trace_us("Db.run_migrations_us"):
-            # no migrations yet in the 2.0 codebase
-            pass
+            self._maybe_drop_tokens_text_index()
+
+    def _maybe_drop_tokens_text_index(self):
+        # tokens_text was an index on tokens.text, deemed redundant since
+        # tokens.text is declared UNIQUE, and sqlite automatically creates
+        # indexes for UNIQUE columns
+        self._conn.execute("DROP INDEX IF EXISTS tokens_text")
