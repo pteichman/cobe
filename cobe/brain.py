@@ -726,6 +726,7 @@ CREATE TABLE edges (
 
         # save the order of this brain
         self.set_info_text("order", str(order))
+        self.order = order
 
         # save the tokenizer
         self.set_info_text("tokenizer", tokenizer)
@@ -733,21 +734,26 @@ CREATE TABLE edges (
         # save the brain/schema version
         self.set_info_text("version", "2")
 
-        token_ids = ",".join(["token%d_id" % i for i in xrange(order)])
-        c.execute("""
-CREATE UNIQUE INDEX nodes_token_ids on nodes (%s)""" % token_ids)
-
-        c.execute("""
-CREATE UNIQUE INDEX edges_all_next ON edges (next_node, prev_node,
-                                             has_space, count)""")
-        c.execute("""
-CREATE UNIQUE INDEX edges_all_prev ON edges (prev_node, next_node,
-                                             has_space, count)""")
-
         self.commit()
-        c.close()
+        self.ensure_indexes()
 
         self.close()
+
+    def ensure_indexes(self):
+        c = self.cursor()
+
+        token_ids = ",".join(["token%d_id" % i for i in xrange(self.order)])
+        c.execute("""
+CREATE UNIQUE INDEX IF NOT EXISTS nodes_token_ids on nodes
+    (%s)""" % token_ids)
+
+        c.execute("""
+CREATE UNIQUE INDEX IF NOT EXISTS edges_all_next ON edges
+    (next_node, prev_node, has_space, count)""")
+
+        c.execute("""
+CREATE UNIQUE INDEX IF NOT EXISTS edges_all_prev ON edges
+    (prev_node, next_node, has_space, count)""")
 
     def delete_token_stems(self):
         c = self.cursor()
