@@ -767,21 +767,12 @@ CREATE UNIQUE INDEX IF NOT EXISTS edges_all_prev ON edges
     def delete_token_stems(self):
         c = self.cursor()
 
-        try:
-            c.execute("""
-DROP INDEX token_stems_stem""")
-        except sqlite3.OperationalError:  # no such index: tokens_stems_stem
-            pass
-
-        try:
-            c.execute("""
-DROP INDEX token_stems_id""")
-        except sqlite3.OperationalError:  # no such index: tokens_stems_id
-            pass
+        # drop the two stem indexes
+        c.execute("DROP INDEX IF EXISTS token_stems_stem")
+        c.execute("DROP INDEX IF EXISTS token_stems_id")
 
         # delete all the existing stems from the table
-        c.execute("""
-DELETE FROM token_stems""")
+        c.execute("DELETE FROM token_stems")
 
         self.commit()
 
