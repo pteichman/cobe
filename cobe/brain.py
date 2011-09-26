@@ -1,6 +1,7 @@
 # Copyright (C) 2011 Peter Teichman
 
 import collections
+import functools
 import logging
 import os
 import pprint
@@ -459,6 +460,10 @@ class Graph:
             c.execute("PRAGMA temp_store=memory")
             c.execute("PRAGMA synchronous=OFF")
 
+            self._cache = {}
+            cachefunc = functools.partial(self.cache_count, self._cache)
+            conn.create_function("cache", 2, cachefunc)
+
     def cursor(self):
         return self._conn.cursor()
 
@@ -658,29 +663,48 @@ class Graph:
 
         return row[0]
 
+    def cache_count(self, cache, key, count):
+        cache[key] = count
+        return count
+
     def walk(self, node, end_id, direction, append):
         """Perform a random walk on the graph starting at node"""
         if direction:
             q = "SELECT id, next_node, prev_node, has_space, count " \
+                "FROM edges WHERE prev_node = :last LIMIT 1 " \
+                "OFFSET abs(random())%cache(:key, " \
+                "    (SELECT count(*) FROM edges WHERE prev_node = :last))"
+            cached_q = "SELECT id, next_node, prev_node, has_space, count " \
                 "FROM edges WHERE prev_node = :last " \
-                "LIMIT 1 OFFSET abs(random())%(SELECT count(*) from edges " \
-                "                              WHERE prev_node = :last)"
+                "LIMIT 1 OFFSET abs(random())%:count"
         else:
             q = "SELECT id, prev_node, next_node, has_space, count " \
+                "FROM edges WHERE next_node = :last LIMIT 1 " \
+                "OFFSET abs(random())%cache(:key, " \
+                "    (SELECT count(*) FROM edges WHERE next_node = :last))"
+            cached_q = "SELECT id, prev_node, next_node, has_space, count " \
                 "FROM edges WHERE next_node = :last " \
-                "LIMIT 1 OFFSET abs(random())%(SELECT count(*) from edges " \
-                "                              WHERE next_node = :last)"
+                "LIMIT 1 OFFSET abs(random())%:count"
 
         c = self.cursor()
-        last_node = node
 
-        while last_node != end_id:
-            row = c.execute(q, dict(last=last_node)).fetchone()
+        cache = self._cache
+
+        last = node
+        while last != end_id:
+            key = "%s:%s" % (direction, last)
+            try:
+                count = cache[key]
+                query = cached_q
+            except KeyError:
+                query = q
+
+            row = c.execute(query, locals()).fetchone()
 
             append(Edge(self, row["id"], row["prev_node"], row["next_node"],
                         row["has_space"], row["count"]))
 
-            last_node = row[1]
+            last = row[1]
 
     def init(self, order, tokenizer, run_migrations=True):
         c = self.cursor()
