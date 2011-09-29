@@ -64,6 +64,7 @@ class Brain:
         if stemmer_name is not None:
             try:
                 self.stemmer = tokenizers.CobeStemmer(stemmer_name)
+                log.debug("Initialized a stemmer: %s" % stemmer_name)
             except Exception, e:
                 log.error("Error creating stemmer: %s", str(e))
 
@@ -174,7 +175,9 @@ with its two nodes"""
                 token_ids.append(self.SPACE_TOKEN_ID)
                 continue
 
-            token_ids.append(self.graph.get_token_by_text(text, create=True))
+            token_id = self.graph.get_token_by_text(text, create=True,
+                                                    stemmer=self.stemmer)
+            token_ids.append(token_id)
 
         edges = list(self._to_edges(token_ids))
 
@@ -291,7 +294,7 @@ with its two nodes"""
 
     def _conflate_stems(self, pivot_set, tokens):
         for token in tokens:
-            stem_ids = self.graph.get_token_stem_ids(self.stemmer.stem(token))
+            stem_ids = self.graph.get_token_stem_id(self.stemmer.stem(token))
             if len(stem_ids) == 0:
                 continue
 
@@ -518,7 +521,7 @@ class Graph:
 
         return str(tuple(seq))
 
-    def get_token_by_text(self, text, create=False):
+    def get_token_by_text(self, text, create=False, stemmer=None):
         c = self.cursor()
 
         q = "SELECT id FROM tokens WHERE text = ?"
@@ -531,7 +534,16 @@ class Graph:
 
             is_word = bool(re.search("\w", text, re.UNICODE))
             c.execute(q, (text, is_word))
-            return c.lastrowid
+
+            token_id = c.lastrowid
+            if is_word and stemmer is not None:
+                self.insert_stem(token_id, stemmer.stem(text))
+
+            return token_id
+
+    def insert_stem(self, token_id, stem):
+        q = "INSERT INTO token_stems (token_id, stem) VALUES (?, ?)"
+        self._conn.execute(q, (token_id, stem))
 
     def get_token_by_id(self, token_id):
         q = "SELECT text FROM tokens WHERE id = ?"
@@ -539,7 +551,7 @@ class Graph:
         if row:
             return row[0]
 
-    def get_token_stem_ids(self, stem):
+    def get_token_stem_id(self, stem):
         q = "SELECT token_id FROM token_stems WHERE token_stems.stem = ?"
         rows = self._conn.execute(q, (stem,))
         if rows:

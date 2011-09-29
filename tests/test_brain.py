@@ -154,6 +154,18 @@ class testLearn(unittest.TestCase):
         brain.learn("this is a test")
         brain.learn("this is also a test")
 
+    def testLearnStems(self):
+        Brain.init(TEST_BRAIN_FILE, order=2)
+
+        brain = Brain(TEST_BRAIN_FILE)
+        brain.set_stemmer("english")
+        stem = brain.stemmer.stem
+
+        brain.learn("this is testing")
+        self.assertEquals(brain.graph.get_token_stem_id(stem("test")),
+                          brain.graph.get_token_stem_id(stem("testing")))
+
+
 class testReply(unittest.TestCase):
     def setUp(self):
         if os.path.exists(TEST_BRAIN_FILE):
