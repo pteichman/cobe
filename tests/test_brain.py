@@ -162,6 +162,11 @@ class testLearn(unittest.TestCase):
         stem = brain.stemmer.stem
 
         brain.learn("this is testing")
+
+        c = brain.graph.cursor()
+        stem_count = c.execute("SELECT count(*) FROM token_stems").fetchone()
+
+        self.assertEquals(3, stem_count[0])
         self.assertEquals(brain.graph.get_token_stem_id(stem("test")),
                           brain.graph.get_token_stem_id(stem("testing")))
 
