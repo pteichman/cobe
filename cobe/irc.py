@@ -22,7 +22,30 @@ class Bot(irclib.SimpleIRCClient):
                                               e.arguments()))
         irclib.SimpleIRCClient._dispatcher(self, c, e)
 
+    def _delayed_check(self, delay=120):
+        self.connection.execute_delayed(delay, self._check_connection)
+
+    def _check_connection(self):
+        conn = self.connection
+        if conn.is_connected():
+            log.debug("connection: ok")
+            self._delayed_check()
+            return
+
+        try:
+            log.debug("reconnecting to %s:%p", conn.server, conn.port)
+            conn.connect(conn.server, conn.port, conn.nickname, conn.password,
+                         conn.username, conn.ircname, conn.localaddress,
+                         conn.localport)
+        except irclib.ServerConnectionError:
+            log.info("failed reconnection, rescheduling", exc_info=True)
+            self._delayed_check()
+
+    def on_disconnect(self, conn, event):
+        self._check_connection()
+
     def on_endofmotd(self, conn, event):
+        self._delayed_check()
         self.connection.join(self.channel)
 
     def on_pubmsg(self, conn, event):
