@@ -756,9 +756,17 @@ CREATE TABLE edges (
 
     def drop_reply_indexes(self):
         self._conn.execute("DROP INDEX IF EXISTS edges_all_next")
+        self._conn.execute("DROP INDEX IF EXISTS edges_all_prev")
+
+        self._conn.execute("""
+CREATE INDEX IF NOT EXISTS learn_index ON edges
+    (prev_node, next_node)""")
 
     def ensure_indexes(self):
         c = self.cursor()
+
+        # remove the temporary learning index if it exists
+        c.execute("DROP INDEX IF EXISTS learn_index")
 
         token_ids = ",".join(["token%d_id" % i for i in xrange(self.order)])
         c.execute("""
