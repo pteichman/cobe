@@ -68,9 +68,10 @@ class CobeScorer(Scorer):
         cache = self.cache
         for edge in reply.edges:
             node_id = edge.prev
-            try:
+
+            if node_id in cache:
                 node_count = cache[node_id]
-            except KeyError:
+            else:
                 node_count = get_node_count(node_id)
                 cache[node_id] = node_count
 
@@ -111,11 +112,13 @@ class IdentityScorer(Scorer):
     """Parrot the input exactly. Best used with a negative weight."""
     def token_iter(self, reply):
         for edge in islice(reply.edges, 1, None):
-            try:
-                token = self.cache[edge.prev]
-            except KeyError:
+            node_id = edge.prev
+
+            if node_id in self.cache:
+                token = self.cache[node_id]
+            else:
                 token = edge.get_prev_token()
-                self.cache[edge.prev] = token
+                self.cache[node_id] = token
 
             yield edge.get_prev_token()
             if edge.has_space:
@@ -142,9 +145,10 @@ class InformationScorer(Scorer):
         cache = self.cache
         for edge in reply.edges:
             node_id = edge.prev
-            try:
+
+            if node_id in cache:
                 node_count = cache[node_id]
-            except KeyError:
+            else:
                 node_count = get_node_count(node_id)
                 cache[node_id] = node_count
 
