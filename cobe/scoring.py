@@ -111,14 +111,16 @@ class CobeScorer(Scorer):
 class IdentityScorer(Scorer):
     """Parrot the input exactly. Best used with a negative weight."""
     def token_iter(self, reply):
+        cache = self.cache
+
         for edge in islice(reply.edges, 1, None):
             node_id = edge.prev
 
-            if node_id in self.cache:
-                token = self.cache[node_id]
+            if node_id in cache:
+                token = cache[node_id]
             else:
                 token = edge.get_prev_token()
-                self.cache[node_id] = token
+                cache[node_id] = token
 
             yield edge.get_prev_token()
             if edge.has_space:
