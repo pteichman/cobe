@@ -63,18 +63,22 @@ class CobeScorer(Scorer):
     def score(self, reply):
         info = 0.
 
-        get_node_count = reply.graph.get_node_count
-
         cache = self.cache
+        nodes = set()
+
         for edge in reply.edges:
             node_id = edge.prev
 
-            if node_id in cache:
-                node_count = cache[node_id]
-            else:
-                node_count = get_node_count(node_id)
-                cache[node_id] = node_count
+            if node_id not in cache:
+                nodes.add(node_id)
 
+        counts = reply.graph.get_node_counts(nodes)
+
+        for node_id, count in counts:
+            cache[node_id] = count
+
+        for edge in reply.edges:
+            node_count = cache[edge.prev]
             info += -math.log(float(edge.count) / node_count, 2)
 
         # Approximate the number of cobe 1.2 contexts in this reply, so the

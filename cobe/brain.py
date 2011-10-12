@@ -670,6 +670,12 @@ class Graph:
 
         return row[0]
 
+    def get_node_counts(self, node_ids):
+        q = "SELECT id, count FROM nodes WHERE id IN %s" % \
+            self.get_seq_expr(node_ids)
+
+        return self._conn.execute(q)
+
     def walk(self, node, end_id, direction, append):
         """Perform a random walk on the graph starting at node"""
         if direction:
