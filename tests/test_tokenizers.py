@@ -84,6 +84,20 @@ class testCobeTokenizer(unittest.TestCase):
         words = self.tokenizer.split(u"-foo")
         self.assertEquals(words, ["-foo"])
 
+    def testSplitLeadingSpace(self):
+        words = self.tokenizer.split(u" foo")
+        self.assertEquals(words, ["foo"])
+
+        words = self.tokenizer.split(u"  foo")
+        self.assertEquals(words, ["foo"])
+
+    def testSplitTrailingSpace(self):
+        words = self.tokenizer.split(u"foo ")
+        self.assertEquals(words, ["foo"])
+
+        words = self.tokenizer.split(u"foo  ")
+        self.assertEquals(words, ["foo"])
+
     def testSplitSmiles(self):
         words = self.tokenizer.split(u":)")
         self.assertEquals(words, [":)"])
@@ -126,8 +140,8 @@ class testCobeTokenizer(unittest.TestCase):
         words = self.tokenizer.split(u"testing          :    (")
         self.assertEquals(words, ["testing", " ", ":    ("])
 
-        words = self.tokenizer.split(u"testing          :    (  ")
-        self.assertEquals(words, ["testing", " ", ":    (", " "])
+        words = self.tokenizer.split(u"testing          :    (  foo")
+        self.assertEquals(words, ["testing", " ", ":    (", " ", "foo"])
 
     def testSplitHyphenatedWord(self):
         words = self.tokenizer.split(u"test-ing")
