@@ -8,14 +8,23 @@ log = logging.getLogger("cobe.irc")
 
 
 class Bot(irclib.SimpleIRCClient):
-    def __init__(self, brain, nick, channel, ignored_nicks, only_nicks):
+    def __init__(self, brain, nick, channel, log_channel, ignored_nicks,
+                 only_nicks):
         irclib.SimpleIRCClient.__init__(self)
 
         self.brain = brain
         self.nick = nick
         self.channel = channel
+        self.log_channel = log_channel
         self.ignored_nicks = ignored_nicks
         self.only_nicks = only_nicks
+
+        if log_channel is not None:
+            # set up a new logger
+            handler = IrcLogHandler(self.connection, log_channel)
+            handler.setLevel(logging.DEBUG)
+
+            logging.root.addHandler(handler)
 
     def _dispatcher(self, c, e):
         log.debug("on_%s %s", e.eventtype(), (e.source(), e.target(),
@@ -48,8 +57,15 @@ class Bot(irclib.SimpleIRCClient):
         self._delayed_check()
         self.connection.join(self.channel)
 
+        if self.log_channel:
+            self.connection.join(self.log_channel)
+
     def on_pubmsg(self, conn, event):
         user = irclib.nm_to_n(event.source())
+
+        if event.target() == self.log_channel:
+            # ignore input in the log channel
+            return
 
         # ignore specified nicks
         if self.ignored_nicks and user in self.ignored_nicks:
@@ -92,9 +108,23 @@ class Bot(irclib.SimpleIRCClient):
 
 class Runner:
     def run(self, brain, args):
-        bot = Bot(brain, args.nick, args.channel, args.ignored_nicks,
-                  args.only_nicks)
+        bot = Bot(brain, args.nick, args.channel, args.log_channel,
+                  args.ignored_nicks, args.only_nicks)
         bot.connect(args.server, args.port, args.nick)
         log.info("connected to %s:%s", args.server, args.port)
 
         bot.start()
+
+
+class IrcLogHandler(logging.Handler):
+    def __init__(self, connection, channel):
+        logging.Handler.__init__(self)
+
+        self.connection = connection
+        self.channel = channel
+
+    def emit(self, record):
+        conn = self.connection
+
+        if conn.is_connected():
+            conn.privmsg(self.channel, record.getMessage().encode("utf-8"))

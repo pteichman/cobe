@@ -226,6 +226,8 @@ class IrcClientCommand:
                                help="IRC nick")
         subparser.add_argument("-c", "--channel", required=True,
                                help="IRC channel")
+        subparser.add_argument("-l", "--log-channel",
+                               help="IRC channel for logging")
         subparser.add_argument("-i", "--ignore-nick", action="append",
                                dest="ignored_nicks",
                                help="Ignore an IRC nick")
