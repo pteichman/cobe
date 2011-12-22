@@ -286,6 +286,13 @@ with its two nodes"""
         log.debug("made %d replies (%d unique) in %f seconds" \
                       % (count, len(score_cache), _time))
 
+        if len(text) > 60:
+            msg = text[0:60] + "..."
+        else:
+            msg = text
+
+        log.info("[%s] %d %f", msg.encode("utf-8"), count, best_score)
+
         # look up the words for these tokens
         with trace_us("Brain.reply_words_lookup_us"):
             text = best_reply.to_text()
