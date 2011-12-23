@@ -536,8 +536,10 @@ class Graph:
             c.execute(q, (text, is_word))
 
             token_id = c.lastrowid
-            if is_word and stemmer is not None:
-                self.insert_stem(token_id, stemmer.stem(text))
+            if stemmer is not None:
+                stem = stemmer.stem(text)
+                if stem is not None:
+                    self.insert_stem(token_id, stem)
 
             return token_id
 
@@ -808,10 +810,12 @@ CREATE UNIQUE INDEX IF NOT EXISTS edges_all_prev ON edges
             insert_q = "INSERT INTO token_stems (token_id, stem) VALUES (?, ?)"
 
             q = c.execute("""
-SELECT id, text FROM tokens WHERE is_word = 1""")
+SELECT id, text FROM tokens""")
 
             for row in q:
-                insert_c.execute(insert_q, (row[0], stemmer.stem(row[1])))
+                stem = stemmer.stem(row[1])
+                if stem is not None:
+                    insert_c.execute(insert_q, (row[0], stem))
 
             self.commit()
 
