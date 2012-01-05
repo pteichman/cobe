@@ -21,8 +21,11 @@ setup(
         ],
 
     install_requires = [
+        "Jinja2==2.6",
         "PyStemmer==1.2.0",
+        "Werkzeug==0.8.2",
         "argparse==1.2.1",
+        "flask==0.8",
         "python-irclib==0.4.6"
         ],
 

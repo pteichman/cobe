@@ -11,6 +11,7 @@ import time
 
 from .brain import Brain
 from .irc import IrssiLogFile, Runner
+from .web.app import app
 
 log = logging.getLogger("cobe")
 
@@ -197,6 +198,18 @@ class ConsoleCommand:
 
             b.learn(cmd)
             print b.reply(cmd).encode("utf-8")
+
+
+class InstawebCommand:
+    @classmethod
+    def add_subparser(cls, parser):
+        subparser = parser.add_parser("instaweb", help="Web voting server")
+        subparser.set_defaults(run=cls.run)
+
+    @staticmethod
+    def run(args):
+        b = Brain(args.brain)
+        app.run()
 
 
 class IrcClientCommand:
