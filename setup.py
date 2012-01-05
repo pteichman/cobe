@@ -26,7 +26,8 @@ setup(
         "Werkzeug==0.8.2",
         "argparse==1.2.1",
         "flask==0.8",
-        "python-irclib==0.4.6"
+        "python-irclib==0.4.6",
+        "requests==0.9.0"
         ],
 
     classifiers = [

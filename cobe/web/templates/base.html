@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Cobe Instaweb</title>
+
+    <!--[if lt IE 9]>
+      <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+
+    <link href="{{ url_for('static', filename='bootstrap.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='cobe.css') }}" rel="stylesheet">
+
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js" type="text/javascript"></script>
+    <script src="https://browserid.org/include.js" type="text/javascript"></script>
+    <script src="{{ url_for('static', filename='cobe.js') }}" type="text/javascript"></script>
+
+  </head>
+
+  <body>
+    <div class="topbar">
+      <div class="fill">
+        <div class="container">
+          <a class="brand" href="{{ url_for('base.index') }}">Cobe Caucus</a>
+          <ul class="nav secondary-nav">
+            <li><div class="email"></div></li>
+            <li><div class="picture"></div></li>
+            <li><div class="login"><a href="#" onclick="onLoginClicked(); return false;">Sign in</a></div></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="container">
+      <div class="content">
+        <div class="page-header">
+          <h1>Welcome</h1>
+        </div>
+      </div>
+
+      <footer>
+        <p>hal hal hal</p>
+      </footer>
+    </div>
+
+  </body>
+</html>

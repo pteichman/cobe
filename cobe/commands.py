@@ -11,7 +11,7 @@ import time
 
 from .brain import Brain
 from .irc import IrssiLogFile, Runner
-from .web.app import app
+from .web.app import create_app
 
 log = logging.getLogger("cobe")
 
@@ -209,7 +209,7 @@ class InstawebCommand:
     @staticmethod
     def run(args):
         b = Brain(args.brain)
-        app.run()
+        create_app(b).run(debug=True)
 
 
 class IrcClientCommand:
