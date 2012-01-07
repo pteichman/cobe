@@ -1,5 +1,7 @@
 *.brain
 *.brain-journal
+*.corpus
+*.corpus-journal
 *.egg
 *.instatrace
 *.pyc

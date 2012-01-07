@@ -5,11 +5,14 @@ import os
 import unittest
 
 TEST_BRAIN_FILE = "test_cobe.brain"
+TEST_CORPUS_FILE = "test_cobe.brain.corpus"
 
 class testInit(unittest.TestCase):
     def setUp(self):
         if os.path.exists(TEST_BRAIN_FILE):
             os.remove(TEST_BRAIN_FILE)
+        if os.path.exists(TEST_CORPUS_FILE):
+            os.remove(TEST_CORPUS_FILE)
 
     def testInit(self):
         Brain.init(TEST_BRAIN_FILE)
