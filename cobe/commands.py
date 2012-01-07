@@ -10,7 +10,7 @@ import sys
 import time
 
 from .brain import Brain
-from .irc import Runner
+from .irc import IrssiLogFile, Runner
 
 log = logging.getLogger("cobe")
 
@@ -123,12 +123,17 @@ class LearnIrcLogCommand:
             print filename
 
             count = 0
-            for line, progress in progress_generator(filename):
+            fd = open(filename, "r")
+            fd_size = os.stat(filename).st_size
+
+            log_file = IrssiLogFile(fd)
+            for when, speaker, msg in log_file.items():
                 show_progress = ((count % 100) == 0)
 
                 if show_progress:
                     elapsed = time.time() - now
-                    sys.stdout.write("\r%.0f%% (%d/s)" % (progress,
+                    progress = float(fd.tell()) / float(fd_size)
+                    sys.stdout.write("\r%.0f%% (%d/s)" % (progress*100,
                                                           count / elapsed))
                     sys.stdout.flush()
 
@@ -137,13 +142,24 @@ class LearnIrcLogCommand:
                 if (count % 1000) == 0:
                     b.graph.commit()
 
-                parsed = cls._parse_irc_message(line.strip(),
-                                                args.ignored_nicks,
-                                                args.only_nicks)
-                if parsed is None:
+                if args.ignored_nicks and speaker in args.ignored_nicks:
                     continue
 
-                to, msg = parsed
+                if args.only_nicks and speaker not in args.only_nicks:
+                    continue
+
+                to = None
+
+                # strip "username: " at the beginning of messages
+                match = re.search("^(\S+)[,:]\s+(\S.*)", msg)
+                if match:
+                    to = match.group(1)
+                    msg = match.group(2)
+
+                # strip kibot style '"asdf" --user, 06-oct-09' quotes
+                msg = re.sub("\"(.*)\" --\S+,\s+\d+-\S+-\d+",
+                             lambda m: m.group(1), msg)
+
                 b.learn(msg)
 
                 if args.reply_to is not None and to in args.reply_to:
@@ -153,36 +169,6 @@ class LearnIrcLogCommand:
             print "\r100%% (%d/s)" % (count / elapsed)
 
         b.stop_batch_learning()
-
-    @staticmethod
-    def _parse_irc_message(msg, ignored_nicks=None, only_nicks=None):
-        # only match lines of the form "HH:MM <nick> message"
-        match = re.match("\d+:\d+\s+<(.+?)>\s+(.*)", msg)
-        if not match:
-            return None
-
-        nick = match.group(1)
-        msg = match.group(2)
-
-        if ignored_nicks is not None and nick in ignored_nicks:
-            return None
-
-        if only_nicks is not None and nick not in only_nicks:
-            return None
-
-        to = None
-
-        # strip "username: " at the beginning of messages
-        match = re.search("^(\S+)[,:]\s+(\S.*)", msg)
-        if match:
-            to = match.group(1)
-            msg = match.group(2)
-
-        # strip kibot style '"asdf" --user, 06-oct-09' quotes
-        msg = re.sub("\"(.*)\" --\S+,\s+\d+-\S+-\d+",
-                     lambda m: m.group(1), msg)
-
-        return to, msg
 
 
 class ConsoleCommand:

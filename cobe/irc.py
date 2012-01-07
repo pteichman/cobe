@@ -1,8 +1,10 @@
-# Copyright (C) 2010 Peter Teichman
+# Copyright (C) 2012 Peter Teichman
 
+import datetime
 import irclib
 import logging
 import re
+import time
 
 log = logging.getLogger("cobe.irc")
 
@@ -128,3 +130,75 @@ class IrcLogHandler(logging.Handler):
 
         if conn.is_connected():
             conn.privmsg(self.channel, record.getMessage().encode("utf-8"))
+
+
+class IrssiLogFile(object):
+    def __init__(self, fd):
+        self._fd = fd
+        self._now = datetime.datetime.now()
+
+    def set_now(self, date):
+        self._now = datetime.datetime.strptime(date, "%a %b %d %H:%M:%S %Y")
+
+    def update_time(self, time_str):
+        t = time.strptime(time_str, "%H:%M")
+        self._now = self._now.replace(hour=t.tm_hour, minute=t.tm_min,
+                                      second=0)
+
+    def update_date(self, date_str):
+        self._now = datetime.datetime.strptime(date_str, "%a %b %d %Y")
+
+    def items(self):
+        for line in self._fd:
+            line = line.strip()
+
+            # handle some special lines
+            m = re.match("^--- Log opened (.*)", line)
+            if m:
+                self.set_now(m.group(1))
+                continue
+
+            m = re.match("^--- Day changed (.*)", line)
+            if m:
+                self.update_date(m.group(1))
+                continue
+
+            m = re.match("^--- Log closed (.*)", line)
+            if m:
+                # do nothing
+                continue
+
+            # parse the current time, update self._now
+            m = re.match("^(\d\d:\d\d) (.*)", line)
+            if not m:
+                logging.info("Unrecogized line format: %s", line)
+                continue
+
+            self.update_time(m.group(1))
+
+            msg = m.group(2)
+            if msg.startswith("-!-"):
+                # skip join/part info
+                continue
+
+            msg = unicode(msg.strip(), "utf-8", errors="replace")
+
+            # detect speaker
+            speaker = None
+
+            m = re.search("^<(.*?)>(.*)", msg)
+            if m:
+                speaker = m.group(1).strip().lower()
+                msg = m.group(2).strip()
+            elif re.search("^\* (\S+)", msg):
+                # skip actions
+                continue
+
+            if msg.startswith("!") or msg.startswith("-"):
+                # server message
+                continue
+
+            if speaker is None:
+                raise Exception(msg)
+
+            yield (self._now, unicode(speaker), msg)
