@@ -287,7 +287,7 @@ with its two nodes"""
             replies.sort()
 
             for score, text in replies:
-                log.debug("%f %s", score, text.encode("utf-8"))
+                log.debug("%f %s", score, text)
 
         trace("Brain.reply_input_token_count", len(tokens))
         trace("Brain.known_word_token_count", len(pivot_set))
@@ -305,7 +305,7 @@ with its two nodes"""
         else:
             msg = text
 
-        log.info("[%s] %d %f", msg.encode("utf-8"), count, best_score)
+        log.info("[%s] %d %f", msg, count, best_score)
 
         # look up the words for these tokens
         with trace_us("Brain.reply_words_lookup_us"):

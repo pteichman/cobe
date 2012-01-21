@@ -1,4 +1,5 @@
 import argparse
+import codecs
 import logging
 import sys
 
@@ -25,7 +26,7 @@ def main():
     args = parser.parse_args()
 
     formatter = logging.Formatter("%(levelname)s: %(message)s")
-    console = logging.StreamHandler()
+    console = logging.StreamHandler(codecs.getwriter('utf8')(sys.stderr))
     console.setFormatter(formatter)
     logging.root.addHandler(console)
 
