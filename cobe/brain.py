@@ -84,9 +84,11 @@ class Brain:
         # major performance improvement on a large brain. Since reply
         # quality is tied tightly to how many candiates can be
         # generated, this improves quality as well.
-        with open(self.filename, "r") as fd:
-            with trace_us("Brain.cache_prewarm_us"):
-                fd.read()
+        with trace_us("Brain.cache_prewarm_us"):
+            with open(self.filename, "r+b") as fd:
+                # read the database file in 4096 byte chunks
+                while len(fd.read(2**12)) > 0:
+                    pass
 
     def start_batch_learning(self):
         """Begin a series of batch learn operations. Data will not be
