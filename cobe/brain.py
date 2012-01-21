@@ -232,30 +232,31 @@ with its two nodes"""
         if len(pivot_set) == 0:
             pivot_set = self._babble()
 
-        score_cache = {}
-
-        best_score = -1.0
-        best_reply = None
-
         # loop for half a second
         start = time.time()
         end = start + 0.5
-        count = 0
 
-        all_replies = []
+        replies = set()
 
-        _start = time.time()
         while time.time() < end:
+            # generate as many replies as possible in our time slice
             with trace_us("Brain.generate_reply_us"):
                 candidate = self._generate_reply(pivot_set)
 
             if candidate is None:
                 continue
 
-            count += 1
             edges, pivot_node = candidate
-            reply = Reply(self.graph, tokens, input_ids, pivot_node, edges)
 
+            reply = Reply(self.graph, tokens, input_ids, pivot_node, edges)
+            replies.add(reply)
+
+        all_scores = []
+        score_cache = {}
+
+        best_score, best_reply = -1.0, None
+
+        for reply in replies:
             key = self._get_reply_key(reply)
             if key not in score_cache:
                 with trace_us("Brain.evaluate_reply_us"):
@@ -266,14 +267,13 @@ with its two nodes"""
                 score = -1
 
             if score > best_score:
-                best_reply = reply
-                best_score = score
+                best_score, best_reply = score, reply
 
             # dump all replies to the console if debugging is enabled
             if log.isEnabledFor(logging.DEBUG):
-                all_replies.append((score, reply))
+                all_scores.append((score, reply))
 
-        _time = time.time() - _start
+        _time = time.time() - start
 
         if best_reply is None:
             # we couldn't find any pivot words in _babble(), so we're
@@ -285,7 +285,7 @@ with its two nodes"""
 
         if log.isEnabledFor(logging.DEBUG):
             replies = [(score, reply.to_text())
-                       for score, reply in all_replies]
+                       for score, reply in all_scores]
             replies.sort()
 
             for score, text in replies:
@@ -295,19 +295,19 @@ with its two nodes"""
         trace("Brain.known_word_token_count", len(pivot_set))
 
         trace("Brain.reply_us", _time)
-        trace("Brain.reply_count", count, _time)
+        trace("Brain.reply_count", len(replies), _time)
         trace("Brain.best_reply_score", int(best_score * 1000))
         trace("Brain.best_reply_length", len(best_reply.edges))
 
         log.debug("made %d replies (%d unique) in %f seconds" \
-                      % (count, len(score_cache), _time))
+                      % (len(replies), len(score_cache), _time))
 
         if len(text) > 60:
             msg = text[0:60] + "..."
         else:
             msg = text
 
-        log.info("[%s] %d %f", msg, count, best_score)
+        log.info("[%s] %d %f", msg, len(replies), best_score)
 
         # look up the words for these tokens
         with trace_us("Brain.reply_words_lookup_us"):
