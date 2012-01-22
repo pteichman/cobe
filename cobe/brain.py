@@ -82,7 +82,7 @@ class Brain:
     def prewarm_caches(self):
         # Warm the kernel buffer cache. This is heavy-handed, but a
         # major performance improvement on a large brain. Since reply
-        # quality is tied tightly to how many candiates can be
+        # quality is tied tightly to how many candidates can be
         # generated, this improves quality as well.
         with trace_us("Brain.cache_prewarm_us"):
             with open(self.filename, "r+b") as fd:
@@ -214,6 +214,8 @@ with its two nodes"""
             # Assume that non-Unicode text is encoded as utf-8, which
             # should be somewhat safe in the modern world.
             text = text.decode("utf-8", "ignore")
+
+        self.prewarm_caches()
 
         tokens = self.tokenizer.split(text)
         input_ids = map(self.graph.get_token_by_text, tokens)
