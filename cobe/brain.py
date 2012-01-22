@@ -11,6 +11,7 @@ import time
 import types
 
 from .instatrace import trace, trace_ms, trace_us
+from . import corpus
 from . import scoring
 from . import tokenizers
 
@@ -41,6 +42,11 @@ class Brain:
 
         self.filename = filename
         self.prewarm_caches()
+
+        corpus_filename = "%s.corpus" % filename
+        if not os.path.exists(corpus_filename):
+            corpus.Corpus.init(corpus_filename)
+        self.corpus = corpus.Corpus(corpus_filename)
 
         with trace_us("Brain.connect_us"):
             self.graph = graph = Graph(sqlite3.connect(filename))
@@ -311,9 +317,12 @@ with its two nodes"""
 
         # look up the words for these tokens
         with trace_us("Brain.reply_words_lookup_us"):
-            text = best_reply.to_text()
+            reply = best_reply.to_text()
 
-        return text
+        # log this reply to the corpus
+        self.corpus.log_exchange(text, reply)
+
+        return reply
 
     def _conflate_stems(self, pivot_set, tokens):
         for token in tokens:
