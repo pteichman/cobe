@@ -34,6 +34,11 @@ SELECT name FROM sqlite_master WHERE name='voters'""").fetchone()
         if row is None:
             raise CorpusError("Tried to open a non-initted Corpus")
 
+    def add_user(self, email):
+        q = "INSERT INTO voters (email) VALUES (?)"
+        self._conn.execute(q, (email,))
+        self._conn.commit()
+
     def log_exchange(self, input_, output, when=None):
         if when is None:
             when = datetime.datetime.now()

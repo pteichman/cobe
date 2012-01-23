@@ -1,4 +1,4 @@
-# Copyright (C) 2011 Peter Teichman
+# Copyright (C) 2012 Peter Teichman
 
 import atexit
 import logging
@@ -10,6 +10,7 @@ import sys
 import time
 
 from .brain import Brain
+from .corpus import Corpus
 from .irc import IrssiLogFile, Runner
 from .web.app import create_app
 
@@ -204,12 +205,29 @@ class InstawebCommand:
     @classmethod
     def add_subparser(cls, parser):
         subparser = parser.add_parser("instaweb", help="Web voting server")
+        subparser.add_argument("-c", "--corpus", default="cobe.brain.corpus")
         subparser.set_defaults(run=cls.run)
 
     @staticmethod
     def run(args):
-        b = Brain(args.brain)
-        create_app(b).run(debug=True)
+        create_app().run(debug=True)
+
+
+class InstawebAddUserCommand:
+    @classmethod
+    def add_subparser(cls, parser):
+        subparser = parser.add_parser("instaweb-add-user",
+                                      help="Add a user to instaweb")
+        subparser.add_argument("-c", "--corpus", default="cobe.brain.corpus")
+        subparser.add_argument("emails", nargs="+")
+        subparser.set_defaults(run=cls.run)
+
+    @staticmethod
+    def run(args):
+        c = Corpus(args.corpus)
+
+        for email in args.emails:
+            c.add_user(email)
 
 
 class IrcClientCommand:
