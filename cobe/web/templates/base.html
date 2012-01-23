@@ -23,11 +23,17 @@
         <div class="container">
           <a class="brand" href="{{ url_for('base.index') }}">Cobe Caucus</a>
 
+          <ul class="nav">
+{% if user %}
+            <li><a href="{{ url_for('base.recent') }}">Recent</a></li>
+{% endif %}
+          </ul>
+
           <ul class="nav secondary-nav">
 {% if user %}
             <li><div class="email"><a href="#">{{ user.email }}</a></div></li>
             <li><div class="picture"><img height='24' width='24' src='http://www.gravatar.com/avatar/{{ user.email|md5 }}'></img></div></li>
-            <li><div class="login"><a href="#" onclick="onLogoutClicked(); return false;">Sign out</a></div></li>
+            <li><div class="login"><a href="{{ url_for('base.logout') }}">Sign out</a></div></li>
 {% else %}
             <li><div class="login"><a href="#" onclick="onLoginClicked(); return false;">Sign in</a></div></li>
 {% endif %}
@@ -38,13 +44,14 @@
 
     <div class="container">
       <div class="content">
+{% block content %}
         <div class="page-header">
           <h1>Welcome</h1>
         </div>
+{% endblock %}
       </div>
 
       <footer>
-        <p>hal hal hal</p>
       </footer>
     </div>
 

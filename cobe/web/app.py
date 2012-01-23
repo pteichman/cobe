@@ -6,7 +6,7 @@ from flask import Flask, g
 from flaskext.sqlalchemy import SQLAlchemy
 
 from .base import base
-from .filters import md5
+from .filters import md5, natural_datetime
 
 app = Flask(__name__)
 
@@ -28,6 +28,7 @@ def teardown_request(exception):
 
 def register_filters(app):
     app.jinja_env.filters["md5"] = md5
+    app.jinja_env.filters["natural_datetime"] = natural_datetime
 
 
 def create_app():

@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+
+{% from "_helpers.html" import render_exchange %}
+
+{% block content %}
+{% for e in exchanges %}
+{{ render_exchange(e) }}
+{% endfor %}
+
+{% endblock %}

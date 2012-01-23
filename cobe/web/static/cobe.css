@@ -5,3 +5,13 @@ body {
 .topbar .picture {
     padding-top: 8px;
 }
+
+.content {
+    padding-top: 10px;
+}
+
+.exchange .info {
+    float: right;
+    line-height: 18px;
+    margin-top: 0px;
+}

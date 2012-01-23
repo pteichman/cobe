@@ -1,0 +1,19 @@
+{% macro render_exchange(e) %}
+<div class="exchange alert-message block-message">
+  <div class="info">
+    <a href="{{ url_for('base.one', id=e['id']) }}">
+      {{ e["time"]|natural_datetime }}</a>
+  </div>
+
+  <blockquote>
+    <p>{{ e["input"] }}</p>
+    <small>user</small>
+  </blockquote>
+
+  <blockquote>
+    <p>{{ e["output"] }}</p>
+    <small>cobe</small>
+  </blockquote>
+
+</div>
+{% endmacro %}

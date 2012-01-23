@@ -6,8 +6,8 @@ import json
 import requests
 import urllib2
 
-from flask import Blueprint, g, jsonify, request, render_template, session, \
-    url_for
+from flask import Blueprint, g, jsonify, redirect, request, render_template, \
+    session, url_for
 
 from .auth import get_user, require_session
 
@@ -20,6 +20,36 @@ def index():
     user = get_user()
 
     return render_template("base.html", user=user)
+
+
+@base.route("/one/<int:id>/")
+@require_session
+def one(id):
+    user = get_user()
+
+    q = "SELECT id, input, output, time FROM exchanges WHERE id = ?"
+
+    exchanges = g.db.execute(q, (id,))
+
+    return render_template("vote.html", user=user, exchanges=exchanges)
+
+
+@base.route("/recent/")
+@base.route("/recent/<int:page>/")
+@require_session
+def recent(page=1):
+    user = get_user()
+    pagesize = 30
+
+    # select recent exchanges this user hasn't already voted on
+    q = "SELECT exchanges.id, input, output, exchanges.time FROM exchanges " \
+        "LEFT JOIN votes " \
+        "ON votes.log_id = exchanges.id AND votes.voter_id = ? " \
+        "WHERE votes.voter_id IS NULL GROUP BY exchanges.id LIMIT ? OFFSET ?"
+
+    exchanges = g.db.execute(q, (user["id"], pagesize, (page-1)*pagesize))
+
+    return render_template("vote.html", user=user, exchanges=exchanges)
 
 
 @base.route("/id/login", methods=["POST"])
@@ -62,8 +92,8 @@ def login():
     return jsonify(email=email, picture=picture)
 
 
-@base.route("/id/logout", methods=["POST"])
+@base.route("/id/logout")
 def logout():
     session.clear()
 
-    return jsonify()
+    return redirect(url_for("base.index"))
