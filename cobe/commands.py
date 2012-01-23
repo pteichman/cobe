@@ -173,6 +173,78 @@ class LearnIrcLogCommand:
         b.stop_batch_learning()
 
 
+class LearnIrcCorpusCommand:
+    @classmethod
+    def add_subparser(cls, parser):
+        subparser = parser.add_parser("learn-irc-corpus",
+                                      help="Extract a corpus from IRC logs")
+        subparser.add_argument("-r", "--reply-to", required=True,
+                               help="Record messages from/to this user")
+        subparser.add_argument("file", nargs="+")
+        subparser.set_defaults(run=cls.run)
+
+    @classmethod
+    def run(cls, args):
+        b = Brain(args.brain)
+        c = b.corpus
+
+        # this queue is used to connect inputs to outputs for the corpus
+        replies = {}
+
+        for filename in args.file:
+            now = time.time()
+            print filename
+
+            count = 0
+            fd = open(filename, "r")
+            fd_size = os.stat(filename).st_size
+
+            log_file = IrssiLogFile(fd)
+            for when, speaker, msg in log_file.items():
+                show_progress = ((count % 100) == 0)
+
+                if show_progress:
+                    elapsed = time.time() - now
+                    progress = float(fd.tell()) / float(fd_size)
+                    sys.stdout.write("\r%.0f%% (%d/s)" % (progress*100,
+                                                          count / elapsed))
+                    sys.stdout.flush()
+
+                count = count + 1
+
+                if (count % 1000) == 0:
+                    b.graph.commit()
+
+                to = None
+
+                # strip "username: " at the beginning of messages
+                match = re.search("^(\S+)[,:]\s*(.*?)$", msg)
+                if match:
+                    to = match.group(1).lower()
+                    msg = match.group(2)
+
+                # strip kibot style '"asdf" --user, 06-oct-09' quotes
+                msg = re.sub("\"(.*)\" --\S+,\s+\d+-\S+-\d+",
+                             lambda m: m.group(1), msg)
+
+                if to == args.reply_to:
+                    replies.setdefault(speaker, []).append((when, msg))
+                elif speaker == args.reply_to:
+                    try:
+                        (prompt_when, prompt) = replies[to].pop(0)
+                        while (when-prompt_when).seconds > 120:
+                            (prompt_when, prompt) = replies[to].pop(0)
+
+                        c.log_exchange(prompt, msg, when)
+                    except (KeyError, IndexError):
+                        pass
+
+            elapsed = time.time() - now
+            print "\r100%% (%d/s)" % (count / elapsed)
+
+        b.stop_batch_learning()
+
+
 class ConsoleCommand:
     @classmethod
     def add_subparser(cls, parser):
