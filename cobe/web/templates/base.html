@@ -22,10 +22,15 @@
       <div class="fill">
         <div class="container">
           <a class="brand" href="{{ url_for('base.index') }}">Cobe Caucus</a>
+
           <ul class="nav secondary-nav">
-            <li><div class="email"></div></li>
-            <li><div class="picture"></div></li>
+{% if user %}
+            <li><div class="email"><a href="#">{{ user.email }}</a></div></li>
+            <li><div class="picture"><img height='24' width='24' src='http://www.gravatar.com/avatar/{{ user.email|md5 }}'></img></div></li>
+            <li><div class="login"><a href="#" onclick="onLogoutClicked(); return false;">Sign out</a></div></li>
+{% else %}
             <li><div class="login"><a href="#" onclick="onLoginClicked(); return false;">Sign in</a></div></li>
+{% endif %}
           </ul>
         </div>
       </div>

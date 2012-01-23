@@ -6,15 +6,20 @@ import json
 import requests
 import urllib2
 
-from flask import Blueprint, jsonify, request, render_template, session, \
+from flask import Blueprint, g, jsonify, request, render_template, session, \
     url_for
+
+from .auth import get_user, require_session
+
 
 base = Blueprint("base", __name__)
 
 
 @base.route("/")
 def index():
-    return render_template("base.html")
+    user = get_user()
+
+    return render_template("base.html", user=user)
 
 
 @base.route("/id/login", methods=["POST"])
@@ -46,10 +51,12 @@ def login():
             error="unknown status from browserid: %s" % data["status"])
 
     email = data["email"].strip()
-    session["user_id"] = email
+    session["email"] = email
 
     digest = hashlib.md5(email.lower()).hexdigest()
     picture = "http://www.gravatar.com/avatar/%s?s=24" % digest
+
+    print session
 
     # validate, login to the session
     return jsonify(email=email, picture=picture)
@@ -57,7 +64,6 @@ def login():
 
 @base.route("/id/logout", methods=["POST"])
 def logout():
-    if "user_id" in session:
-        del session["user_id"]
+    session.clear()
 
     return jsonify()

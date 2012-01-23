@@ -1,11 +1,6 @@
 function loggedIn(resp) {
-  $("<a href='#'>").html(resp.email).appendTo($(".topbar .email"));
-
-  if (resp.picture) {
-    $("<img height='24' width='24'>").attr('src', resp.picture).appendTo($(".topbar .picture"));
-  }
-
-  $(".topbar .login").html("<a href='#' onclick='onLogoutClicked(); return false;'>Sign out</a>");
+  /* I am not very web 2.0 */
+  location.reload();
 }
 
 function loggedOut() {

@@ -1,1 +1,3 @@
 SECRET_KEY="FMNrLGzLhnF0g6VR77PC4sXVj8kCCBlW8nvpdCNj"
+DEBUG=True
+CORPUS="cobe.brain.corpus"
