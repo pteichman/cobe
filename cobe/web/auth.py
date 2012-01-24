@@ -1,7 +1,7 @@
 # Copyright (C) 2012 Peter Teichman
 
 from functools import wraps
-from flask import g, session, request, redirect
+from flask import flash, g, session, request, redirect
 
 
 def get_user():
@@ -9,6 +9,7 @@ def get_user():
         user = g.db.execute("SELECT * FROM voters WHERE email = ?",
                             (session["email"],)).fetchone()
         if not user:
+            flash("Removing unknown user from session: %s" % session["email"])
             del session["email"]
 
         return user
