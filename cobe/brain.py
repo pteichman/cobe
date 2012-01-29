@@ -483,9 +483,15 @@ class Graph:
             self._all_tokens_q = ",".join(["?" for i in xrange(self.order)])
             self._last_token = "token%d_id" % (self.order - 1)
 
-            # Use a 10M cache by default. This speeds replies quite a bit.
             c = self.cursor()
-            c.execute("PRAGMA cache_size=10000")
+
+            # Disable the SQLite page cache, which doesn't pin its
+            # pages in memory. When the cached pages are swapped out
+            # to disk, it offers no measured advantage over going to
+            # the original file. Since we prewarming the kernel page
+            # cache with the original file, a swapped out SQLite cache
+            # can slow things down considerably.
+            c.execute("PRAGMA cache_size=0")
 
             # Each of these speed-for-reliability tradeoffs is useful for
             # bulk learning.
