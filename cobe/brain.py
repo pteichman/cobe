@@ -1,4 +1,4 @@
-# Copyright (C) 2011 Peter Teichman
+# Copyright (C) 2012 Peter Teichman
 
 import collections
 import logging
@@ -10,10 +10,12 @@ import sqlite3
 import time
 import types
 
-from .instatrace import trace, trace_ms, trace_us
 from . import corpus
 from . import scoring
 from . import tokenizers
+
+from .instatrace import trace, trace_ms, trace_us
+from .readahead import readahead
 
 log = logging.getLogger("cobe")
 
@@ -91,10 +93,7 @@ class Brain:
         # quality is tied tightly to how many candidates can be
         # generated, this improves quality as well.
         with trace_us("Brain.cache_prewarm_us"):
-            with open(self.filename, "r+b") as fd:
-                # read the database file in 4096 byte chunks
-                while len(fd.read(2**12)) > 0:
-                    pass
+            readahead(self.filename)
 
     def start_batch_learning(self):
         """Begin a series of batch learn operations. Data will not be
