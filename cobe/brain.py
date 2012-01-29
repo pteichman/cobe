@@ -742,6 +742,10 @@ class Graph:
     def init(self, order, tokenizer, run_migrations=True):
         c = self.cursor()
 
+        # Set the SQLite page size to 4k, matching the default
+        # page size on most modern operating systems.
+        c.execute("PRAGMA page_size=4096")
+
         log.debug("Creating table: info")
         c.execute("""
 CREATE TABLE info (
