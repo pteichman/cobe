@@ -47,11 +47,20 @@ SELECT name FROM sqlite_master WHERE name='voters'""").fetchone()
         # Create a unique hash for this exchange. This is so we can
         # identify an exchange without an easily guessable id, and so
         # voting can be more future-proof across Corpus databases.
-        sha1hash = hashlib.sha1("%s\n%s" % (input_, output)).hexdigest()
+        combo = input_ + "\n" + output
+        sha1hash = hashlib.sha1(combo.encode("utf-8")).hexdigest()
 
-        q = "INSERT INTO exchanges (input, output, time, hash) " \
-            "VALUES (?, ?, ?, ?)"
-        self._conn.execute(q, (input_, output, when, sha1hash))
+        c = self._conn.cursor()
+
+        # Try an update first, and if that doesn't work, insert
+        q = "UPDATE exchanges SET time=? WHERE hash=?"
+        c.execute(q, (when, sha1hash))
+
+        if c.rowcount == 0:
+            q = "INSERT INTO exchanges (input, output, time, hash) " \
+                " VALUES (?, ?, ?, ?)"
+            c.execute(q, (input_, output, when, sha1hash))
+
         self._conn.commit()
 
     @staticmethod
