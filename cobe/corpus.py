@@ -1,6 +1,7 @@
 # Copyright (C) 2012 Peter Teichman
 
 import datetime
+import hashlib
 import logging
 import sqlite3
 
@@ -43,8 +44,14 @@ SELECT name FROM sqlite_master WHERE name='voters'""").fetchone()
         if when is None:
             when = datetime.datetime.now()
 
-        q = "INSERT INTO exchanges (input, output, time) VALUES (?, ?, ?)"
-        self._conn.execute(q, (input_, output, when))
+        # Create a unique hash for this exchange. This is so we can
+        # identify an exchange without an easily guessable id, and so
+        # voting can be more future-proof across Corpus databases.
+        sha1hash = hashlib.sha1("%s\n%s" % (input_, output)).hexdigest()
+
+        q = "INSERT INTO exchanges (input, output, time, hash) " \
+            "VALUES (?, ?, ?, ?)"
+        self._conn.execute(q, (input_, output, when, sha1hash))
         self._conn.commit()
 
     @staticmethod
@@ -67,7 +74,8 @@ CREATE TABLE IF NOT EXISTS exchanges (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     input TEXT NOT NULL,
     output TEXT NOT NULL,
-    time TIMESTAMP NOT NULL)""")
+    time TIMESTAMP NOT NULL,
+    hash TEXT UNIQUE NOT NULL)""")
 
         c.execute("""
 CREATE TABLE IF NOT EXISTS votes (
