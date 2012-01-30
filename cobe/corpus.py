@@ -92,7 +92,7 @@ CREATE TABLE IF NOT EXISTS votes (
     voter_id INTEGER NOT NULL REFERENCES voters(id),
     log_id INTEGER NOT NULL REFERENCES exchanges(id),
     vote INTEGER NOT NULL,
-    star BOOLEAN NOT NULL,
+    star BOOLEAN,
     time TIMESTAMP NOT NULL)""")
 
         db.commit()
