@@ -1,10 +1,43 @@
 {% extends "base.html" %}
 
-{% from "_helpers.html" import render_exchange %}
-
 {% block content %}
-{% for e in exchanges %}
-{{ render_exchange(e) }}
-{% endfor %}
+
+<script language="javascript">
+
+  var queue = new Array();
+  function extendQueue(items) {
+    queue = queue.concat(items.exchanges);
+  }
+
+  function shiftFromQueue() {
+    var item = queue.shift();
+
+    $(".exchange").removeClass("notice")
+    $(".exchange").addClass("info");
+
+    $(".exchanges").prepend(
+      "<div class='exchange alert-message block-message'>"
+        + "<span class='input'><strong>user</strong> "+item.input+"</span>"
+        + "<br/>"
+        + "<span class='output'><strong>cobe</strong> "+item.output+"</span>"
+        + "</div>");
+  }
+
+  function fetchQueue() {
+    jQuery.getJSON("{{ items }}", function(items) {
+      extendQueue(items);
+
+      shiftFromQueue();
+    });
+  }
+
+  $(document).ready(function() {
+    fetchQueue();
+  });
+</script>
+
+<div class="exchanges">
+</div>
+
 
 {% endblock %}
