@@ -18,8 +18,8 @@
   </head>
 
   <body>
-    <div class="topbar">
-      <div class="fill">
+    <div class="navbar navbar-fixed-top">
+      <div class="navbar-inner">
         <div class="container">
           <a class="brand" href="{{ url_for('base.index') }}">Cobe Caucus</a>
 
@@ -29,13 +29,13 @@
 {% endif %}
           </ul>
 
-          <ul class="nav secondary-nav">
+          <ul class="nav pull-right">
 {% if user %}
-            <li><div class="email"><a href="#">{{ user.email }}</a></div></li>
-            <li><div class="picture"><img height='24' width='24' src='http://www.gravatar.com/avatar/{{ user.email|md5 }}'></img></div></li>
-            <li><div class="login"><a href="{{ url_for('base.logout') }}">Sign out</a></div></li>
+            <li><a href="#">{{ user.email }}</a></li>
+            <li><img style="padding-top: 5px" height='30' width='30' src='http://www.gravatar.com/avatar/{{ user.email|md5 }}?s=30'></img></li>
+            <li><a href="{{ url_for('base.logout') }}">Sign out</a></li>
 {% else %}
-            <li><div class="login"><a href="#" onclick="onLoginClicked(); return false;">Sign in</a></div></li>
+            <li><a href="#" onclick="onLoginClicked(); return false;">Sign in</a></li>
 {% endif %}
           </ul>
         </div>

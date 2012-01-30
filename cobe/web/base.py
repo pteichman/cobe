@@ -10,7 +10,7 @@ from flask import Blueprint, g, jsonify, redirect, request, render_template, \
     session, url_for
 
 from .auth import get_user, require_session
-from .model import Exchange
+from .model import Exchange, Vote
 
 base = Blueprint("base", __name__)
 
@@ -43,6 +43,16 @@ def recent_json(page=1):
                               output=e["output"]))
 
     return jsonify(dict(exchanges=exchanges))
+
+
+@base.route("/vote/<hash>/<int:vote>/")
+@require_session
+def vote(hash, vote):
+    user = get_user()
+
+    Vote.vote(user, hash, vote-1)
+
+    return jsonify({})
 
 
 @base.route("/id/login", methods=["POST"])

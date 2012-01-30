@@ -9,24 +9,46 @@
     queue = queue.concat(items.exchanges);
   }
 
+  function vote(direction, hash) {
+    jQuery.getJSON("/vote/"+hash+"/"+direction+"/", function(data) {
+      shiftFromQueue();
+    });
+  }
+
+  function icons(hash) {
+    return "<div class='btn-group pull-right'>"
+      + "<a class='btn' href='#' onclick='vote(0, \""+hash+"\");'>"
+      +   "<i class='icon arrow-down'/></a>"
+      + "<a class='btn' href='#' onclick='vote(1, \""+hash+"\");'>"
+      +   "<i class='icon minus'/></a>"
+      + "<a class='btn' href='#' onclick='vote(2, \""+hash+"\");'>"
+      +   "<i class='icon arrow-up'/></a>"
+      + "</div>"
+  }
+
   function shiftFromQueue() {
     var item = queue.shift();
 
-    $(".exchange").removeClass("notice")
-    $(".exchange").addClass("info");
+    $(".exchange").removeClass("alert-info")
+    $(".exchange").addClass("alert-warning");
 
     $(".exchanges").prepend(
-      "<div class='exchange alert-message block-message'>"
+      "<div class='exchange alert alert-info'>"
+        + icons(item.hash)
         + "<span class='input'><strong>user</strong> "+item.input+"</span>"
+        + "<br/>"
         + "<br/>"
         + "<span class='output'><strong>cobe</strong> "+item.output+"</span>"
         + "</div>");
+
+    if (queue.length < 10) {
+        fetchQueue();
+    }
   }
 
   function fetchQueue() {
     jQuery.getJSON("{{ items }}", function(items) {
       extendQueue(items);
-
       shiftFromQueue();
     });
   }
