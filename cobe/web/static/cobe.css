@@ -10,8 +10,14 @@ body {
     padding-top: 10px;
 }
 
-.exchange .info {
-    float: right;
-    line-height: 18px;
-    margin-top: 0px;
+.exchange {
+    padding-right: 14px;
+}
+
+.exchange .btn-group {
+    border-color: #BBB;
+}
+
+.exchange .btn {
+    background-image: none;
 }
