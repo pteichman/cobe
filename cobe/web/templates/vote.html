@@ -43,14 +43,15 @@
     $(".exchange").removeClass("alert-info top")
     $(".exchange").addClass("alert-warning");
 
-    $(".exchanges").prepend(
-      "<div class='exchange alert alert-info top'>"
-        + icons(item.hash)
-        + "<span class='input'><strong>user</strong> "+item.input+"</span>"
-        + "<br/>"
-        + "<br/>"
-        + "<span class='output'><strong>cobe</strong> "+item.output+"</span>"
-        + "</div>");
+    var div = "<div class='exchange alert alert-info top'>"
+      + icons(item.hash)
+      + "<span class='input'><strong>user</strong> "+item.input+"</span>"
+      + "<br/>"
+      + "<br/>"
+      + "<span class='output'><strong>cobe</strong> "+item.output+"</span>"
+      + "</div>";
+
+    $(div).hide().prependTo(".exchanges").fadeIn("fast");
 
     if (queue.length < 10) {
         fetchQueue();
