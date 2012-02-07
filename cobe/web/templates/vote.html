@@ -58,6 +58,22 @@
     }
   }
 
+  function attachKeys() {
+    $("body").keypress(
+        function(event) {
+            /* get the top button group */
+            var btns = $(".exchange.top > .btn-group").children();
+
+            if (event.which == 122) { /* z */
+                btns[0].onclick();
+            } else if (event.which == 97) { /* a */
+                btns[1].onclick();
+            } else if (event.which == 113) { /* q */
+                btns[2].onclick();
+            }
+        });
+  }
+
   function fetchQueue() {
     jQuery.getJSON("{{ items }}", function(items) {
       extendQueue(items);
@@ -66,6 +82,7 @@
   }
 
   $(document).ready(function() {
+    attachKeys();
     fetchQueue();
   });
 </script>
