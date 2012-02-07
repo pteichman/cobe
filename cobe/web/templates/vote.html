@@ -9,19 +9,30 @@
     queue = queue.concat(items.exchanges);
   }
 
-  function vote(direction, hash) {
+  function vote(elt, direction, hash) {
     jQuery.getJSON("/vote/"+hash+"/"+direction+"/", function(data) {
-      shiftFromQueue();
+      /* if this is the top item, shift it down and grab the next */
+      if (elt.parentsUntil(".exchanges").hasClass("top")) {
+        shiftFromQueue();
+      }
+
+      /* reset the other buttons to their original state */
+      elt.siblings(".btn").removeClass("btn-primary");
+      elt.siblings(".btn").children("i").removeClass("icon-white");
+
+      /* mark this button as selected */
+      elt.addClass("btn-primary");
+      elt.children("i").addClass("icon-white");
     });
   }
 
   function icons(hash) {
     return "<div class='btn-group pull-right'>"
-      + "<a class='btn' href='#' onclick='vote(0, \""+hash+"\");'>"
+      + "<a class='btn' href='#' onclick='vote($(this), 0, \""+hash+"\");'>"
       +   "<i class='icon-chevron-down'/></a>"
-      + "<a class='btn' href='#' onclick='vote(1, \""+hash+"\");'>"
+      + "<a class='btn' href='#' onclick='vote($(this), 1, \""+hash+"\");'>"
       +   "<i class='icon-minus'/></a>"
-      + "<a class='btn' href='#' onclick='vote(2, \""+hash+"\");'>"
+      + "<a class='btn' href='#' onclick='vote($(this), 2, \""+hash+"\");'>"
       +   "<i class='icon-chevron-up'/></a>"
       + "</div>"
   }
@@ -29,11 +40,11 @@
   function shiftFromQueue() {
     var item = queue.shift();
 
-    $(".exchange").removeClass("alert-info")
+    $(".exchange").removeClass("alert-info top")
     $(".exchange").addClass("alert-warning");
 
     $(".exchanges").prepend(
-      "<div class='exchange alert alert-info'>"
+      "<div class='exchange alert alert-info top'>"
         + icons(item.hash)
         + "<span class='input'><strong>user</strong> "+item.input+"</span>"
         + "<br/>"
