@@ -38,3 +38,12 @@ def create_app():
     register_filters(app)
 
     return app
+
+
+uwsgi_app = None
+def create_uwsgi_app(*args, **kwargs):
+    global uwsgi_app
+    if uwsgi_app is None:
+        uwsgi_app = create_app()
+
+    return uwsgi_app(*args, **kwargs)
