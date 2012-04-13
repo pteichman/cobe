@@ -40,7 +40,6 @@ class Brain:
             Brain.init(filename)
 
         self.filename = filename
-        self.prewarm_caches()
 
         with trace_us("Brain.connect_us"):
             self.graph = graph = Graph(sqlite3.connect(filename))
@@ -78,17 +77,6 @@ class Brain:
         self._end_context_id = graph.get_node_by_tokens(self._end_context)
 
         self._learning = False
-
-    def prewarm_caches(self):
-        # Warm the kernel buffer cache. This is heavy-handed, but a
-        # major performance improvement on a large brain. Since reply
-        # quality is tied tightly to how many candiates can be
-        # generated, this improves quality as well.
-        with trace_us("Brain.cache_prewarm_us"):
-            with open(self.filename, "r+b") as fd:
-                # read the database file in 4096 byte chunks
-                while len(fd.read(2**12)) > 0:
-                    pass
 
     def start_batch_learning(self):
         """Begin a series of batch learn operations. Data will not be
