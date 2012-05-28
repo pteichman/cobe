@@ -329,7 +329,7 @@ with its two nodes"""
             if token_id is not None:
                 token_ids.append(token_id)
 
-        return token_ids
+        return set(token_ids)
 
     def _filter_pivots(self, pivots):
         # remove pivots that might not give good results
