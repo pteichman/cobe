@@ -91,7 +91,7 @@ class testInit(unittest.TestCase):
 
         db = brain.graph
         key = "pickle_test"
-        obj = self
+        obj = {"dummy": "object", "to": "pickle"}
 
         db.set_info_text(key, pickle.dumps(obj))
 
