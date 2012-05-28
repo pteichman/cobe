@@ -1,6 +1,7 @@
-# Copyright (C) 2011 Peter Teichman
+# Copyright (C) 2012 Peter Teichman
 
 import collections
+import itertools
 import logging
 import os
 import pprint
@@ -343,8 +344,9 @@ with its two nodes"""
 
         return set(filtered)
 
-    def _choose_pivot(self, pivot_ids):
+    def _pop_pivot(self, pivot_ids):
         pivot = random.choice(tuple(pivot_ids))
+        pivot_ids.remove(pivot)
 
         if type(pivot) is types.TupleType:
             # the input word was stemmed to several things
@@ -356,7 +358,9 @@ with its two nodes"""
         if len(pivot_ids) == 0:
             return
 
-        end_context_id = self._end_context_id
+        end = self._end_context_id
+        graph = self.graph
+        search = graph.bfs
 
         # Cache all the trailing and beginning sentences we find from
         # each random node we search. Since the node is a full n-tuple
@@ -365,32 +369,28 @@ with its two nodes"""
         next_cache = collections.defaultdict(list)
         prev_cache = collections.defaultdict(list)
 
-        while True:
-            with trace_us("Brain.generate_reply_us"):
-                # generate a reply containing one of token_ids
-                pivot_id = self._choose_pivot(pivot_ids)
-                node = self.graph.get_random_node_with_token(pivot_id)
+        pivot_ids = set(pivot_ids)
 
-                next = self.graph.random_search(node, end_context_id, 1)
-                prev = self.graph.random_search(node, end_context_id, 0)
+        while pivot_ids:
+            # generate a reply containing one of token_ids
+            pivot_id = self._pop_pivot(pivot_ids)
 
-            prev.reverse()
-            edges = prev + next
+            node = graph.get_random_node_with_token(pivot_id)
+            parts = itertools.izip_longest(search(node, end, 1),
+                                           search(node, end, 0),
+                                           fillvalue=None)
 
-            if len(edges):
-                yield edges, node
+            for next, prev in parts:
+                if next:
+                    next_cache[node].append(next)
+                    for p in prev_cache[node]:
+                        yield p + next, node
 
-            # combine the new next & prev chains with all other search
-            # results from the current node
-            for n in next_cache.get(node, []):
-                yield prev + n, node
-
-            for p in prev_cache.get(node, []):
-                yield p + next, node
-
-            # and add the new results to the caches
-            next_cache[node].append(next)
-            prev_cache[node].append(prev)
+                if prev:
+                    prev.reverse()
+                    prev_cache[node].append(prev)
+                    for n in next_cache[node]:
+                        yield prev + n, node
 
     @staticmethod
     def init(filename, order=3, tokenizer=None):
@@ -711,6 +711,32 @@ class Graph:
             self.get_seq_expr(node_ids)
 
         return self._conn.execute(q)
+
+    def bfs(self, start_id, end_id, direction):
+        if direction:
+            q = "SELECT id, next_node, prev_node, has_space, count " \
+                "FROM edges WHERE prev_node = :last"
+        else:
+            q = "SELECT id, prev_node, next_node, has_space, count " \
+                "FROM edges WHERE next_node = :last"
+
+        c = self.cursor()
+
+        left = collections.deque([(start_id, [])])
+        while left:
+            cur, path = left.popleft()
+            rows = list(c.execute(q, dict(last=cur)))
+
+            for row in rows:
+                edge = Edge(self, row["id"], row["prev_node"],
+                            row["next_node"], row["has_space"], row["count"])
+
+                newpath = path + [edge]
+
+                if row[1] == end_id:
+                    yield newpath
+                else:
+                    left.append((row[1], newpath))
 
     def random_search(self, node, end_id, direction):
         """Perform a random walk on the graph starting at node"""
