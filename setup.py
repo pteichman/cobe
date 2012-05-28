@@ -26,11 +26,13 @@ setup(
         "python-irclib==0.4.8"
         ],
 
-    # The PyPI entry for python-irclib points to a stale download URL
-    # (tested 2012-05-28). Adding this version specific page to
-    # dependency_links allows it to be pulled in successfully.
+    # The PyPI entry for python-irclib points at a SourceForge files
+    # page. These no longer work with pip's url discovery, as they
+    # append the string "/download" to each filename. I have uploaded
+    # python-irclib 0.4.8's zip file from SourceForge (unmodified) to
+    # the page below so that "pip install cobe" will work.
     dependency_links = [
-        "http://sourceforge.net/projects/python-irclib/files/python-irclib/0.4.8/"
+        "http://github.com/pteichman/python-irclib/downloads"
         ],
 
     classifiers = [
