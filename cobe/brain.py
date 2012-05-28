@@ -231,15 +231,7 @@ with its two nodes"""
         all_replies = []
 
         _start = time.time()
-        while time.time() < end:
-            with trace_us("Brain.generate_reply_us"):
-                candidate = self._generate_reply(pivot_set)
-
-            if candidate is None:
-                continue
-
-            count += 1
-            edges, pivot_node = candidate
+        for edges, pivot_node in self._generate_replies(pivot_set):
             reply = Reply(self.graph, tokens, input_ids, pivot_node, edges)
 
             key = self._get_reply_key(reply)
@@ -258,6 +250,16 @@ with its two nodes"""
             # dump all replies to the console if debugging is enabled
             if log.isEnabledFor(logging.DEBUG):
                 all_replies.append((score, reply))
+
+            count += 1
+            if time.time() > end:
+                break
+
+        if best_reply is None:
+            # we couldn't find any pivot words in _babble(), so we're
+            # working with an essentially empty brain. Use the classic
+            # MegaHAL reply:
+            return "I don't know enough to answer you yet!"
 
         _time = time.time() - _start
 
@@ -350,24 +352,25 @@ with its two nodes"""
 
         return pivot
 
-    def _generate_reply(self, pivot_ids):
+    def _generate_replies(self, pivot_ids):
         if len(pivot_ids) == 0:
             return
 
-        # generate a reply containing one of token_ids
-        pivot_id = self._choose_pivot(pivot_ids)
-        node = self.graph.get_random_node_with_token(pivot_id)
+        end_context_id = self._end_context_id
 
-        if node is None:
-            return
+        while True:
+            edges = collections.deque()
 
-        edges = collections.deque()
+            with trace_us("Brain.generate_reply_us"):
+                # generate a reply containing one of token_ids
+                pivot_id = self._choose_pivot(pivot_ids)
+                node = self.graph.get_random_node_with_token(pivot_id)
 
-        self.graph.walk(node, self._end_context_id, 1, edges.append)
-        self.graph.walk(node, self._end_context_id, 0, edges.appendleft)
+                self.graph.walk(node, end_context_id, 1, edges.append)
+                self.graph.walk(node, end_context_id, 0, edges.appendleft)
 
-        if len(edges):
-            return edges, node
+            if len(edges):
+                yield edges, node
 
     @staticmethod
     def init(filename, order=3, tokenizer=None):
