@@ -26,6 +26,13 @@ setup(
         "python-irclib==0.4.8"
         ],
 
+    # The PyPI entry for python-irclib points to a stale download URL
+    # (tested 2012-05-28). Adding this version specific page to
+    # dependency_links allows it to be pulled in successfully.
+    dependency_links = [
+        "http://sourceforge.net/projects/python-irclib/files/python-irclib/0.4.8/"
+        ],
+
     classifiers = [
         "Development Status :: 5 - Production/Stable",
         "Environment :: Console",
