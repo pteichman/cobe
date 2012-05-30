@@ -344,9 +344,8 @@ with its two nodes"""
 
         return set(filtered)
 
-    def _pop_pivot(self, pivot_ids):
+    def _pick_pivot(self, pivot_ids):
         pivot = random.choice(tuple(pivot_ids))
-        pivot_ids.remove(pivot)
 
         if type(pivot) is types.TupleType:
             # the input word was stemmed to several things
@@ -371,9 +370,9 @@ with its two nodes"""
 
         while pivot_ids:
             # generate a reply containing one of token_ids
-            pivot_id = self._pop_pivot(pivot_ids)
-
+            pivot_id = self._pick_pivot(pivot_ids)
             node = graph.get_random_node_with_token(pivot_id)
+
             parts = itertools.izip_longest(search(node, end, 1),
                                            search(node, end, 0),
                                            fillvalue=None)
