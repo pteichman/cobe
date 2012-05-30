@@ -360,16 +360,14 @@ with its two nodes"""
 
         end = self._end_context_id
         graph = self.graph
-        search = graph.bfs
+        search = graph.search_random_walk
 
         # Cache all the trailing and beginning sentences we find from
         # each random node we search. Since the node is a full n-tuple
-        # context, we can combine any combination of next_cache[node]
-        # and prev_cache[node] and get a new reply.
+        # context, we can combine any pair of next_cache[node] and
+        # prev_cache[node] and get a new reply.
         next_cache = collections.defaultdict(list)
         prev_cache = collections.defaultdict(list)
-
-        pivot_ids = set(pivot_ids)
 
         while pivot_ids:
             # generate a reply containing one of token_ids
@@ -712,7 +710,7 @@ class Graph:
 
         return self._conn.execute(q)
 
-    def bfs(self, start_id, end_id, direction):
+    def search_bfs(self, start_id, end_id, direction):
         if direction:
             q = "SELECT id, next_node, prev_node, has_space, count " \
                 "FROM edges WHERE prev_node = :last"
@@ -738,8 +736,8 @@ class Graph:
                 else:
                     left.append((row[1], newpath))
 
-    def random_search(self, node, end_id, direction):
-        """Perform a random walk on the graph starting at node"""
+    def search_random_walk(self, start_id, end_id, direction):
+        """Walk once randomly from start_id to end_id."""
         if direction:
             q = "SELECT id, next_node, prev_node, has_space, count " \
                 "FROM edges WHERE prev_node = :last " \
@@ -752,20 +750,26 @@ class Graph:
                 "                              WHERE next_node = :last)"
 
         c = self.cursor()
-        last_node = node
 
-        ret = []
-        append = ret.append
+        left = collections.deque([(start_id, [])])
+        while left:
+            cur, path = left.popleft()
+            rows = c.execute(q, dict(last=cur))
 
-        while last_node != end_id:
-            row = c.execute(q, dict(last=last_node)).fetchone()
+            # Note: the LIMIT 1 above means this list only contains
+            # one row. Using a list here so this matches the bfs()
+            # code, so the two functions can be more easily combined
+            # later.
+            for row in rows:
+                edge = Edge(self, row["id"], row["prev_node"],
+                            row["next_node"], row["has_space"], row["count"])
 
-            append(Edge(self, row["id"], row["prev_node"], row["next_node"],
-                        row["has_space"], row["count"]))
+                newpath = path + [edge]
 
-            last_node = row[1]
-
-        return ret
+                if row[1] == end_id:
+                    yield newpath
+                else:
+                    left.append((row[1], newpath))
 
     def init(self, order, tokenizer, run_migrations=True):
         c = self.cursor()
