@@ -108,8 +108,8 @@ class LearnIrcLogCommand:
                                dest="only_nicks",
                                help="Only learn from specified nicks")
         subparser.add_argument("-r", "--reply-to", action="append",
-                               help="Reply (invisibly) to things said " \
-                                   "to specified nick")
+                               help="Reply (invisibly) to things said "
+                               "to specified nick")
         subparser.add_argument("file", nargs="+")
         subparser.set_defaults(run=cls.run)
 

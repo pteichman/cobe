@@ -287,8 +287,8 @@ with its two nodes"""
         trace("Brain.best_reply_score", int(best_score * 1000))
         trace("Brain.best_reply_length", len(best_reply.edge_ids))
 
-        log.debug("made %d replies (%d unique) in %f seconds" \
-                      % (count, len(score_cache), _time))
+        log.debug("made %d replies (%d unique) in %f seconds"
+                  % (count, len(score_cache), _time))
 
         if len(text) > 60:
             msg = text[0:60] + "..."
