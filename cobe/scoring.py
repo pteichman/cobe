@@ -1,8 +1,6 @@
-# Copyright (C) 2011 Peter Teichman
+# Copyright (C) 2012 Peter Teichman
 
 import math
-
-from itertools import islice, izip
 
 
 class Scorer:
@@ -110,35 +108,6 @@ class CobeScorer(Scorer):
             info /= n_words
 
         return self.normalize(info)
-
-
-class IdentityScorer(Scorer):
-    """Parrot the input exactly. Best used with a negative weight."""
-    def token_iter(self, reply):
-        cache = self.cache
-
-        for edge in islice(reply.edges, 1, None):
-            node_id = edge.prev
-
-            if node_id in cache:
-                token = cache[node_id]
-            else:
-                token = edge.get_prev_token()
-                cache[node_id] = token
-
-            yield edge.get_prev_token()
-            if edge.has_space:
-                yield None
-
-    def score(self, reply):
-        if len(reply.token_ids) != len(reply.edges) - 1:
-            return 0.0
-
-        for a, b in izip(reply.token_ids, self.token_iter(reply)):
-            if a != b:
-                return 0.0
-
-        return 1.0
 
 
 class InformationScorer(Scorer):
