@@ -59,37 +59,36 @@ class ScorerGroup:
 class CobeScorer(Scorer):
     """Classic Cobe scorer"""
     def score(self, reply):
+        edge_ids = reply.edge_ids
         info = 0.
 
-        cache = self.cache
-        nodes = set()
+        logprob_cache = self.cache.setdefault("logprob", {})
+        space_cache = self.cache.setdefault("has_space", {})
 
-        for edge in reply.edges:
-            node_id = edge.prev
+        get_edge_logprob = reply.graph.get_edge_logprob
+        has_space = reply.graph.has_space
 
-            if node_id not in cache:
-                nodes.add(node_id)
+        # Calculate the information content of the edges in this reply.
+        for edge_id in edge_ids:
+            if edge_id not in logprob_cache:
+                logprob_cache[edge_id] = get_edge_logprob(edge_id)
 
-        counts = reply.graph.get_node_counts(nodes)
-
-        for node_id, count in counts:
-            cache[node_id] = count
-
-        for edge in reply.edges:
-            node_count = cache[edge.prev]
-            info += -math.log(float(edge.count) / node_count, 2)
+            info -= logprob_cache[edge_id]
 
         # Approximate the number of cobe 1.2 contexts in this reply, so the
         # scorer will have similar results.
 
         # First, we have (graph.order - 1) extra edges on either end of the
         # reply, since cobe 2.0 learns from (_END_TOKEN, _END_TOKEN, ...).
-        n_words = len(reply.edges) - (reply.graph.order - 1) * 2
+        n_words = len(edge_ids) - (reply.graph.order - 1) * 2
 
         # Add back one word for each space between edges, since cobe 1.2
         # treated those as separate parts of a context.
-        for edge in reply.edges:
-            if edge.has_space:
+        for edge_id in edge_ids:
+            if edge_id not in space_cache:
+                space_cache[edge_id] = has_space(edge_id)
+
+            if space_cache[edge_id]:
                 n_words += 1
 
         # Double the score, since Cobe 1.x scored both forward and backward
@@ -113,25 +112,23 @@ class CobeScorer(Scorer):
 class InformationScorer(Scorer):
     """Score based on the information of each edge in the graph"""
     def score(self, reply):
+        edge_ids = reply.edge_ids
         info = 0.
 
-        get_node_count = reply.graph.get_node_count
+        logprob_cache = self.cache.setdefault("logprob", {})
 
-        cache = self.cache
-        for edge in reply.edges:
-            node_id = edge.prev
+        get_edge_logprob = reply.graph.get_edge_logprob
 
-            if node_id in cache:
-                node_count = cache[node_id]
-            else:
-                node_count = get_node_count(node_id)
-                cache[node_id] = node_count
+        # Calculate the information content of the edges in this reply.
+        for edge_id in edge_ids:
+            if edge_id not in logprob_cache:
+                logprob_cache[edge_id] = get_edge_logprob(edge_id)
 
-            info += -math.log(float(edge.count) / node_count, 2)
+            info -= logprob_cache[edge_id]
 
         return self.normalize(info)
 
 
 class LengthScorer(Scorer):
     def score(self, reply):
-        return self.normalize(len(reply.edges))
+        return self.normalize(len(reply.edge_ids))

@@ -3,8 +3,8 @@
 import collections
 import itertools
 import logging
+import math
 import os
-import pprint
 import random
 import re
 import sqlite3
@@ -285,7 +285,7 @@ with its two nodes"""
         trace("Brain.reply_us", _time)
         trace("Brain.reply_count", count, _time)
         trace("Brain.best_reply_score", int(best_score * 1000))
-        trace("Brain.best_reply_length", len(best_reply.edges))
+        trace("Brain.best_reply_length", len(best_reply.edge_ids))
 
         log.debug("made %d replies (%d unique) in %f seconds" \
                       % (count, len(score_cache), _time))
@@ -320,7 +320,7 @@ with its two nodes"""
                     pass
 
     def _get_reply_key(self, reply):
-        return tuple([edge.edge_id for edge in reply.edges])
+        return reply.edge_ids
 
     def _babble(self):
         token_ids = []
@@ -364,8 +364,8 @@ with its two nodes"""
         # each random node we search. Since the node is a full n-tuple
         # context, we can combine any pair of next_cache[node] and
         # prev_cache[node] and get a new reply.
-        next_cache = collections.defaultdict(list)
-        prev_cache = collections.defaultdict(list)
+        next_cache = collections.defaultdict(set)
+        prev_cache = collections.defaultdict(set)
 
         while pivot_ids:
             # generate a reply containing one of token_ids
@@ -378,15 +378,15 @@ with its two nodes"""
 
             for next, prev in parts:
                 if next:
-                    next_cache[node].append(next)
+                    next_cache[node].add(tuple(next))
                     for p in prev_cache[node]:
-                        yield p + next, node
+                        yield list(p) + next, node
 
                 if prev:
                     prev.reverse()
-                    prev_cache[node].append(prev)
+                    prev_cache[node].add(tuple(prev))
                     for n in next_cache[node]:
-                        yield prev + n, node
+                        yield prev + list(n), node
 
     @staticmethod
     def init(filename, order=3, tokenizer=None):
@@ -413,52 +413,24 @@ tokenizer -- One of Cobe, MegaHAL (default Cobe). See documentation
 
 class Reply:
     """Provide useful support for scoring functions"""
-    def __init__(self, graph, tokens, token_ids, pivot_node, edges):
+    def __init__(self, graph, tokens, token_ids, pivot_node, edge_ids):
         self.graph = graph
         self.tokens = tokens
         self.token_ids = token_ids
         self.pivot_node = pivot_node
-        self.edges = edges
-
-    def to_graph(self):
-        text = []
-        for edge in self.edges:
-            text.append(edge.pretty())
-
-        return pprint.pformat(text)
+        self.edge_ids = tuple(edge_ids)
 
     def to_text(self):
         text = []
-        for edge in self.edges:
-            text.append(edge.get_prev_word())
-            if edge.has_space:
+        for edge_id in self.edge_ids:
+            # get the last word in the prev context
+            prev = self.graph.get_edge_prev(edge_id)
+            text.append(self.graph.get_word_by_node(prev))
+
+            if self.graph.has_space(edge_id):
                 text.append(" ")
+
         return "".join(text)
-
-
-class Edge:
-    def __init__(self, graph, edge_id, prev, next, has_space, count):
-        self.graph = graph
-
-        self.edge_id = edge_id
-        self.prev = prev
-        self.next = next
-        self.has_space = has_space
-        self.count = count
-
-    def get_prev_word(self):
-        # get the last word in the prev context
-        return self.graph.get_word_by_node(self.prev)
-
-    def get_prev_token(self):
-        # get the last token in the prev context
-        return self.graph.get_token_by_node(self.prev)
-
-    def pretty(self):
-        prev = "|".join(self.graph.get_node_text(self.prev))
-        next = "|".join(self.graph.get_node_text(self.next))
-
-        return "%s -> %s (%s -> %s)" % (prev, next, self.prev, self.next)
 
 
 class Graph:
@@ -673,6 +645,36 @@ class Graph:
         if row:
             return int(row[0])
 
+    def get_edge_prev(self, edge_id):
+        c = self.cursor()
+
+        q = "SELECT prev_node FROM edges WHERE id = ?"
+
+        row = c.execute(q, (edge_id,)).fetchone()
+        if row:
+            return int(row[0])
+
+    def get_edge_logprob(self, edge_id):
+        # Each edge goes from an n-gram node (word1, word2, word3) to
+        # another (word2, word3, word4). Calculate the probability:
+        # P(word4|word1,word2,word3) = count(edge_id) / count(prev_node_id)
+
+        c = self.cursor()
+        q = "SELECT edges.count, nodes.count FROM edges, nodes " \
+            "WHERE edges.id = ? AND edges.prev_node = nodes.id"
+
+        edge_count, node_count = c.execute(q, (edge_id,)).fetchone()
+        return math.log(edge_count, 2) - math.log(node_count, 2)
+
+    def has_space(self, edge_id):
+        c = self.cursor()
+
+        q = "SELECT has_space FROM edges WHERE id = ?"
+
+        row = c.execute(q, (edge_id,)).fetchone()
+        if row:
+            return bool(row[0])
+
     def add_edge(self, prev_node, next_node, has_space):
         c = self.cursor()
 
@@ -721,13 +723,10 @@ class Graph:
         left = collections.deque([(start_id, [])])
         while left:
             cur, path = left.popleft()
-            rows = list(c.execute(q, dict(last=cur)))
+            rows = c.execute(q, dict(last=cur))
 
             for row in rows:
-                edge = Edge(self, row["id"], row["prev_node"],
-                            row["next_node"], row["has_space"], row["count"])
-
-                newpath = path + [edge]
+                newpath = path + [row["id"]]
 
                 if row[1] == end_id:
                     yield newpath
@@ -737,12 +736,12 @@ class Graph:
     def search_random_walk(self, start_id, end_id, direction):
         """Walk once randomly from start_id to end_id."""
         if direction:
-            q = "SELECT id, next_node, prev_node, has_space, count " \
+            q = "SELECT id, next_node " \
                 "FROM edges WHERE prev_node = :last " \
                 "LIMIT 1 OFFSET abs(random())%(SELECT count(*) from edges " \
                 "                              WHERE prev_node = :last)"
         else:
-            q = "SELECT id, prev_node, next_node, has_space, count " \
+            q = "SELECT id, prev_node " \
                 "FROM edges WHERE next_node = :last " \
                 "LIMIT 1 OFFSET abs(random())%(SELECT count(*) from edges " \
                 "                              WHERE next_node = :last)"
@@ -759,10 +758,7 @@ class Graph:
             # code, so the two functions can be more easily combined
             # later.
             for row in rows:
-                edge = Edge(self, row["id"], row["prev_node"],
-                            row["next_node"], row["has_space"], row["count"])
-
-                newpath = path + [edge]
+                newpath = path + [row["id"]]
 
                 if row[1] == end_id:
                     yield newpath
