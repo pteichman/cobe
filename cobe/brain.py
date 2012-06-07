@@ -378,15 +378,15 @@ with its two nodes"""
 
             for next, prev in parts:
                 if next:
-                    next_cache[node].add(tuple(next))
+                    next_cache[node].add(next)
                     for p in prev_cache[node]:
-                        yield list(p) + next, node
+                        yield p + next, node
 
                 if prev:
-                    prev.reverse()
-                    prev_cache[node].add(tuple(prev))
+                    prev = tuple(reversed(prev))
+                    prev_cache[node].add(prev)
                     for n in next_cache[node]:
-                        yield prev + list(n), node
+                        yield prev + n, node
 
     @staticmethod
     def init(filename, order=3, tokenizer=None):
@@ -712,26 +712,24 @@ class Graph:
 
     def search_bfs(self, start_id, end_id, direction):
         if direction:
-            q = "SELECT id, next_node, prev_node, has_space, count " \
-                "FROM edges WHERE prev_node = :last"
+            q = "SELECT id, next_node FROM edges WHERE prev_node = ?"
         else:
-            q = "SELECT id, prev_node, next_node, has_space, count " \
-                "FROM edges WHERE next_node = :last"
+            q = "SELECT id, prev_node FROM edges WHERE next_node = ?"
 
         c = self.cursor()
 
-        left = collections.deque([(start_id, [])])
+        left = collections.deque([(start_id, tuple())])
         while left:
             cur, path = left.popleft()
-            rows = c.execute(q, dict(last=cur))
+            rows = c.execute(q, (cur,))
 
-            for row in rows:
-                newpath = path + [row["id"]]
+            for rowid, next in rows:
+                newpath = path + (rowid,)
 
-                if row[1] == end_id:
+                if next == end_id:
                     yield newpath
                 else:
-                    left.append((row[1], newpath))
+                    left.append((next, newpath))
 
     def search_random_walk(self, start_id, end_id, direction):
         """Walk once randomly from start_id to end_id."""
@@ -748,7 +746,7 @@ class Graph:
 
         c = self.cursor()
 
-        left = collections.deque([(start_id, [])])
+        left = collections.deque([(start_id, tuple())])
         while left:
             cur, path = left.popleft()
             rows = c.execute(q, dict(last=cur))
@@ -757,13 +755,13 @@ class Graph:
             # one row. Using a list here so this matches the bfs()
             # code, so the two functions can be more easily combined
             # later.
-            for row in rows:
-                newpath = path + [row["id"]]
+            for rowid, next in rows:
+                newpath = path + (rowid,)
 
-                if row[1] == end_id:
+                if next == end_id:
                     yield newpath
                 else:
-                    left.append((row[1], newpath))
+                    left.append((next, newpath))
 
     def init(self, order, tokenizer, run_migrations=True):
         c = self.cursor()
