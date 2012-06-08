@@ -418,7 +418,7 @@ class Reply:
         self.tokens = tokens
         self.token_ids = token_ids
         self.pivot_node = pivot_node
-        self.edge_ids = tuple(edge_ids)
+        self.edge_ids = edge_ids
 
     def to_text(self):
         text = []
