@@ -422,12 +422,11 @@ class Reply:
 
     def to_text(self):
         text = []
-        for edge_id in self.edge_ids:
-            # get the last word in the prev context
-            prev = self.graph.get_edge_prev(edge_id)
-            text.append(self.graph.get_word_by_node(prev))
 
-            if self.graph.has_space(edge_id):
+        for word, has_space in map(self.graph.get_text_by_edge,
+                                   self.edge_ids):
+            text.append(word)
+            if has_space:
                 text.append(" ")
 
         return "".join(text)
@@ -625,6 +624,13 @@ class Graph:
     def get_node_text(self, node_id):
         tokens = self.get_node_tokens(node_id)
         return [self.get_token_by_id(token_id) for token_id in tokens]
+
+    def get_text_by_edge(self, edge_id):
+        q = "SELECT tokens.text, edges.has_space FROM nodes, edges, tokens " \
+            "WHERE edges.id = ? AND edges.prev_node = nodes.id " \
+            "AND nodes.%s = tokens.id" % self._last_token
+
+        return self._conn.execute(q, (edge_id,)).fetchone()
 
     def get_random_token(self):
         # token 1 is the end_token_id, so we want to generate a random token
