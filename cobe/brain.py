@@ -40,8 +40,6 @@ class Brain:
             log.info("File does not exist. Assuming defaults.")
             Brain.init(filename)
 
-        self.filename = filename
-
         with trace_us("Brain.connect_us"):
             self.graph = graph = Graph(sqlite3.connect(filename))
 
@@ -548,35 +546,11 @@ class Graph:
         q = "INSERT INTO token_stems (token_id, stem) VALUES (?, ?)"
         self._conn.execute(q, (token_id, stem))
 
-    def get_token_by_id(self, token_id):
-        q = "SELECT text FROM tokens WHERE id = ?"
-        row = self._conn.execute(q, (token_id,)).fetchone()
-        if row:
-            return row[0]
-
     def get_token_stem_id(self, stem):
         q = "SELECT token_id FROM token_stems WHERE token_stems.stem = ?"
         rows = self._conn.execute(q, (stem,))
         if rows:
             return tuple(val[0] for val in rows)
-
-    def get_word_by_node(self, node_id):
-        # return the last word in the node
-        q = "SELECT tokens.text FROM nodes, tokens WHERE nodes.id = ? " \
-            "AND %s = tokens.id" % self._last_token
-
-        row = self._conn.execute(q, (node_id,)).fetchone()
-        if row:
-            return row[0]
-
-    def get_token_by_node(self, node_id):
-        # return the last token in the node
-        q = "SELECT tokens.id FROM nodes, tokens WHERE nodes.id = ? " \
-            "AND %s = tokens.id" % self._last_token
-
-        row = self._conn.execute(q, (node_id,)).fetchone()
-        if row:
-            return row[0]
 
     def get_word_tokens(self, token_ids):
         q = "SELECT id FROM tokens WHERE id IN %s AND is_word = 1" % \
@@ -613,18 +587,6 @@ class Graph:
         c.execute(q, tokens)
         return c.lastrowid
 
-    def get_node_tokens(self, node_id):
-        q = "SELECT %s FROM nodes WHERE id = ?" % self._all_tokens
-
-        row = self._conn.execute(q, (node_id,)).fetchone()
-        assert row is not None
-
-        return tuple(row)
-
-    def get_node_text(self, node_id):
-        tokens = self.get_node_tokens(node_id)
-        return [self.get_token_by_id(token_id) for token_id in tokens]
-
     def get_text_by_edge(self, edge_id):
         q = "SELECT tokens.text, edges.has_space FROM nodes, edges, tokens " \
             "WHERE edges.id = ? AND edges.prev_node = nodes.id " \
@@ -648,15 +610,6 @@ class Graph:
             "                              WHERE token0_id = ?)"
 
         row = c.execute(q, (token_id, token_id)).fetchone()
-        if row:
-            return int(row[0])
-
-    def get_edge_prev(self, edge_id):
-        c = self.cursor()
-
-        q = "SELECT prev_node FROM edges WHERE id = ?"
-
-        row = c.execute(q, (edge_id,)).fetchone()
         if row:
             return int(row[0])
 
@@ -701,20 +654,6 @@ class Graph:
         # The count on the next_node in the nodes table must be
         # incremented here, to register that the node has been seen an
         # additional time. This is now handled by database triggers.
-
-    def get_node_count(self, node_id):
-        q = "SELECT count FROM nodes WHERE nodes.id = ?"
-
-        row = self._conn.execute(q, (node_id,)).fetchone()
-        assert row
-
-        return row[0]
-
-    def get_node_counts(self, node_ids):
-        q = "SELECT id, count FROM nodes WHERE id IN %s" % \
-            self.get_seq_expr(node_ids)
-
-        return self._conn.execute(q)
 
     def search_bfs(self, start_id, end_id, direction):
         if direction:
