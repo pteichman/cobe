@@ -4,6 +4,7 @@ import collections
 import itertools
 import logging
 import math
+import operator
 import os
 import random
 import re
@@ -232,7 +233,7 @@ with its two nodes"""
         for edges, pivot_node in self._generate_replies(pivot_set):
             reply = Reply(self.graph, tokens, input_ids, pivot_node, edges)
 
-            key = self._get_reply_key(reply)
+            key = reply.edge_ids
             if key not in score_cache:
                 with trace_us("Brain.evaluate_reply_us"):
                     score = self.scorer.score(reply)
@@ -304,16 +305,13 @@ with its two nodes"""
     def _conflate_stems(self, pivot_set, tokens):
         for token in tokens:
             stem_ids = self.graph.get_token_stem_id(self.stemmer.stem(token))
-            if len(stem_ids) == 0:
+            if not stem_ids:
                 continue
 
             # add the tuple of stems to the pivot set, and then
             # remove the individual token_ids
-            pivot_set.add(stem_ids)
+            pivot_set.add(tuple(stem_ids))
             pivot_set.difference_update(stem_ids)
-
-    def _get_reply_key(self, reply):
-        return reply.edge_ids
 
     def _babble(self):
         token_ids = []
@@ -331,8 +329,8 @@ with its two nodes"""
         tokens = set(filter(None, pivots))
 
         filtered = self.graph.get_word_tokens(tokens)
-        if len(filtered) == 0:
-            filtered = self.graph.get_tokens(tokens)
+        if not filtered:
+            filtered = self.graph.get_tokens(tokens) or []
 
         return set(filtered)
 
@@ -346,7 +344,7 @@ with its two nodes"""
         return pivot
 
     def _generate_replies(self, pivot_ids):
-        if len(pivot_ids) == 0:
+        if not pivot_ids:
             return
 
         end = self._end_context_id
@@ -545,7 +543,7 @@ class Graph:
         q = "SELECT token_id FROM token_stems WHERE token_stems.stem = ?"
         rows = self._conn.execute(q, (stem,))
         if rows:
-            return tuple(val[0] for val in rows)
+            return map(operator.itemgetter(0), rows)
 
     def get_word_tokens(self, token_ids):
         q = "SELECT id FROM tokens WHERE id IN %s AND is_word = 1" % \
@@ -553,9 +551,7 @@ class Graph:
 
         rows = self._conn.execute(q)
         if rows:
-            return [row["id"] for row in rows]
-
-        return []
+            return map(operator.itemgetter(0), rows)
 
     def get_tokens(self, token_ids):
         q = "SELECT id FROM tokens WHERE id IN %s" % \
@@ -563,9 +559,7 @@ class Graph:
 
         rows = self._conn.execute(q)
         if rows:
-            return [row["id"] for row in rows]
-
-        return []
+            return map(operator.itemgetter(0), rows)
 
     def get_node_by_tokens(self, tokens):
         c = self.cursor()
