@@ -310,12 +310,7 @@ with its two nodes"""
             # add the tuple of stems to the pivot set, and then
             # remove the individual token_ids
             pivot_set.add(stem_ids)
-
-            for stem_id in stem_ids:
-                try:
-                    pivot_set.remove(stem_id)
-                except KeyError:
-                    pass
+            pivot_set.difference_update(stem_ids)
 
     def _get_reply_key(self, reply):
         return reply.edge_ids
