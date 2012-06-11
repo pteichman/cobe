@@ -194,7 +194,7 @@ with its two nodes"""
         if not self._learning:
             self.graph.commit()
 
-    def reply(self, text):
+    def reply(self, text, loop_ms=500):
         """Reply to a string of text. If the input is not already
         Unicode, it will be decoded as utf-8."""
         if type(text) != types.UnicodeType:
@@ -222,9 +222,12 @@ with its two nodes"""
         best_score = -1.0
         best_reply = None
 
-        # loop for half a second
+        # Loop for approximately loop_ms milliseconds. This can either
+        # take more (if the first reply takes a long time to generate)
+        # or less (if the _generate_replies search ends early) time,
+        # but it should stay roughly accurate.
         start = time.time()
-        end = start + 0.5
+        end = start + loop_ms * 0.001
         count = 0
 
         all_replies = []
