@@ -1,0 +1,88 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>Cobe by pteichman</title>
+
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>Cobe</h1>
+        <p>A Markov chain based text generation library and MegaHAL style chatbot</p>
+        <p class="view"><a href="https://github.com/pteichman/cobe">View the Project on GitHub <small>pteichman/cobe</small></a></p>
+        <ul>
+          <li><a href="https://github.com/pteichman/cobe/zipball/master">Download <strong>ZIP File</strong></a></li>
+          <li><a href="https://github.com/pteichman/cobe/tarball/master">Download <strong>TAR Ball</strong></a></li>
+          <li><a href="https://github.com/pteichman/cobe">View On <strong>GitHub</strong></a></li>
+        </ul>
+      </header>
+      <section>
+        <p>COBE stands for Code of Business Ethics. Cobe is a conversation
+simulator, originally a database backed port of MegaHAL but a bit
+more now.</p>
+
+<p>There are a few relevant posts here:
+<a href="http://teichman.org/blog/2011/09/cobe-2.0.html">http://teichman.org/blog/2011/09/cobe-2.0.html</a>
+<a href="http://teichman.org/blog/2011/05/singularity.html">http://teichman.org/blog/2011/05/singularity.html</a>
+<a href="http://teichman.org/blog/2011/02/cobe.html">http://teichman.org/blog/2011/02/cobe.html</a></p>
+
+<p>You can read its release history here:
+<a href="https://github.com/pteichman/cobe/wiki">https://github.com/pteichman/cobe/wiki</a></p>
+
+<p>Cobe has been inspired by the success of Hailo:
+<a href="http://blogs.perl.org/users/aevar_arnfjor_bjarmason/2010/01/hailo-a-perl-rewrite-of-megahal.html">http://blogs.perl.org/users/aevar_arnfjor_bjarmason/2010/01/hailo-a-perl-rewrite-of-megahal.html</a></p>
+
+<p>Our goals are similar to Hailo: an on-disk data store for lower memory
+usage, better support for Unicode, and general stability.</p>
+
+<p>You can read about the original MegaHAL here:
+<a href="http://megahal.alioth.debian.org/How.html">http://megahal.alioth.debian.org/How.html</a></p>
+
+<p>In short, it uses Markov modeling to generate text responses after
+learning from input text.</p>
+
+<p>Cobe creates a directed graph of word n-grams (default n=3) from the
+text it learns. When generating a response, it performs random walks
+on this graph to create as many candidate replies as it can in half a
+second.</p>
+
+<p>As the candidate responses are created, they're run through a scoring
+algorithm that identifies which is the best of the group. After the
+half second is over, the best candidate is returned as the response.</p>
+
+<p>Cobe installs a command line tool (called cobe) for interacting with a
+brain database, though it is also intended to be used as a Python
+api. See the documentation in the cobe.brain module for details.</p>
+
+<p>To install from a tarball:</p>
+
+<p>$ python setup.py install</p>
+
+<p>Or from the Python Package Index:</p>
+
+<p>$ easy_install pip
+  # pip install cobe</p>
+
+<p>Usage:</p>
+
+<p>$ cobe init
+  $ cobe learn 
+  $ cobe console</p>
+      </section>
+      <footer>
+        <p>This project is maintained by <a href="https://github.com/pteichman">pteichman</a></p>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+      </footer>
+    </div>
+    <script src="javascripts/scale.fix.js"></script>
+    
+  </body>
+</html>
