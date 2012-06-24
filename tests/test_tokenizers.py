@@ -35,10 +35,6 @@ class testMegaHALTokenizer(unittest.TestCase):
         words = self.tokenizer.split(u"',','")
         self.assertEquals(words, ["'", ",", "'", ",", "'", "."])
 
-    def testSplitApostrophe(self):
-        words = self.tokenizer.split(u"hal's brain")
-        self.assertEquals(words, ["HAL'S", " ", "BRAIN", "."])
-
     def testSplitAlphaAndNumeric(self):
         words = self.tokenizer.split(u"hal9000, test blah 12312")
         self.assertEquals(words, ["HAL", "9000", ", ", "TEST", " ", "BLAH", " ", "12312", "."])
