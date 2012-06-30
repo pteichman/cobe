@@ -50,7 +50,7 @@ class TokenRegistry(object):
 
 class Model(object):
     """Implement a basic n-gram language model. Unsmoothed for now."""
-    # Number of new logged n-gram before autosave forces a save
+    # Number of new logged n-grams before autosave forces a save
     SAVE_THRESHOLD = 300000
 
     def __init__(self, dbdir, orders=None):
