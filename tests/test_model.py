@@ -1,6 +1,7 @@
 # Copyright (C) 2012 Peter Teichman
 
 import os
+import random
 import shutil
 import unittest
 
@@ -239,6 +240,29 @@ class TestModel(unittest.TestCase):
             model.train(trigram)
 
             self.assert_(len(model.counts_log) <= model.SAVE_THRESHOLD)
+
+    def test_choose_random_word(self):
+        model = Model(TEST_MODEL, (3,))
+
+        # First, train one sentence and make sure we randomly pick the
+        # only possible option.
+        model.train("one two three".split())
+        context = ["one", "two"]
+
+        self.assertEqual("three", model.choose_random_word(context))
+
+        # Train another sentence and make sure we pick both options
+        # with carefully chosen seeding. Explicitly use Python's (old)
+        # WichmannHill PRNG to ensure reproducability, since the
+        # default PRNG generator could conceivably change in a future
+        # release.
+        model.train("one two four".split())
+
+        rng = random.WichmannHill()
+
+        rng.seed(0)
+        self.assertEqual("three", model.choose_random_word(context, rng=rng))
+        self.assertEqual("four", model.choose_random_word(context, rng=rng))
 
 
 if __name__ == '__main__':

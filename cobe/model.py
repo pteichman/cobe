@@ -3,6 +3,7 @@
 import leveldb
 import logging
 import math
+import random
 import varint
 
 logger = logging.getLogger("cobe.model")
@@ -113,6 +114,15 @@ class Model(object):
 
         self.save()
 
+    def choose_random_word(self, context, rng=random):
+        token_ids = map(self.tokens.get_id, context)
+
+        key = "c/" + "".join(token_ids)
+        items = list(self._prefix_keys(key, skip_prefix=True))
+
+        token_id = rng.choice(items)
+        return self.tokens.get_token(token_id)
+
     def prob(self, token, context):
         """Calculate the conditional probability P(token|context)"""
         count = self.ngram_count(context + [token])
@@ -167,3 +177,16 @@ class Model(object):
             if not key.startswith(prefix):
                 break
             yield key[start:], value
+
+    def _prefix_keys(self, prefix, skip_prefix=False):
+        """yield all keys that begin with $prefix"""
+        items = self.kv.RangeIter(key_from=prefix, include_value=False)
+
+        start = 0
+        if skip_prefix:
+            start = len(prefix)
+
+        for key in items:
+            if not key.startswith(prefix):
+                break
+            yield key[start:]
