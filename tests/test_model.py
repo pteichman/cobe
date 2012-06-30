@@ -46,23 +46,19 @@ class TestModel(unittest.TestCase):
         # database when an old Model is loaded
         model = Model(TEST_MODEL)
 
-        strs = ("foo", "bar", "baz", "quux", "quuux")
-        ids1 = map(model.tokens.get_id, strs)
+        model.train("this is a test".split())
+        model.train("this is another test".split())
 
-        model.save()
+        # We save on train(), so make sure the new tokens log is empty.
+        self.assertEqual(0, len(model.tokens.token_log))
+
+        save_token_ids = dict(model.tokens.token_ids)
+        save_tokens = dict(model.tokens.tokens)
 
         model = Model(TEST_MODEL)
 
-        # TokenRegistry should come back with the above ids (+ the id
-        # from the empty string)
-        self.assertEquals(len(ids1), len(model.tokens.token_ids))
-
-        ids2 = map(model.tokens.get_id, strs)
-        self.assertEquals(ids1, ids2)
-
-        # And verify the reverse mapping
-        for token_id, token in zip(ids2, strs):
-            self.assertEquals(token, model.tokens.get_token(token_id))
+        self.assertEqual(save_token_ids, model.tokens.token_ids)
+        self.assertEqual(save_tokens, model.tokens.tokens)
 
     def test_ngrams(self):
         model = Model(TEST_MODEL)
@@ -182,19 +178,6 @@ class TestModel(unittest.TestCase):
         token, context = ngram[-1], ngram[:-1]
         self.assertAlmostEqual(0.69314718, model.logprob(token, context))
 
-    def test_logprob_without_counts(self):
-        # Make logprob checks with a model that only tracks trigrams,
-        # so it has to calculate the bigram counts necessary for
-        # 3-gram logprobs.
-        model = Model(TEST_MODEL, (3,))
-
-        model.train("one two three".split())
-        model.train("one two four".split())
-
-        ngram = "one two three".split()
-        token, context = ngram[-1], ngram[:-1]
-        self.assertAlmostEqual(0.69314718, model.logprob(token, context))
-
     def test_prob_with_counts(self):
         # Make a couple of probability checks with a model that tracks
         # the default trigrams, bigrams, and unigrams
@@ -208,21 +191,8 @@ class TestModel(unittest.TestCase):
         token, context = ngram[-1], ngram[:-1]
         self.assertAlmostEqual(0.5, model.prob(token, context))
 
-    def test_prob_without_counts(self):
-        # Make a couple of probability checks with a model that tracks
-        # the default trigrams, bigrams, and unigrams
-        model = Model(TEST_MODEL, (3,))
-
-        # Test before and after a save
-        model.train("one two three".split())
-        model.train("one two four".split())
-
-        ngram = "one two three".split()
-        token, context = ngram[-1], ngram[:-1]
-        self.assertAlmostEqual(0.5, model.prob(token, context))
-
     def test_autosave(self):
-        model = Model(TEST_MODEL, (3,))
+        model = Model(TEST_MODEL)
         self.assertEqual(0, len(model.counts_log))
 
         # force the autosave threshold down and make sure it fires
@@ -238,7 +208,7 @@ class TestModel(unittest.TestCase):
             self.assert_(len(model.counts_log) <= model.SAVE_THRESHOLD)
 
     def test_choose_random_word(self):
-        model = Model(TEST_MODEL, (3,))
+        model = Model(TEST_MODEL)
 
         # First, train one sentence and make sure we randomly pick the
         # only possible option.

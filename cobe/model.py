@@ -86,14 +86,11 @@ class Model(object):
     # Number of new logged n-grams before autosave forces a save
     SAVE_THRESHOLD = 300000
 
-    def __init__(self, dbdir, orders=None):
+    def __init__(self, dbdir, n=3):
         self.kv = leveldb.LevelDB(dbdir)
 
-        if orders is None:
-            # By default, count trigrams, bigrams, and unigrams
-            orders = tuple(range(3, 0, -1))
-
-        self.orders = orders
+        # Count all n-grams seen, from n down to unigrams
+        self.orders = tuple(range(n, 0, -1))
 
         self.tokens = TokenRegistry()
         self.counts_log = {}
@@ -161,7 +158,11 @@ class Model(object):
         key = self._tokens_count_key(token_ids)
         items = list(self._prefix_keys(key, skip_prefix=True))
 
+        if items and items[0] == "":
+            items = items[1:]
+
         token_id = rng.choice(items)
+
         return self.tokens.get_token(token_id)
 
     def prob(self, token, context):
@@ -182,16 +183,9 @@ class Model(object):
         token_ids = map(self.tokens.get_id, tokens)
         key = self._tokens_count_key(token_ids)
 
-        if len(token_ids) in self.orders:
-            # If this ngram is a length we train, get the counts from
-            # the database and counts log.
-            count = varint.decode_one(self.kv.Get(key, default="\0"))
-        else:
-            # Otherwise, get this ngram's count by adding up all the
-            # other ngrams that have it as a prefix.
-            count = 0
-            for key, value in self._prefix_items(key):
-                count += varint.decode_one(value)
+        # If this ngram is a length we train, get the counts from
+        # the database and counts log.
+        count = varint.decode_one(self.kv.Get(key, default="\0"))
 
         return count
 
