@@ -111,7 +111,7 @@ class Model(object):
                 counts_log.setdefault(key, 0)
                 counts_log[key] += 1
 
-        self._autosave()
+        self.save()
 
     def prob(self, token, context):
         """Calculate the conditional probability P(token|context)"""
