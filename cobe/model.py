@@ -77,6 +77,9 @@ class Model(object):
             logging.info("Autosave triggered save")
             self.save()
 
+    def _tokens_count_key(self, token_ids):
+        return "c/" + "".join(token_ids)
+
     def _ngrams(self, grams, n):
         for i in xrange(0, len(grams) - n + 1):
             yield grams[i:i + n]
@@ -107,7 +110,7 @@ class Model(object):
 
         for order in self.orders:
             for ngram in self._ngrams(token_ids, order):
-                key = "c/" + "".join(ngram)
+                key = self._tokens_count_key(ngram)
 
                 counts_log.setdefault(key, 0)
                 counts_log[key] += 1
@@ -117,7 +120,7 @@ class Model(object):
     def choose_random_word(self, context, rng=random):
         token_ids = map(self.tokens.get_id, context)
 
-        key = "c/" + "".join(token_ids)
+        key = self._tokens_count_key(token_ids)
         items = list(self._prefix_keys(key, skip_prefix=True))
 
         token_id = rng.choice(items)
@@ -139,7 +142,7 @@ class Model(object):
 
     def ngram_count(self, tokens):
         token_ids = map(self.tokens.get_id, tokens)
-        key = "c/" + "".join(token_ids)
+        key = self._tokens_count_key(token_ids)
 
         count = 0
 
