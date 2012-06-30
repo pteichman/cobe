@@ -149,15 +149,14 @@ class Model(object):
         token_ids = map(self.tokens.get_id, tokens)
         key = self._tokens_count_key(token_ids)
 
-        count = 0
-
         if len(token_ids) in self.orders:
             # If this ngram is a length we train, get the counts from
             # the database and counts log.
-            count = varint.decode_one(self.kv.Get(key, default='\0'))
+            count = varint.decode_one(self.kv.Get(key, default="\0"))
         else:
             # Otherwise, get this ngram's count by adding up all the
             # other ngrams that have it as a prefix.
+            count = 0
             for key, value in self._prefix_items(key):
                 count += varint.decode_one(value)
 
