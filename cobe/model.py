@@ -67,14 +67,7 @@ class Model(object):
         self.tokens.load(self._prefix_items("t/", skip_prefix=True))
 
     def _add_count(self, batch, key, value):
-        count = 0
-
-        # This would be nicer/faster if Get would return None on
-        # missing keys
-        try:
-            count += varint.decode_one(self.kv.Get(key))
-        except KeyError:
-            pass
+        count = varint.decode_one(self.kv.Get(key, default="\0"))
 
         batch.Put(key, varint.encode_one(count + value))
 
