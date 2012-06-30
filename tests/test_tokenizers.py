@@ -178,5 +178,16 @@ class testCobeStemmer(unittest.TestCase):
         self.assertEquals("foo", self.stemmer.stem("FOOING"))
         self.assertEquals("foo", self.stemmer.stem("Fooing"))
 
+    def testStemNonword(self):
+        self.assertEquals(":)", self.stemmer.stem(":)"))
+        self.assertEquals(":)", self.stemmer.stem(": )"))
+        self.assertEquals(":)", self.stemmer.stem(":  )"))
+        self.assertEquals(":)", self.stemmer.stem(":-)"))
+
+        self.assertEquals(":(", self.stemmer.stem(":("))
+        self.assertEquals(":(", self.stemmer.stem(": ("))
+        self.assertEquals(":(", self.stemmer.stem(":  ("))
+        self.assertEquals(":(", self.stemmer.stem(":-("))
+
 if __name__ == '__main__':
     unittest.main()
