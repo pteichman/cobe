@@ -128,8 +128,7 @@ class Model(object):
         logging.info("writing batch")
         self.kv.Write(batch)
 
-    def _train_sentence(self, tokens):
-        tokens = ["<S>"] + tokens + ["</S>"]
+    def _train_tokens(self, tokens):
         token_ids = map(self.tokens.get_id, tokens)
 
         counts_log = self.counts_log
@@ -142,12 +141,12 @@ class Model(object):
                 counts_log[key] += 1
 
     def train(self, tokens):
-        self._train_sentence(tokens)
+        self._train_tokens(tokens)
         self.save()
 
-    def train_many(self, sentences):
-        for sentence in sentences:
-            self._train_sentence(sentence)
+    def train_many(self, tokens_gen):
+        for tokens in tokens_gen:
+            self._train_tokens(tokens)
             self._autosave()
 
         self.save()

@@ -101,7 +101,7 @@ class TestModel(unittest.TestCase):
     def test_train(self):
         model = Model(TEST_MODEL)
 
-        tokens = "this is a test string".split()
+        tokens = "<S> this is a test string </S>".split()
         model.train(tokens)
 
         counts = [(1, ("<S>", "this", "is")),
@@ -202,7 +202,7 @@ class TestModel(unittest.TestCase):
         for num in xrange(model.SAVE_THRESHOLD):
             trigram = [str(num)] * 3
 
-            model._train_sentence(trigram)
+            model._train_tokens(trigram)
             model._autosave()
 
             self.assert_(len(model.counts_log) <= model.SAVE_THRESHOLD)
