@@ -9,10 +9,6 @@ import varint
 logger = logging.getLogger("cobe.model")
 
 
-class ModelError(Exception):
-    pass
-
-
 class TokenRegistry(object):
     def __init__(self):
         # Two-way maps: token text to token id and back.
