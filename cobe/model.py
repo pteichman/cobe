@@ -158,22 +158,12 @@ class Model(object):
         if len(token_ids) in self.orders:
             # If this ngram is a length we train, get the counts from
             # the database and counts log.
-            try:
-                count = varint.decode_one(self.kv.Get(key))
-            except KeyError:
-                pass
-
-            count += self.counts_log.get(key, 0)
+            count = varint.decode_one(self.kv.Get(key, default='\0'))
         else:
             # Otherwise, get this ngram's count by adding up all the
             # other ngrams that have it as a prefix.
             for key, value in self._prefix_items(key):
                 count += varint.decode_one(value)
-
-            for k, value in self.counts_log.iteritems():
-                if not k.startswith(key):
-                    continue
-                count += value
 
         return count
 

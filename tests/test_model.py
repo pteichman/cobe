@@ -121,21 +121,14 @@ class TestModel(unittest.TestCase):
                   (1, ("a", "test", "string")),
                   (0, ("will", "not", "find"))]
 
-        for count, ngram in counts:
-            self.assertEquals(count, model.ngram_count(ngram))
-
-        # Save the model, and then run all the same tests again. This
-        # ensures we pick up the correct counts from both memory and
-        # disk.
-        model.save()
-
+        # Make sure the model was saved
         self.assertEquals(0, len(model.counts_log))
 
         for count, ngram in counts:
             self.assertEquals(count, model.ngram_count(ngram))
 
-        # Now train the phrase again and make sure we merge counts in
-        # memory and disk together.
+        # Now train the phrase again and make sure the new counts were
+        # merged.
         model.train(tokens)
 
         for count, ngram in counts:
@@ -176,12 +169,10 @@ class TestModel(unittest.TestCase):
         self.assertEquals(0, model.ngram_count(ngram))
 
         model.train(ngram)
-        model.save()
         self.assertEquals(1, model.ngram_count(ngram))
 
         # Ensure new counts are added to existing database counts
         model.train(ngram)
-        model.save()
         self.assertEquals(2, model.ngram_count(ngram))
 
     def test_logprob_with_counts(self):
@@ -197,9 +188,6 @@ class TestModel(unittest.TestCase):
         token, context = ngram[-1], ngram[:-1]
         self.assertAlmostEqual(0.69314718, model.logprob(token, context))
 
-        model.save()
-        self.assertAlmostEqual(0.69314718, model.logprob(token, context))
-
     def test_logprob_without_counts(self):
         # Make logprob checks with a model that only tracks trigrams,
         # so it has to calculate the bigram counts necessary for
@@ -211,9 +199,6 @@ class TestModel(unittest.TestCase):
 
         ngram = "one two three".split()
         token, context = ngram[-1], ngram[:-1]
-        self.assertAlmostEqual(0.69314718, model.logprob(token, context))
-
-        model.save()
         self.assertAlmostEqual(0.69314718, model.logprob(token, context))
 
     def test_prob_with_counts(self):
@@ -229,9 +214,6 @@ class TestModel(unittest.TestCase):
         token, context = ngram[-1], ngram[:-1]
         self.assertAlmostEqual(0.5, model.prob(token, context))
 
-        model.save()
-        self.assertAlmostEqual(0.5, model.prob(token, context))
-
     def test_prob_without_counts(self):
         # Make a couple of probability checks with a model that tracks
         # the default trigrams, bigrams, and unigrams
@@ -243,9 +225,6 @@ class TestModel(unittest.TestCase):
 
         ngram = "one two three".split()
         token, context = ngram[-1], ngram[:-1]
-        self.assertAlmostEqual(0.5, model.prob(token, context))
-
-        model.save()
         self.assertAlmostEqual(0.5, model.prob(token, context))
 
     def test_autosave(self):
