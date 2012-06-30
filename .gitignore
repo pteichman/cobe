@@ -8,4 +8,5 @@ build
 cobe.egg-info
 cobe.pstats
 dist
+test_model.cobe
 virtualenv/
