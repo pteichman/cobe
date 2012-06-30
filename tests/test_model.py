@@ -230,6 +230,65 @@ class TestModel(unittest.TestCase):
         self.assertEqual("three", model.choose_random_word(context, rng=rng))
         self.assertEqual("four", model.choose_random_word(context, rng=rng))
 
+    def test_prefix_keys(self):
+        # Fake some interesting keys and values to make sure the
+        # prefix iterators are working
+        model = Model(TEST_MODEL)
+
+        model.kv.Put("a/", "a")
+        model.kv.Put("a/b", "b")
+        model.kv.Put("a/c", "c")
+        model.kv.Put("a/d", "d")
+        model.kv.Put("a/e", "e")
+        model.kv.Put("a/f", "f")
+        model.kv.Put("b/", "b")
+        model.kv.Put("c/", "c")
+        model.kv.Put("d/", "d")
+
+        a_list = list(model._prefix_keys("a/"))
+        self.assertEqual("a/ a/b a/c a/d a/e a/f".split(), a_list)
+
+        a_list = list(model._prefix_keys("a/", skip_prefix=True))
+        self.assertEqual(["", "b", "c", "d", "e", "f"], a_list)
+
+        self.assertEqual(["b/"], list(model._prefix_keys("b/")))
+        self.assertEqual(["c/"], list(model._prefix_keys("c/")))
+        self.assertEqual(["d/"], list(model._prefix_keys("d/")))
+
+    def test_prefix_items(self):
+        # Fake some interesting keys and values to make sure the
+        # prefix iterators are working
+        model = Model(TEST_MODEL)
+
+        model.kv.Put("a/", "a")
+        model.kv.Put("a/b", "b")
+        model.kv.Put("a/c", "c")
+        model.kv.Put("a/d", "d")
+        model.kv.Put("a/e", "e")
+        model.kv.Put("a/f", "f")
+        model.kv.Put("b/", "b")
+        model.kv.Put("c/", "c")
+        model.kv.Put("d/", "d")
+
+        expected = [("a/", "a"),
+                    ("a/b", "b"),
+                    ("a/c", "c"),
+                    ("a/d", "d"),
+                    ("a/e", "e"),
+                    ("a/f", "f")]
+
+        a_list = list(model._prefix_items("a/"))
+        self.assertEqual(expected, a_list)
+
+        expected = [("", "a"),
+                    ("b", "b"),
+                    ("c", "c"),
+                    ("d", "d"),
+                    ("e", "e"),
+                    ("f", "f")]
+
+        a_list = list(model._prefix_items("a/", skip_prefix=True))
+        self.assertEqual(expected, a_list)
 
 if __name__ == '__main__':
     unittest.main()
