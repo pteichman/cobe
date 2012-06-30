@@ -144,6 +144,27 @@ class TestModel(unittest.TestCase):
 
             self.assertEquals(count, model.ngram_count(ngram))
 
+    def test_train_many(self):
+        model = Model(TEST_MODEL)
+
+        sentences = ["this is a test",
+                     "this is another test",
+                     "this is a third test"]
+
+        def tokens_gen(items):
+            for sentence in items:
+                yield sentence.split()
+
+        model.train_many(tokens_gen(sentences))
+
+        # Make sure the model was saved
+        self.assertEquals(0, len(model.counts_log))
+
+        self.assertEquals(2, model.ngram_count("this is a".split()))
+        self.assertEquals(1, model.ngram_count("is a test".split()))
+        self.assertEquals(1, model.ngram_count("this is another".split()))
+        self.assertEquals(1, model.ngram_count("is a third".split()))
+
     def test_add_count(self):
         # Since _add_count adds to a LevelDB WriteBatch directly, and
         # the bindings for WriteBatch don't make it easy to figure out
@@ -237,7 +258,9 @@ class TestModel(unittest.TestCase):
 
         for num in xrange(model.SAVE_THRESHOLD):
             trigram = [str(num)] * 3
-            model.train(trigram)
+
+            model._train_sentence(trigram)
+            model._autosave()
 
             self.assert_(len(model.counts_log) <= model.SAVE_THRESHOLD)
 
