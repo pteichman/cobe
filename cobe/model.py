@@ -10,6 +10,15 @@ logger = logging.getLogger("cobe.model")
 
 
 class TokenRegistry(object):
+    """Token registry for mapping strings to shorter values.
+
+    TokenRegistry assigns each unique token it sees an opaque token
+    id. These are allocated in the order the tokens are registered,
+    and they will increase in length as more tokens are known.
+
+    The opaque token ids are currently strings.
+    """
+
     def __init__(self):
         # Two-way maps: token text to token id and back.
         self.token_ids = {}
@@ -19,6 +28,7 @@ class TokenRegistry(object):
         self.token_log = []
 
     def load(self, tokens):
+        """Load (token_text, token_id) pairs from an iterable."""
         for token, token_id in tokens:
             self._put(token, token_id)
 
@@ -27,6 +37,15 @@ class TokenRegistry(object):
         self.tokens[token_id] = token
 
     def get_id(self, token):
+        """Get the id associated with a token.
+
+        This registers the token if is has not already been seen and
+        returns the new token id.
+
+        Args:
+            token: A token string. Unicode and binary safe.
+        """
+
         if token not in self.token_ids:
             # Register the token, assigning the next available integer
             # as its id.
@@ -38,11 +57,32 @@ class TokenRegistry(object):
         return self.token_ids[token]
 
     def get_token(self, token_id):
+        """Get the token associated with an id.
+
+        Raises: KeyError if the token_id doesn't correspond to a
+            registered token.
+        """
         return self.tokens[token_id]
 
 
 class Model(object):
-    """Implement a basic n-gram language model. Unsmoothed for now."""
+    """An n-gram language model for online learning and text generation.
+
+    cobe's Model is an unsmoothed n-gram language model stored in a
+    LevelDB database.
+
+    Most language models focus on fast lookup and compact
+    representation after a single massive training session. This one
+    is designed to be incrementally trained throughout its useful
+    life, retaining fast lookup with a less compact format on disk.
+
+    This model is also designed for rapid generation of new sentences
+    by following n-gram chains.
+
+    Model attempts to provide API compatibility with NLTK's ModelI and
+    NgramModel.
+    """
+
     # Number of new logged n-grams before autosave forces a save
     SAVE_THRESHOLD = 300000
 
