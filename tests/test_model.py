@@ -12,24 +12,18 @@ TEST_MODEL = "test_model.cobe"
 
 
 class TestTokenRegistry(unittest.TestCase):
-    def test_init(self):
-        tokens = TokenRegistry()
-
-        # Ensure the empty string gets token 0
-        self.assertEquals("\0", tokens.get_id(""))
-
     def test_get_new_tokens(self):
         tokens = TokenRegistry()
 
         # First, register four new tokens and make sure they get the
         # expected ids.
         for token_id, token in enumerate("this is a test".split()):
-            self.assertEquals(chr(token_id + 1), tokens.get_id(token))
+            self.assertEquals(chr(token_id), tokens.get_id(token))
 
         # Then, repeat the same check to make sure they aren't
         # re-registered.
         for token_id, token in enumerate("this is a test".split()):
-            self.assertEquals(chr(token_id + 1), tokens.get_id(token))
+            self.assertEquals(chr(token_id), tokens.get_id(token))
 
 
 class TestModel(unittest.TestCase):
@@ -61,7 +55,7 @@ class TestModel(unittest.TestCase):
 
         # TokenRegistry should come back with the above ids (+ the id
         # from the empty string)
-        self.assertEquals(len(ids1) + 1, len(model.tokens.token_ids))
+        self.assertEquals(len(ids1), len(model.tokens.token_ids))
 
         ids2 = map(model.tokens.get_id, strs)
         self.assertEquals(ids1, ids2)
@@ -114,8 +108,8 @@ class TestModel(unittest.TestCase):
         tokens = "this is a test string".split()
         model.train(tokens)
 
-        counts = [(1, ("", "this", "is")),
-                  (1, ("test", "string", "")),
+        counts = [(1, ("<S>", "this", "is")),
+                  (1, ("test", "string", "</S>")),
                   (1, ("this", "is", "a")),
                   (1, ("is", "a", "test")),
                   (1, ("a", "test", "string")),

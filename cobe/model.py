@@ -22,9 +22,6 @@ class TokenRegistry(object):
         # Log newly created tokens, so they can be flushed to the database
         self.token_log = []
 
-        # Hardcode "" as token 0.
-        self._put("", varint.encode_one(0))
-
     def load(self, tokens):
         for token, token_id in tokens:
             self._put(token, token_id)
@@ -99,7 +96,7 @@ class Model(object):
         self.kv.Write(batch)
 
     def _train_sentence(self, tokens):
-        tokens = [""] + tokens + [""]
+        tokens = ["<S>"] + tokens + ["</S>"]
         token_ids = map(self.tokens.get_id, tokens)
 
         counts_log = self.counts_log
