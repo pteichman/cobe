@@ -117,6 +117,18 @@ class Model(object):
             n = len(token_ids)
         return str(n) + "".join(token_ids)
 
+    def _tokens_reverse_key(self, key):
+        # Create a reverse n-gram key from a count key as returned by
+        # _tokens_count_key.
+
+        # key is "t" + token1token2token3. Rotate its grams to
+        # token2token3token1 so we can easily enumerate the tokens
+        # that precede token2token3
+        token_nums = varint.decode(key[1:])
+
+        token_nums.append(token_nums[0])
+        return "r" + "".join(varint.encode(token_nums[1:]))
+
     def _ngrams(self, grams, n):
         for i in xrange(0, len(grams) - n + 1):
             yield grams[i:i + n]
@@ -124,17 +136,32 @@ class Model(object):
     def save(self):
         batch = leveldb.WriteBatch()
 
-        logging.info("flushing new tokens")
         # First, flush any new token ids to the database
+        logging.info("flushing new tokens")
+
         for token, token_id in self.tokens.token_log:
             batch.Put(self._token_key(token), token_id)
         self.tokens.token_log[:] = []
 
+        # Then merge in-memory n-gram counts with the database
         logging.info("merging counts")
-        # Then merge in-memory ngram counts with the database
+
+        # Then merge in-memory n-gram counts with the database
+        n = str(self.orders[0])
         for key, count in self.counts_log.iteritems():
-            dbcount = varint.decode_one(self.kv.Get(key, default="\0"))
-            batch.Put(key, varint.encode_one(dbcount + count))
+            val = self.kv.Get(key, default=None)
+
+            if val:
+                count += varint.decode_one(val)
+            else:
+                # Add reverse n-gram mapping (used to generate
+                # sentence prefixes) for any new n-grams in the
+                # database.
+                if key.startswith(n):
+                    batch.Put(self._tokens_reverse_key(key), "")
+
+            batch.Put(key, varint.encode_one(count))
+
         self.counts_log.clear()
 
         logging.info("writing batch")
