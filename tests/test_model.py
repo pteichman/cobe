@@ -223,6 +223,9 @@ class TestModel(unittest.TestCase):
 
         self.assertEqual("three", model.choose_random_word(context))
 
+        # Make sure a context that hasn't been trained comes back None
+        self.assert_(model.choose_random_word(["missing", "context"]) is None)
+
         # Train another sentence and make sure we pick both options
         # with carefully chosen seeding. Explicitly use Python's (old)
         # WichmannHill PRNG to ensure reproducability, since the

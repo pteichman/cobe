@@ -110,8 +110,12 @@ class Model(object):
     def _token_key(self, token_id):
         return "t" + token_id
 
-    def _tokens_count_key(self, token_ids):
-        return "c" + "".join(token_ids)
+    def _tokens_count_key(self, token_ids, n=None):
+        # Allow n to be overridden to look for keys of higher orders
+        # that begin with these token_ids
+        if n is None:
+            n = len(token_ids)
+        return str(n) + "".join(token_ids)
 
     def _ngrams(self, grams, n):
         for i in xrange(0, len(grams) - n + 1):
@@ -162,15 +166,15 @@ class Model(object):
     def choose_random_word(self, context, rng=random):
         token_ids = map(self.tokens.get_id, context)
 
-        key = self._tokens_count_key(token_ids)
+        # Look for the keys that have one more token but are prefixed
+        # with the key for token_ids
+        key = self._tokens_count_key(token_ids, len(token_ids) + 1)
+
         items = list(self._prefix_keys(key, skip_prefix=True))
 
-        if items and items[0] == "":
-            items = items[1:]
-
-        token_id = rng.choice(items)
-
-        return self.tokens.get_token(token_id)
+        if len(items):
+            token_id = rng.choice(items)
+            return self.tokens.get_token(token_id)
 
     def prob(self, token, context):
         """Calculate the conditional probability P(token|context)"""
