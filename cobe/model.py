@@ -96,15 +96,22 @@ class Model(object):
         self.tokens = TokenRegistry()
         self.counts_log = {}
 
-        self.tokens.load(self._prefix_items("t/", skip_prefix=True))
+        # Leverage LevelDB's sorting to extract all tokens (the things
+        # prefixed with the token key for an empty string)
+        all_tokens = self._prefix_items(self._token_key(""),
+                                        skip_prefix=True)
+        self.tokens.load(all_tokens)
 
     def _autosave(self):
         if len(self.counts_log) > self.SAVE_THRESHOLD:
             logging.info("Autosave triggered save")
             self.save()
 
+    def _token_key(self, token_id):
+        return "t" + token_id
+
     def _tokens_count_key(self, token_ids):
-        return "c/" + "".join(token_ids)
+        return "c" + "".join(token_ids)
 
     def _ngrams(self, grams, n):
         for i in xrange(0, len(grams) - n + 1):
@@ -116,7 +123,7 @@ class Model(object):
         logging.info("flushing new tokens")
         # First, flush any new token ids to the database
         for token, token_id in self.tokens.token_log:
-            batch.Put("t/" + token, token_id)
+            batch.Put(self._token_key(token), token_id)
         self.tokens.token_log[:] = []
 
         logging.info("merging counts")
