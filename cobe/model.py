@@ -121,9 +121,9 @@ class Model(object):
         # Create a reverse n-gram key from a count key as returned by
         # _tokens_count_key.
 
-        # key is "t" + token1token2token3. Rotate its grams to
-        # token2token3token1 so we can easily enumerate the tokens
-        # that precede token2token3
+        # key is e.g. "3" + token1token2token3. Strip the number
+        # prefix and rotate its grams to token2token3token1 so we can
+        # easily enumerate the tokens that precede token2token3
         token_nums = varint.decode(key[1:])
 
         token_nums.append(token_nums[0])
