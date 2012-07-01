@@ -176,7 +176,7 @@ class Model(object):
         return self._logcount(context) - self._logcount(context + [token])
 
     def _logcount(self, tokens):
-        return math.log(self.ngram_count(tokens))
+        return math.log(self.ngram_count(tokens), 2)
 
     def ngram_count(self, tokens):
         token_ids = map(self.tokens.get_id, tokens)

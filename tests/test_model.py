@@ -176,7 +176,7 @@ class TestModel(unittest.TestCase):
 
         ngram = "one two three".split()
         token, context = ngram[-1], ngram[:-1]
-        self.assertAlmostEqual(0.69314718, model.logprob(token, context))
+        self.assertAlmostEqual(1.0, model.logprob(token, context))
 
     def test_prob_with_counts(self):
         # Make a couple of probability checks with a model that tracks
