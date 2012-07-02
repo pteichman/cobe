@@ -219,10 +219,8 @@ class Model(object):
 
     def ngram_count(self, tokens):
         token_ids = map(self.tokens.get_id, tokens)
-        key = self._tokens_count_key(token_ids)
 
-        # If this ngram is a length we train, get the counts from
-        # the database and counts log.
+        key = self._tokens_count_key(token_ids)
         count = varint.decode_one(self.kv.Get(key, default="\0"))
 
         return count
