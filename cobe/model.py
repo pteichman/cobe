@@ -89,9 +89,9 @@ class Model(object):
     def __init__(self, dbdir, n=3):
         self.kv = leveldb.LevelDB(dbdir)
 
-        # Count n-grams for n and n-1, so we can quickly calculate
+        # Count n-grams, (n-1)-grams, ..., bigrams, unigrams
         # P(wordN|word1,word2,...,wordN-1)
-        self.orders = tuple((n, n-1))
+        self.orders = tuple(range(n, 0, -1))
 
         self.tokens = TokenRegistry()
         self.counts_log = {}

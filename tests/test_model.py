@@ -39,13 +39,13 @@ class TestModel(unittest.TestCase):
         model = Model(TEST_MODEL)
 
         self.assertTrue(os.path.exists(TEST_MODEL))
-        self.assertEquals((3, 2), model.orders)
+        self.assertEquals((3, 2, 1), model.orders)
 
         # And make sure n=5 yields 5-grams and 4-grams
         model = Model(TEST_MODEL, n=5)
 
         self.assertTrue(os.path.exists(TEST_MODEL))
-        self.assertEquals((5, 4), model.orders)
+        self.assertEquals((5, 4, 3, 2, 1), model.orders)
 
     def test_load_tokens(self):
         # Ensure that model.tokens is properly reloaded from the
