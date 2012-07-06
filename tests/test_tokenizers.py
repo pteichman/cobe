@@ -1,6 +1,7 @@
 import unittest
 
-from cobe.tokenizers import CobeStemmer, CobeTokenizer, MegaHALTokenizer
+from cobe.tokenizers import (
+    CobeStemmer, CobeTokenizer, MegaHALTokenizer, SplitTokenizer)
 
 class testMegaHALTokenizer(unittest.TestCase):
     def setUp(self):
@@ -188,6 +189,23 @@ class testCobeStemmer(unittest.TestCase):
         self.assertEquals(":(", self.stemmer.stem(": ("))
         self.assertEquals(":(", self.stemmer.stem(":  ("))
         self.assertEquals(":(", self.stemmer.stem(":-("))
+
+class testSplitTokenizer(unittest.TestCase):
+    def testSplit(self):
+        tok = SplitTokenizer()
+
+        self.assertEquals([], tok.split(""))
+
+        self.assertEquals(["this", "is", "a", "test"],
+                          tok.split("this is a test"))
+
+    def testJoin(self):
+        tok = SplitTokenizer()
+
+        self.assertEquals("", tok.join([]))
+
+        self.assertEquals("this is a test",
+                          tok.join(["this", "is", "a", "test"]))
 
 if __name__ == '__main__':
     unittest.main()

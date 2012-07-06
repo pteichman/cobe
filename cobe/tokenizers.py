@@ -51,6 +51,19 @@ This tokenizer ignores differences in capitalization."""
         return u"".join(chars)
 
 
+class SplitTokenizer(object):
+    """A simple tokenizer that splits and joins with spaces.
+
+    This is useful during testing or in applications that don't need
+    to handle punctuation separately from words.
+    """
+    def split(self, text):
+        return text.split()
+
+    def join(self, tokens):
+        return " ".join(tokens)
+
+
 class CobeTokenizer:
     """A tokenizer that is somewhat improved from MegaHAL. These are
 considered tokens:
