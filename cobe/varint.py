@@ -10,6 +10,22 @@ import array
 # continuation bit. This is an implementation of the unsigned encoding
 # only (not ZigZag).
 
+def diff(seq):
+    if not seq: return []
+
+    ret = [seq[0]]
+    for i in xrange(1, len(seq)):
+        ret.append(seq[i] - seq[i-1])
+    return ret
+
+def undiff(seq):
+    if not seq: return []
+
+    ret = [seq[0]]
+    for i in xrange(1, len(seq)):
+        ret.append(seq[i] + ret[i-1])
+    return ret
+
 def encode_one(value):
     return encode((value,))
 

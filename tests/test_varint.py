@@ -2,7 +2,7 @@
 
 import unittest
 
-from cobe.varint import decode, decode_one, encode, encode_one
+from cobe.varint import decode, decode_one, diff, encode, encode_one, undiff
 
 
 class TestVarint(unittest.TestCase):
@@ -48,6 +48,32 @@ class TestVarint(unittest.TestCase):
 
         nums2 = decode(data)
         self.assertEquals(nums, nums2)
+
+    def test_diff(self):
+        seq = []
+        self.assertEquals([], diff(seq))
+
+        seq = [1]
+        self.assertEquals([1], diff(seq))
+
+        seq = [10]
+        self.assertEquals([10], diff(seq))
+
+        seq = [1, 2, 7, 10, 23]
+        self.assertEquals([1, 1, 5, 3, 13], diff(seq))
+
+    def test_undiff(self):
+        seq = []
+        self.assertEquals([], undiff(seq))
+
+        seq = [1]
+        self.assertEquals([1], undiff(seq))
+
+        seq = [10]
+        self.assertEquals([10], undiff(seq))
+
+        seq = [1, 1, 5, 3, 13]
+        self.assertEquals([1, 2, 7, 10, 23], undiff(seq))
 
 if __name__ == '__main__':
     unittest.main()
