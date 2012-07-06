@@ -190,6 +190,16 @@ class Model(object):
 
         self.save()
 
+    def choose_random_context(self, token, rng=random):
+        token_id = self.tokens.get_id(token)
+
+        prefix = self._tokens_count_key((token_id,), self.orders[0])
+        items = list(self._prefix_keys(prefix, skip_prefix=True))
+
+        if len(items):
+            context = rng.choice(items)
+            return [token] + map(self.tokens.get_token, context)
+
     def choose_random_word(self, context, rng=random):
         token_ids = map(self.tokens.get_id, context)
 

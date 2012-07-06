@@ -239,6 +239,32 @@ class TestModel(unittest.TestCase):
         self.assertEqual("three", model.choose_random_word(context, rng=rng))
         self.assertEqual("four", model.choose_random_word(context, rng=rng))
 
+    def test_choose_random_context(self):
+        model = Model(TEST_MODEL)
+
+        # First, train one sentence and make sure we randomly pick the
+        # only possible option.
+        model.train("one two three".split())
+        context = ["one", "two"]
+
+        self.assertEqual(["one", "two", "three"],
+                         model.choose_random_context("one"))
+
+        # Make sure a context that hasn't been trained comes back None
+        self.assert_(model.choose_random_context("missing") is None)
+
+        # Train another sentence and make sure we pick both options
+        # with carefully chosen seeding.
+        model.train("one two four".split())
+
+        rng = random.WichmannHill()
+
+        rng.seed(0)
+        self.assertEqual(["one", "two", "three"],
+                         model.choose_random_context("one", rng=rng))
+        self.assertEqual(["one", "two", "four"],
+                         model.choose_random_context("one", rng=rng))
+
     def test_prefix_keys(self):
         # Fake some interesting keys and values to make sure the
         # prefix iterators are working
