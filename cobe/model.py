@@ -1,5 +1,6 @@
 # Copyright (C) 2012 Peter Teichman
 
+import collections
 import leveldb
 import logging
 import math
@@ -260,3 +261,25 @@ class Model(object):
             if not key.startswith(prefix):
                 break
             yield key[start:]
+
+    def search_bfs(self, context, end, reverse=False):
+        end_token = self.tokens.get_id(end)
+
+        token_ids = tuple(map(self.tokens.get_id, context))
+
+        left = collections.deque([token_ids])
+        n = self.orders[0] - 1
+
+        while left:
+            path = left.popleft()
+            if path[-1] == end_token:
+                yield map(self.tokens.get_token, path)
+                continue
+
+            # Get the n-length key prefix for the last (n-1) tokens in
+            # the current path
+            token_ids = path[-n:]
+            key = self._tokens_count_key(token_ids, len(token_ids) + 1)
+
+            for next_token in self._prefix_keys(key, skip_prefix=True):
+                left.append(path + (next_token,))

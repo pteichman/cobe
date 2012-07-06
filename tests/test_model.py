@@ -325,5 +325,26 @@ class TestModel(unittest.TestCase):
         a_list = list(model._prefix_items("a/", skip_prefix=True))
         self.assertEqual(expected, a_list)
 
+    def test_search_bfs(self):
+        model = Model(TEST_MODEL)
+
+        model.train("<S> this is a test sentence </S>".split())
+        model.train("<S> this is a test sentence that continues </S>".split())
+        model.train("<S> this is another test sentence </S>".split())
+
+        results = list(model.search_bfs("<S> this is".split(), "</S>"))
+
+        # There should be four results, the three explicitly trained
+        # sentence and one combination of 2 & 3.
+        self.assertEquals(4, len(results))
+
+        expected = [
+            "<S> this is a test sentence </S>".split(),
+            "<S> this is a test sentence that continues </S>".split(),
+            "<S> this is another test sentence </S>".split(),
+            "<S> this is another test sentence that continues </S>".split()]
+
+        self.assertEqual(sorted(results), sorted(expected))
+
 if __name__ == '__main__':
     unittest.main()
