@@ -110,12 +110,19 @@ class TestModel(unittest.TestCase):
         tokens = "<S> this is a test string </S>".split()
         model.train(tokens)
 
-        counts = [(1, ("<S>", "this", "is")),
-                  (1, ("test", "string", "</S>")),
-                  (1, ("this", "is", "a")),
-                  (1, ("is", "a", "test")),
-                  (1, ("a", "test", "string")),
-                  (0, ("will", "not", "find"))]
+        counts = [
+            (0, ("", "", "")),
+            (1, ("", "", "<S>")),
+            (1, ("", "<S>", "this")),
+            (1, ("<S>", "this", "is")),
+            (1, ("test", "string", "</S>")),
+            (1, ("string", "</S>", "")),
+            (1, ("</S>", "", "")),
+            (1, ("this", "is", "a")),
+            (1, ("is", "a", "test")),
+            (1, ("a", "test", "string")),
+            (0, ("will", "not", "find"))
+            ]
 
         # Make sure the model was saved
         self.assertEquals(0, len(model.counts_log))
@@ -128,10 +135,8 @@ class TestModel(unittest.TestCase):
         model.train(tokens)
 
         for count, ngram in counts:
-            if count != 0:
-                count += 1
-
-            self.assertEquals(count, model.ngram_count(ngram))
+            # Make sure we have twice as many counts as before.
+            self.assertEquals(2 * count, model.ngram_count(ngram))
 
     def test_train_many(self):
         model = Model(TEST_MODEL)

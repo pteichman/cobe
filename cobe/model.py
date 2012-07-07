@@ -169,12 +169,16 @@ class Model(object):
         self.kv.Write(batch)
 
     def _train_tokens(self, tokens):
-        token_ids = map(self.tokens.get_id, tokens)
+        # As each series of tokens is learned, pad the beginning and
+        # end of phrase with n-1 empty strings.
+        padding = [self.tokens.get_id("")] * (self.orders[0] - 1)
 
+        token_ids = map(self.tokens.get_id, tokens)
         counts_log = self.counts_log
 
         for order in self.orders:
-            for ngram in self._ngrams(token_ids, order):
+            to_train = padding[:order - 1] + token_ids + padding[:order - 1]
+            for ngram in self._ngrams(to_train, order):
                 key = self._tokens_count_key(ngram)
 
                 counts_log.setdefault(key, 0)
