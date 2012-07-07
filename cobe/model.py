@@ -147,7 +147,6 @@ class Model(object):
         # Then merge in-memory n-gram counts with the database
         logging.info("merging counts")
 
-        # Then merge in-memory n-gram counts with the database
         n = str(self.orders[0])
         for key, count in self.counts_log.iteritems():
             val = self.kv.Get(key, default=None)
