@@ -9,7 +9,7 @@ import tempfile
 
 from cobe import model
 
-logger = logging.getLogger("cobe.extractor")
+logger = logging.getLogger("cobe.counter")
 
 
 class MergeCounter(object):
