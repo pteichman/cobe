@@ -1,13 +1,9 @@
 # Copyright (C) 2012 Peter Teichman
 
 import heapq
-import io
-import itertools
 import logging
 import operator
 import tempfile
-
-from cobe import model
 
 logger = logging.getLogger("cobe.counter")
 
