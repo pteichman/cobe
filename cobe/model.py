@@ -6,8 +6,6 @@ import math
 import random
 import varint
 
-import cobe.kvstore
-
 logger = logging.getLogger(__name__)
 
 
