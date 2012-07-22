@@ -6,7 +6,7 @@ import math
 import random
 import varint
 
-from .kvstore import LevelDBStore
+import cobe.kvstore
 
 logger = logging.getLogger(__name__)
 
@@ -88,8 +88,8 @@ class Model(object):
     # Number of new logged n-grams before autosave forces a save
     SAVE_THRESHOLD = 300000
 
-    def __init__(self, dbdir, n=3):
-        self.kv = LevelDBStore(dbdir)
+    def __init__(self, kv, n=3):
+        self.kv = kv
 
         # Count n-grams, (n-1)-grams, ..., bigrams, unigrams
         # P(wordN|word1,word2,...,wordN-1)

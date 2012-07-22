@@ -3,12 +3,10 @@
 import os
 import random
 import shutil
-import unittest
+import unittest2 as unittest
 
 from cobe.model import Model, TokenRegistry
-
-
-TEST_MODEL = "test_model.cobe"
+from cobe.kvstore import SqliteStore
 
 
 class TestTokenRegistry(unittest.TestCase):
@@ -28,29 +26,22 @@ class TestTokenRegistry(unittest.TestCase):
 
 class TestModel(unittest.TestCase):
     def setUp(self):
-        if os.path.exists(TEST_MODEL):
-            shutil.rmtree(TEST_MODEL)
+        self.store = SqliteStore(":memory:")
 
     def test_init(self):
-        self.assertFalse(os.path.exists(TEST_MODEL))
-
         # Don't specify any ngram orders, which should get trigrams
         # and bigrams stored.
-        model = Model(TEST_MODEL)
-
-        self.assertTrue(os.path.exists(TEST_MODEL))
+        model = Model(self.store)
         self.assertEquals((3, 2, 1), model.orders)
 
         # And make sure n=5 yields 5-grams and 4-grams
-        model = Model(TEST_MODEL, n=5)
-
-        self.assertTrue(os.path.exists(TEST_MODEL))
+        model = Model(self.store, n=5)
         self.assertEquals((5, 4, 3, 2, 1), model.orders)
 
     def test_load_tokens(self):
         # Ensure that model.tokens is properly reloaded from the
         # database when an old Model is loaded
-        model = Model(TEST_MODEL)
+        model = Model(self.store)
 
         model.train("this is a test".split())
         model.train("this is another test".split())
@@ -61,13 +52,13 @@ class TestModel(unittest.TestCase):
         save_token_ids = dict(model.tokens.token_ids)
         save_tokens = dict(model.tokens.tokens)
 
-        model = Model(TEST_MODEL)
+        model = Model(self.store)
 
         self.assertEqual(save_token_ids, model.tokens.token_ids)
         self.assertEqual(save_tokens, model.tokens.tokens)
 
     def test_ngrams(self):
-        model = Model(TEST_MODEL)
+        model = Model(self.store)
         tokens = "this is a test string for n-grams".split()
 
         # Test n=3
@@ -95,7 +86,7 @@ class TestModel(unittest.TestCase):
         self.assertEquals(expected, ngrams)
 
     def test_ngrams_short(self):
-        model = Model(TEST_MODEL)
+        model = Model(self.store)
         tokens = "this is".split()
 
         # Test n=3 with a string that doesn't have any 3-grams
@@ -105,7 +96,7 @@ class TestModel(unittest.TestCase):
         self.assertEquals(expected, ngrams)
 
     def test_train(self):
-        model = Model(TEST_MODEL)
+        model = Model(self.store)
 
         tokens = "<S> this is a test string </S>".split()
         model.train(tokens)
@@ -139,7 +130,7 @@ class TestModel(unittest.TestCase):
             self.assertEquals(2 * count, model.ngram_count(ngram))
 
     def test_train_many(self):
-        model = Model(TEST_MODEL)
+        model = Model(self.store)
 
         sentences = ["this is a test",
                      "this is another test",
@@ -164,7 +155,7 @@ class TestModel(unittest.TestCase):
         # the bindings for WriteBatch don't make it easy to figure out
         # what has been queued, test _add_count via its side effects
         # in the database.
-        model = Model(TEST_MODEL)
+        model = Model(self.store)
 
         ngram = "one two three".split()
         self.assertEquals(0, model.ngram_count(ngram))
@@ -179,7 +170,7 @@ class TestModel(unittest.TestCase):
     def test_logprob_with_counts(self):
         # Make a couple of logprob checks with a model that tracks the
         # default trigrams, bigrams, and unigrams
-        model = Model(TEST_MODEL)
+        model = Model(self.store)
 
         # Test before and after a save
         model.train("one two three".split())
@@ -192,7 +183,7 @@ class TestModel(unittest.TestCase):
     def test_prob_with_counts(self):
         # Make a couple of probability checks with a model that tracks
         # the default trigrams, bigrams, and unigrams
-        model = Model(TEST_MODEL)
+        model = Model(self.store)
 
         # Test before and after a save
         model.train("one two three".split())
@@ -203,7 +194,7 @@ class TestModel(unittest.TestCase):
         self.assertAlmostEqual(0.5, model.prob(token, context))
 
     def test_autosave(self):
-        model = Model(TEST_MODEL)
+        model = Model(self.store)
         self.assertEqual(0, len(model.counts_log))
 
         # force the autosave threshold down and make sure it fires
@@ -219,7 +210,7 @@ class TestModel(unittest.TestCase):
             self.assert_(len(model.counts_log) <= model.SAVE_THRESHOLD)
 
     def test_choose_random_word(self):
-        model = Model(TEST_MODEL)
+        model = Model(self.store)
 
         # First, train one sentence and make sure we randomly pick the
         # only possible option.
@@ -245,7 +236,7 @@ class TestModel(unittest.TestCase):
         self.assertEqual("four", model.choose_random_word(context, rng=rng))
 
     def test_choose_random_context(self):
-        model = Model(TEST_MODEL)
+        model = Model(self.store)
 
         # First, train one sentence and make sure we randomly pick the
         # only possible option.
@@ -273,7 +264,7 @@ class TestModel(unittest.TestCase):
     def test_prefix_keys(self):
         # Fake some interesting keys and values to make sure the
         # prefix iterators are working
-        model = Model(TEST_MODEL)
+        model = Model(self.store)
 
         model.kv.put("a/", "a")
         model.kv.put("a/b", "b")
@@ -298,7 +289,7 @@ class TestModel(unittest.TestCase):
     def test_prefix_items(self):
         # Fake some interesting keys and values to make sure the
         # prefix iterators are working
-        model = Model(TEST_MODEL)
+        model = Model(self.store)
 
         model.kv.put("a/", "a")
         model.kv.put("a/b", "b")
@@ -331,7 +322,7 @@ class TestModel(unittest.TestCase):
         self.assertEqual(expected, a_list)
 
     def test_search_bfs(self):
-        model = Model(TEST_MODEL)
+        model = Model(self.store)
 
         model.train("<S> this is a test sentence </S>".split())
         model.train("<S> this is a test sentence that continues </S>".split())
