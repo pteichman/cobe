@@ -13,11 +13,12 @@ setup(
     url = "http://wiki.github.com/pteichman/cobe/",
     description = "Markov chain based text generator library and chatbot",
     packages = ["cobe"],
-    test_suite = "tests",
+    test_suite = "unittest2.collector",
 
     setup_requires = [
+        "coverage==3.5.2",
         "nose==1.1.2",
-        "coverage==3.5"
+        "unittest2==0.5.1"
         ],
 
     install_requires = [
