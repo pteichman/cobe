@@ -27,7 +27,9 @@ def undiff(seq):
     return ret
 
 def encode_one(value):
-    return encode((value,))
+    if value >= 0:
+        return encode((value,))
+    raise ValueError("negative numbers not supported")
 
 def encode(values):
     buf = array.array("B")

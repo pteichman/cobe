@@ -1,6 +1,6 @@
 # Copyright (C) 2012 Peter Teichman
 
-import unittest
+import unittest2 as unittest
 
 from cobe.varint import decode, decode_one, diff, encode, encode_one, undiff
 
@@ -39,6 +39,12 @@ class TestVarint(unittest.TestCase):
     def test_encode_decode_one(self):
         for i in xrange(100000):
             self.assertEquals(i, decode_one(encode_one(i)))
+
+    def test_encode_negative(self):
+        # numbers 0..127 get encoded as a single byte
+
+        with self.assertRaises(ValueError):
+            encode_one(-1)
 
     def test_encode_decode(self):
         nums = range(0, 2048)
