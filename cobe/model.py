@@ -1,11 +1,12 @@
 # Copyright (C) 2012 Peter Teichman
 
 import collections
-import leveldb
 import logging
 import math
 import random
 import varint
+
+from .kvstore import LevelDBStore
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +89,7 @@ class Model(object):
     SAVE_THRESHOLD = 300000
 
     def __init__(self, dbdir, n=3):
-        self.kv = leveldb.LevelDB(dbdir)
+        self.kv = LevelDBStore(dbdir)
 
         # Count n-grams, (n-1)-grams, ..., bigrams, unigrams
         # P(wordN|word1,word2,...,wordN-1)
@@ -135,37 +136,27 @@ class Model(object):
             yield grams[i:i + n]
 
     def save(self):
-        batch = leveldb.WriteBatch()
+        def logged_key_values():
+            # First, flush any new token ids to the database
+            logger.info("flushing new tokens")
 
-        # First, flush any new token ids to the database
-        logger.info("flushing new tokens")
+            for token, token_id in self.tokens.token_log:
+                yield self._token_key(token), token_id
 
-        for token, token_id in self.tokens.token_log:
-            batch.Put(self._token_key(token), token_id)
+            # Then merge in-memory n-gram counts with the database
+            logger.info("merging counts")
+
+            for key, count in self.counts_log.iteritems():
+                val = self.kv.get(key, default=None)
+                if val is not None:
+                    count += varint.decode_one(val)
+
+                yield key, varint.encode_one(count)
+
+        self.kv.put_many(logged_key_values())
+
         self.tokens.token_log[:] = []
-
-        # Then merge in-memory n-gram counts with the database
-        logger.info("merging counts")
-
-        n = str(self.orders[0])
-        for key, count in self.counts_log.iteritems():
-            val = self.kv.Get(key, default=None)
-
-            if val:
-                count += varint.decode_one(val)
-            else:
-                # Add reverse n-gram mapping (used to generate
-                # sentence prefixes) for any new n-grams in the
-                # database.
-                if key.startswith(n):
-                    batch.Put(self._tokens_reverse_key(key), "")
-
-            batch.Put(key, varint.encode_one(count))
-
         self.counts_log.clear()
-
-        logger.info("writing batch")
-        self.kv.Write(batch)
 
     def _train_tokens(self, tokens):
         # As each series of tokens is learned, pad the beginning and
@@ -235,13 +226,13 @@ class Model(object):
         token_ids = map(self.tokens.get_id, tokens)
 
         key = self._tokens_count_key(token_ids)
-        count = varint.decode_one(self.kv.Get(key, default="\0"))
+        count = varint.decode_one(self.kv.get(key, default="\0"))
 
         return count
 
     def _prefix_items(self, prefix, skip_prefix=False):
         """yield all (key, value) pairs from keys that begin with $prefix"""
-        items = self.kv.RangeIter(key_from=prefix, include_value=True)
+        items = self.kv.items(key_from=prefix)
 
         start = 0
         if skip_prefix:
@@ -254,13 +245,13 @@ class Model(object):
 
     def _prefix_keys(self, prefix, skip_prefix=False):
         """yield all keys that begin with $prefix"""
-        items = self.kv.RangeIter(key_from=prefix, include_value=False)
+        keys = self.kv.keys(key_from=prefix)
 
         start = 0
         if skip_prefix:
             start = len(prefix)
 
-        for key in items:
+        for key in keys:
             if not key.startswith(prefix):
                 break
             yield key[start:]
