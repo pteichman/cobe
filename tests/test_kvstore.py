@@ -187,6 +187,7 @@ class TestBsddbStore(unittest.TestCase, KVStoreBase):
         self.store = cobe.kvstore.BsddbStore(self.DB)
 
         def cleanup():
+            self.store.db.close()
             if os.path.exists(self.DB):
                 os.unlink(self.DB)
 
