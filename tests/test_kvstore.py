@@ -176,6 +176,13 @@ class KVStoreBase(object):
 class TestBsddbStore(unittest.TestCase, KVStoreBase):
     DB = "tests.test_bsddb_store"
 
+    @classmethod
+    def setUpClass(cls):
+        try:
+            import bsddb
+        except ImportError:
+            raise unittest.SkipTest("bsddb not installed")
+
     def setUp(self):
         self.store = cobe.kvstore.BsddbStore(self.DB)
 
