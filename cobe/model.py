@@ -7,7 +7,7 @@ import math
 import random
 import varint
 
-logger = logging.getLogger("cobe.model")
+logger = logging.getLogger(__name__)
 
 
 class TokenRegistry(object):
@@ -105,7 +105,7 @@ class Model(object):
 
     def _autosave(self):
         if len(self.counts_log) > self.SAVE_THRESHOLD:
-            logging.info("Autosave triggered save")
+            logger.info("Autosave triggered save")
             self.save()
 
     def _token_key(self, token_id):
@@ -138,14 +138,14 @@ class Model(object):
         batch = leveldb.WriteBatch()
 
         # First, flush any new token ids to the database
-        logging.info("flushing new tokens")
+        logger.info("flushing new tokens")
 
         for token, token_id in self.tokens.token_log:
             batch.Put(self._token_key(token), token_id)
         self.tokens.token_log[:] = []
 
         # Then merge in-memory n-gram counts with the database
-        logging.info("merging counts")
+        logger.info("merging counts")
 
         n = str(self.orders[0])
         for key, count in self.counts_log.iteritems():
@@ -164,7 +164,7 @@ class Model(object):
 
         self.counts_log.clear()
 
-        logging.info("writing batch")
+        logger.info("writing batch")
         self.kv.Write(batch)
 
     def _train_tokens(self, tokens):
