@@ -3,7 +3,37 @@
 # Require setuptools. See http://pypi.python.org/pypi/setuptools for
 # installation instructions, or run the ez_setup script found at
 # http://peak.telecommunity.com/dist/ez_setup.py
-from setuptools import setup, find_packages
+from setuptools import setup, find_packages, Command
+
+
+class CheckCommand(Command):
+    description = "Run tests."
+    user_options = []
+
+    def initialize_options(self):
+        pass
+
+    def finalize_options(self):
+        pass
+
+    def run(self):
+        import subprocess
+
+        print "Running pep8..."
+        if subprocess.call(["pep8", "cobe"]):
+            return
+
+        print "Running pyflakes..."
+        if subprocess.call(["pyflakes", "cobe"]):
+            return
+
+        print "Running tests..."
+        if subprocess.call(["coverage", "run", "--source=cobe",
+                            "./setup.py", "test"]):
+            return
+
+        subprocess.call(['coverage', 'report', '-m'])
+
 
 setup(
     name = "cobe",
@@ -46,6 +76,10 @@ setup(
         "Programming Language :: Python",
         "Topic :: Scientific/Engineering :: Artificial Intelligence"
         ],
+
+    cmdclass = {
+        "check": CheckCommand
+        },
 
     entry_points = {
         "console_scripts" : [
