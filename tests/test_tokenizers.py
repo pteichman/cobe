@@ -3,6 +3,7 @@ import unittest
 from cobe.tokenizers import (
     CobeStemmer, CobeTokenizer, MegaHALTokenizer, SplitTokenizer)
 
+
 class TestMegaHALTokenizer(unittest.TestCase):
     def setUp(self):
         self.tokenizer = MegaHALTokenizer()
@@ -24,7 +25,8 @@ class TestMegaHALTokenizer(unittest.TestCase):
 
     def test_split_url(self):
         words = self.tokenizer.split(u"http://www.google.com/")
-        self.assertEquals(words, ["HTTP", "://", "WWW", ".", "GOOGLE", ".", "COM", "/."])
+        self.assertEquals(words, ["HTTP", "://", "WWW", ".", "GOOGLE",
+                                  ".", "COM", "/."])
 
     def test_split_non_unicode(self):
         self.assertRaises(TypeError, self.tokenizer.split, "foo")
@@ -38,7 +40,8 @@ class TestMegaHALTokenizer(unittest.TestCase):
 
     def test_split_alpha_and_numeric(self):
         words = self.tokenizer.split(u"hal9000, test blah 12312")
-        self.assertEquals(words, ["HAL", "9000", ", ", "TEST", " ", "BLAH", " ", "12312", "."])
+        self.assertEquals(words, ["HAL", "9000", ", ", "TEST", " ",
+                                  "BLAH", " ", "12312", "."])
 
         words = self.tokenizer.split(u"hal9000's test")
         self.assertEquals(words, ["HAL", "9000", "'S", " ", "TEST", "."])
@@ -53,6 +56,7 @@ class TestMegaHALTokenizer(unittest.TestCase):
 
         words = self.tokenizer.split(u"2nd place test")
         self.assertEquals(u"2Nd place test.", self.tokenizer.join(words))
+
 
 class TestCobeTokenizer(unittest.TestCase):
     def setUp(self):
@@ -207,6 +211,3 @@ class TestSplitTokenizer(unittest.TestCase):
 
         self.assertEquals("this is a test",
                           tok.join(["this", "is", "a", "test"]))
-
-if __name__ == '__main__':
-    unittest.main()

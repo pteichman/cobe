@@ -3,10 +3,10 @@
 import operator
 import os
 import shutil
-import sqlite3
 import unittest2 as unittest
 
 import cobe.kvstore
+
 
 class KVStoreBase(object):
     """Base tests for KV Stores"""
@@ -210,22 +210,14 @@ class TestSqliteStore(unittest.TestCase, KVStoreBase):
 class TestLevelDBStore(unittest.TestCase, KVStoreBase):
     DBDIR = "tests.test_leveldb_store"
 
-    @classmethod
-    def setUpClass(cls):
-        try:
-            import leveldb
-        except ImportError:
-            raise unittest.SkipTest("py-leveldb not installed")
-
     def setUp(self):
-        self.store = cobe.kvstore.LevelDBStore(self.DBDIR)
+        try:
+            self.store = cobe.kvstore.LevelDBStore(self.DBDIR)
+        except ImportError:  # pragma: no cover
+            raise unittest.SkipTest("py-leveldb not installed")
 
         def cleanup():
             if os.path.exists(self.DBDIR):
                 shutil.rmtree(self.DBDIR)
 
         self.addCleanup(cleanup)
-
-
-if __name__ == '__main__':
-    unittest.main()

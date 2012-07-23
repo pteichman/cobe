@@ -20,15 +20,15 @@ class CheckCommand(Command):
         import subprocess
 
         print "Running pep8..."
-        if subprocess.call(["pep8", "cobe"]):
+        if subprocess.call(["pep8", "cobe", "tests"]):
             return
 
         print "Running pyflakes..."
-        if subprocess.call(["pyflakes", "cobe"]):
+        if subprocess.call(["pyflakes", "cobe", "tests"]):
             return
 
         print "Running tests..."
-        if subprocess.call(["coverage", "run", "--source=cobe",
+        if subprocess.call(["coverage", "run", "--source=cobe,tests",
                             "./setup.py", "test"]):
             return
 

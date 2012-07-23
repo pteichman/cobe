@@ -80,6 +80,3 @@ class TestVarint(unittest.TestCase):
 
         seq = [1, 1, 5, 3, 13]
         self.assertEquals([1, 2, 7, 10, 23], undiff(seq))
-
-if __name__ == '__main__':
-    unittest.main()

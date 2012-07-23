@@ -2,6 +2,7 @@ import unittest
 
 from cobe.commands import LearnIrcLogCommand
 
+
 class TestIrcLogParsing(unittest.TestCase):
     def setUp(self):
         self.command = LearnIrcLogCommand()
@@ -41,6 +42,3 @@ class TestIrcLogParsing(unittest.TestCase):
         cmd = self.command
 
         self.assertEqual(None, cmd._parse_irc_message(msg, ["foo"]))
-
-if __name__ == '__main__':
-    unittest.main()

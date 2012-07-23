@@ -1,8 +1,6 @@
 # Copyright (C) 2012 Peter Teichman
 
-import os
 import random
-import shutil
 import unittest2 as unittest
 
 from cobe.model import Model, TokenRegistry
@@ -241,7 +239,6 @@ class TestModel(unittest.TestCase):
         # First, train one sentence and make sure we randomly pick the
         # only possible option.
         model.train("one two three".split())
-        context = ["one", "two"]
 
         self.assertEqual(["one", "two", "three"],
                          model.choose_random_context("one"))
@@ -341,6 +338,3 @@ class TestModel(unittest.TestCase):
             "<S> this is another test sentence that continues </S>".split()]
 
         self.assertEqual(sorted(results), sorted(expected))
-
-if __name__ == '__main__':
-    unittest.main()

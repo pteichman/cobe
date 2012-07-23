@@ -204,7 +204,3 @@ class TestNgramCounter(unittest.TestCase):
 
         # There are no 4-grams in the above
         self.assertEqual([], list(ext.count(items, orders=(4,))))
-
-
-if __name__ == '__main__':
-    unittest.main()

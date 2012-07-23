@@ -6,6 +6,7 @@ import unittest
 
 TEST_BRAIN_FILE = "test_cobe.brain"
 
+
 class TestInit(unittest.TestCase):
     def setUp(self):
         if os.path.exists(TEST_BRAIN_FILE):
@@ -53,8 +54,6 @@ class TestInit(unittest.TestCase):
             Brain(TEST_BRAIN_FILE)
         except CobeError, e:
             self.assert_("cannot read a version" in str(e))
-        else:
-            self.fail("opened a wrong version brain file")
 
     def test_init_with_tokenizer(self):
         tokenizer = "MegaHAL"
@@ -101,6 +100,7 @@ class TestInit(unittest.TestCase):
 
         get_info_text = lambda: pickle.loads(
             db.get_info_text(key, text_factory=str))
+
 
 class TestLearn(unittest.TestCase):
     def setUp(self):
@@ -184,6 +184,3 @@ class TestReply(unittest.TestCase):
 
         brain.learn("this is a test")
         brain.reply("this is a test")
-
-if __name__ == '__main__':
-    unittest.main()
