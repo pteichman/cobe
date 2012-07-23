@@ -6,12 +6,12 @@ import unittest
 
 TEST_BRAIN_FILE = "test_cobe.brain"
 
-class testInit(unittest.TestCase):
+class TestInit(unittest.TestCase):
     def setUp(self):
         if os.path.exists(TEST_BRAIN_FILE):
             os.remove(TEST_BRAIN_FILE)
 
-    def testInit(self):
+    def test_init(self):
         Brain.init(TEST_BRAIN_FILE)
         self.failUnless(os.path.exists(TEST_BRAIN_FILE),
                         "missing brain file after init")
@@ -21,26 +21,26 @@ class testInit(unittest.TestCase):
         self.failUnless(brain._end_token_id,
                         "missing brain _end_token_id after init")
 
-    def testInitWithOrder(self):
+    def test_init_with_order(self):
         order = 2
         Brain.init(TEST_BRAIN_FILE, order=order)
 
         brain = Brain(TEST_BRAIN_FILE)
         self.assertEqual(order, brain.order)
 
-    def testVersion(self):
+    def test_version(self):
         Brain.init(TEST_BRAIN_FILE)
 
         brain = Brain(TEST_BRAIN_FILE)
         self.assertEqual("2", brain.graph.get_info_text("version"))
 
-    def testEmptyReply(self):
+    def test_empty_reply(self):
         Brain.init(TEST_BRAIN_FILE)
 
         brain = Brain(TEST_BRAIN_FILE)
         self.assert_(brain.reply("") is not "")
 
-    def testWrongVersion(self):
+    def test_wrong_version(self):
         Brain.init(TEST_BRAIN_FILE)
 
         # manually change the brain version to 1
@@ -56,14 +56,14 @@ class testInit(unittest.TestCase):
         else:
             self.fail("opened a wrong version brain file")
 
-    def testInitWithTokenizer(self):
+    def test_init_with_tokenizer(self):
         tokenizer = "MegaHAL"
         Brain.init(TEST_BRAIN_FILE, order=2, tokenizer=tokenizer)
 
         brain = Brain(TEST_BRAIN_FILE)
         self.assertTrue(isinstance(brain.tokenizer, MegaHALTokenizer))
 
-    def testInfoText(self):
+    def test_info_text(self):
         order = 2
         Brain.init(TEST_BRAIN_FILE, order=order)
 
@@ -83,7 +83,7 @@ class testInit(unittest.TestCase):
         db.set_info_text(key, None)
         self.assertEqual(None, db.get_info_text(key))
 
-    def testInfoPickle(self):
+    def test_info_pickle(self):
         order = 2
         Brain.init(TEST_BRAIN_FILE, order=order)
 
@@ -102,12 +102,12 @@ class testInit(unittest.TestCase):
         get_info_text = lambda: pickle.loads(
             db.get_info_text(key, text_factory=str))
 
-class testLearn(unittest.TestCase):
+class TestLearn(unittest.TestCase):
     def setUp(self):
         if os.path.exists(TEST_BRAIN_FILE):
             os.remove(TEST_BRAIN_FILE)
 
-    def testExpandContexts(self):
+    def test_expand_contexts(self):
         Brain.init(TEST_BRAIN_FILE, order=2)
         brain = Brain(TEST_BRAIN_FILE)
 
@@ -132,7 +132,7 @@ class testLearn(unittest.TestCase):
                            (("test", 1), False),
                            ((1, 1), False)])
 
-    def testExpandGraph(self):
+    def test_expand_graph(self):
         Brain.init(TEST_BRAIN_FILE, order=2)
         brain = Brain(TEST_BRAIN_FILE)
 
@@ -147,14 +147,14 @@ class testLearn(unittest.TestCase):
                            (("a", "test"), False, ("test", 1)),
                            (("test", 1), False, (1, 1))])
 
-    def testLearn(self):
+    def test_learn(self):
         Brain.init(TEST_BRAIN_FILE, order=2)
         brain = Brain(TEST_BRAIN_FILE)
 
         brain.learn("this is a test")
         brain.learn("this is also a test")
 
-    def testLearnStems(self):
+    def test_learn_stems(self):
         Brain.init(TEST_BRAIN_FILE, order=2)
 
         brain = Brain(TEST_BRAIN_FILE)
@@ -171,7 +171,7 @@ class testLearn(unittest.TestCase):
                           brain.graph.get_token_stem_id(stem("testing")))
 
 
-class testReply(unittest.TestCase):
+class TestReply(unittest.TestCase):
     def setUp(self):
         if os.path.exists(TEST_BRAIN_FILE):
             os.remove(TEST_BRAIN_FILE)
@@ -179,7 +179,7 @@ class testReply(unittest.TestCase):
         Brain.init(TEST_BRAIN_FILE, order=2)
         self._brain = Brain(TEST_BRAIN_FILE)
 
-    def testReply(self):
+    def test_reply(self):
         brain = self._brain
 
         brain.learn("this is a test")
