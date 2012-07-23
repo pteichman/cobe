@@ -10,26 +10,32 @@ import array
 # continuation bit. This is an implementation of the unsigned encoding
 # only (not ZigZag).
 
+
 def diff(seq):
-    if not seq: return []
+    if not seq:
+        return []
 
     ret = [seq[0]]
     for i in xrange(1, len(seq)):
-        ret.append(seq[i] - seq[i-1])
+        ret.append(seq[i] - seq[i - 1])
     return ret
+
 
 def undiff(seq):
-    if not seq: return []
+    if not seq:
+        return []
 
     ret = [seq[0]]
     for i in xrange(1, len(seq)):
-        ret.append(seq[i] + ret[i-1])
+        ret.append(seq[i] + ret[i - 1])
     return ret
+
 
 def encode_one(value):
     if value >= 0:
         return encode((value,))
     raise ValueError("negative numbers not supported")
+
 
 def encode(values):
     buf = array.array("B")
@@ -46,8 +52,10 @@ def encode(values):
 
     return buf.tostring()
 
+
 def decode_one(value):
     return decode(value)[0]
+
 
 def decode(data):
     ret = []

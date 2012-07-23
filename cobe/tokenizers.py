@@ -1,4 +1,4 @@
-# Copyright (C) 2010 Peter Teichman
+# Copyright (C) 2012 Peter Teichman
 
 import re
 import Stemmer
@@ -14,7 +14,7 @@ to be a token:
 
 This tokenizer ignores differences in capitalization."""
     def split(self, phrase):
-        if type(phrase) != types.UnicodeType:
+        if not isinstance(phrase, types.UnicodeType):
             raise TypeError("Input must be Unicode")
 
         if len(phrase) == 0:
@@ -92,7 +92,7 @@ tokens."""
                                 re.UNICODE)
 
     def split(self, phrase):
-        if type(phrase) != types.UnicodeType:
+        if not isinstance(phrase, types.UnicodeType):
             raise TypeError("Input must be Unicode")
 
         # Strip leading and trailing whitespace. This might not be the

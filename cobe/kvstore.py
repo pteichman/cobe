@@ -79,7 +79,7 @@ class BsddbStore(KVStore):
         self.db = bsddb.btopen(path)
 
     def get(self, key, default=None):
-        if not self.db.has_key(key):
+        if not key in self.db:
             return default
 
         return self.db[key]
@@ -224,6 +224,7 @@ CREATE TABLE kv (
         c = self.conn.cursor()
         for key, in c.execute(q, dict(key_from=key_from, key_to=key_to)):
             yield str(key)
+
 
 class LevelDBStore(KVStore):
     def __init__(self, path):

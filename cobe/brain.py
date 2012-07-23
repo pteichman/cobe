@@ -114,7 +114,7 @@ class Brain:
     def learn(self, text):
         """Learn a string of text. If the input is not already
         Unicode, it will be decoded as utf-8."""
-        if type(text) != types.UnicodeType:
+        if not isinstance(text, types.UnicodeType):
             # Assume that non-Unicode text is encoded as utf-8, which
             # should be somewhat safe in the modern world.
             text = text.decode("utf-8", "ignore")
@@ -197,7 +197,7 @@ with its two nodes"""
     def reply(self, text, loop_ms=500):
         """Reply to a string of text. If the input is not already
         Unicode, it will be decoded as utf-8."""
-        if type(text) != types.UnicodeType:
+        if not isinstance(text, types.UnicodeType):
             # Assume that non-Unicode text is encoded as utf-8, which
             # should be somewhat safe in the modern world.
             text = text.decode("utf-8", "ignore")
@@ -340,7 +340,7 @@ with its two nodes"""
     def _pick_pivot(self, pivot_ids):
         pivot = random.choice(tuple(pivot_ids))
 
-        if type(pivot) is types.TupleType:
+        if isinstance(pivot, types.TupleType):
             # the input word was stemmed to several things
             pivot = random.choice(pivot)
 
@@ -628,8 +628,6 @@ class Graph:
 
     def add_edge(self, prev_node, next_node, has_space):
         c = self.cursor()
-
-        assert type(has_space) == types.BooleanType
 
         update_q = "UPDATE edges SET count = count + 1 " \
             "WHERE prev_node = ? AND next_node = ? AND has_space = ?"
