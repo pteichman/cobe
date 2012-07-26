@@ -45,12 +45,6 @@ setup(
     packages = ["cobe"],
     test_suite = "unittest2.collector",
 
-    setup_requires = [
-        "coverage==3.5.2",
-        "nose==1.1.2",
-        "unittest2==0.5.1"
-        ],
-
     install_requires = [
         "PyStemmer==1.2.0",
         "argparse==1.2.1",

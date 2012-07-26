@@ -15,6 +15,8 @@ oldenv=$VIRTUAL_ENV
 
 # install links to this module in the new virtualenv
 . $VIRTUALENV_DIR/bin/activate
+
+pip install -r requirements-develop.txt
 python setup.py develop
 
 if [ -z "$oldenv" ]; then
