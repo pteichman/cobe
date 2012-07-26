@@ -5,6 +5,7 @@ import types
 import unittest
 
 import cobe.counter
+import cobe.varint
 
 
 class TestMergeCounter(unittest.TestCase):
@@ -44,8 +45,11 @@ class TestMergeCounter(unittest.TestCase):
 
         tmpfile = tempfile.TemporaryFile()
 
+        def file_item(item, count):
+            return cobe.varint.encode((count, len(item))) + item
+
         for item, count in sorted(self.items.iteritems()):
-            tmpfile.write("%s %s\n" % (item, count))
+            tmpfile.write(file_item(item, count))
 
         expected = [
             ("an", 1),
@@ -72,19 +76,22 @@ class TestMergeCounter(unittest.TestCase):
         self.assertEqual(1, len(fds))
         fd = fds[0]
 
+        def file_item(item, count):
+            return cobe.varint.encode((count, len(item))) + item
+
         expected = [
-            "an 1\n",
-            "an on-disk 1\n",
-            "an on-disk data 1\n",
-            "can 3\n",
-            "can read 2\n",
-            "can read about 1\n",
-            "can read about its 1\n"
+            file_item("an", 1),
+            file_item("an on-disk", 1),
+            file_item("an on-disk data", 1),
+            file_item("can", 3),
+            file_item("can read", 2),
+            file_item("can read about", 1),
+            file_item("can read about its", 1)
             ]
 
         fd.seek(0)
 
-        self.assertEqual(expected, fd.readlines())
+        self.assertEqual("".join(expected), fd.read())
 
     def test_count(self):
         # A basic test of counts

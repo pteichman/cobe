@@ -1,9 +1,12 @@
 # Copyright (C) 2012 Peter Teichman
 
+import cStringIO as StringIO
 import heapq
 import logging
 import operator
 import tempfile
+
+from . import varint
 
 logger = logging.getLogger("cobe.counter")
 
@@ -90,10 +93,13 @@ class MergeCounter(object):
             file_source = self.file_counts(fds.pop(0))
             source = self._sum_merge(source, file_source)
 
-        format = "{0} {1}\n".format
         write = fd.write
         for item, count in source:
-            write(format(item, count))
+            # Write the count and item length as varint-encoded integers.
+            header = varint.encode((count, len(item)))
+
+            write(header)
+            write(item)
 
         fds.append(fd)
 
@@ -117,12 +123,46 @@ class MergeCounter(object):
         """Return sorted item, count tuples from a dict of item -> count"""
         return sorted(dictionary.iteritems(), key=operator.itemgetter(0))
 
+    def _read_varints(self, fd, buf, count):
+        # varint decoding should be made stream based so this isn't
+        # necessary.
+        while count:
+            byte = fd.read(1)
+            if not byte:
+                return
+
+            buf.write(byte)
+
+            if not ord(byte) & 0x80:
+                count -= 1
+
     def file_counts(self, fd):
-        """Return item, count tuples from a file of "$item $count" lines"""
+        """Return item, count tuples from an _overflow()-written file.
+
+        These files have records serialized in the following format:
+
+            [ header: varint count, varint item length ] [ item ]
+
+        This generator yields (item, count) tuples from those records.
+        """
         fd.seek(0)
-        for line in fd:
-            item, count = line.rsplit(None, 1)
-            yield item, int(count)
+        read = fd.read
+
+        buf = StringIO.StringIO()
+        while True:
+            self._read_varints(fd, buf, 2)
+
+            header = buf.getvalue()
+            if len(header) == 0:
+                break
+
+            count, length = varint.decode(header)
+
+            item = read(length)
+            yield item, count
+            buf.truncate(0)
+
+        buf.close()
 
 
 class NgramCounter(object):
