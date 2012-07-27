@@ -138,8 +138,12 @@ class SqliteStore(KVStore):
         c.execute("PRAGMA cache_size=0")
         c.execute("PRAGMA page_size=4096")
 
+        # Use write-ahead logging if it's available, otherwise truncate
+        journal_mode, = c.execute("PRAGMA journal_mode=WAL").fetchone()
+        if journal_mode != "wal":
+            c.execute("PRAGMA journal_mode=truncate")
+
         # Speed-for-reliability tradeoffs
-        c.execute("PRAGMA journal_mode=truncate")
         c.execute("PRAGMA temp_store=memory")
         c.execute("PRAGMA synchronous=OFF")
 
