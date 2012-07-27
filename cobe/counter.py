@@ -41,11 +41,12 @@ class MergeCounter(object):
         merges the overflow files together in an iterator.
 
         Args:
-            items: An iterable of strings.
+            items: An iterable of (item, count) tuples in any order.
 
         Returns:
-            An iterable of (item, count) tuples in lexically
-            sorted order.
+            An iterable of (item, count) tuples in lexically sorted
+            order. The counts will be the sum of all counts from the
+            input for the same item.
         """
 
         # Keep a running dict of counted items. Maps item -> integer count
