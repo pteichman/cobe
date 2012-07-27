@@ -6,6 +6,8 @@ import math
 import random
 import varint
 
+from .counter import MergeCounter
+
 logger = logging.getLogger(__name__)
 
 
@@ -83,9 +85,6 @@ class Model(object):
     NgramModel.
     """
 
-    # Number of new logged n-grams before autosave forces a save
-    SAVE_THRESHOLD = 300000
-
     def __init__(self, kv, n=3):
         self.kv = kv
 
@@ -94,18 +93,12 @@ class Model(object):
         self.orders = tuple(range(n, 0, -1))
 
         self.tokens = TokenRegistry()
-        self.counts_log = {}
 
         # Leverage LevelDB's sorting to extract all tokens (the things
         # prefixed with the token key for an empty string)
         all_tokens = self._prefix_items(self._token_key(""),
                                         skip_prefix=True)
         self.tokens.load(all_tokens)
-
-    def _autosave(self):
-        if len(self.counts_log) > self.SAVE_THRESHOLD:
-            logger.info("Autosave triggered save")
-            self.save()
 
     def _token_key(self, token_id):
         return "t" + token_id
@@ -133,55 +126,50 @@ class Model(object):
         for i in xrange(0, len(grams) - n + 1):
             yield grams[i:i + n]
 
-    def save(self):
-        def logged_key_values():
+    def _save(self, counts):
+        def kv_pairs():
             # First, flush any new token ids to the database
             logger.info("flushing new tokens")
 
             for token, token_id in self.tokens.token_log:
                 yield self._token_key(token), token_id
+            self.tokens.token_log[:] = []
 
             # Then merge in-memory n-gram counts with the database
             logger.info("merging counts")
 
-            for key, count in self.counts_log.iteritems():
+            for key, count in counts:
                 val = self.kv.get(key, default=None)
                 if val is not None:
                     count += varint.decode_one(val)
 
                 yield key, varint.encode_one(count)
 
-        self.kv.put_many(logged_key_values())
+        self.kv.put_many(kv_pairs())
 
-        self.tokens.token_log[:] = []
-        self.counts_log.clear()
-
-    def _train_tokens(self, tokens):
+    def _ngram_keys_and_counts(self, tokens):
         # As each series of tokens is learned, pad the beginning and
         # end of phrase with n-1 empty strings.
         padding = [self.tokens.get_id("")] * (self.orders[0] - 1)
 
         token_ids = map(self.tokens.get_id, tokens)
-        counts_log = self.counts_log
 
         for order in self.orders:
             to_train = padding[:order - 1] + token_ids + padding[:order - 1]
             for ngram in self._ngrams(to_train, order):
-                key = self._tokens_count_key(ngram)
-
-                counts_log.setdefault(key, 0)
-                counts_log[key] += 1
+                yield self._tokens_count_key(ngram), 1
 
     def train(self, tokens):
-        self._train_tokens(tokens)
-        self.save()
+        self.train_many([tokens])
 
     def train_many(self, tokens_gen):
-        for tokens in tokens_gen:
-            self._train_tokens(tokens)
-            self._autosave()
+        def ngram_counts(tokens_gen):
+            for tokens in tokens_gen:
+                for item in self._ngram_keys_and_counts(tokens):
+                    yield item
 
-        self.save()
+        counts = MergeCounter().count(ngram_counts(tokens_gen))
+        self._save(counts)
 
     def choose_random_context(self, token, rng=random):
         token_id = self.tokens.get_id(token)

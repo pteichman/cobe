@@ -113,9 +113,6 @@ class TestModel(unittest.TestCase):
             (0, ("will", "not", "find"))
             ]
 
-        # Make sure the model was saved
-        self.assertEquals(0, len(model.counts_log))
-
         for count, ngram in counts:
             self.assertEquals(count, model.ngram_count(ngram))
 
@@ -139,9 +136,6 @@ class TestModel(unittest.TestCase):
                 yield sentence.split()
 
         model.train_many(tokens_gen(sentences))
-
-        # Make sure the model was saved
-        self.assertEquals(0, len(model.counts_log))
 
         self.assertEquals(2, model.ngram_count("this is a".split()))
         self.assertEquals(1, model.ngram_count("is a test".split()))
@@ -170,7 +164,6 @@ class TestModel(unittest.TestCase):
         # default trigrams, bigrams, and unigrams
         model = Model(self.store)
 
-        # Test before and after a save
         model.train("one two three".split())
         model.train("one two four".split())
 
@@ -183,29 +176,12 @@ class TestModel(unittest.TestCase):
         # the default trigrams, bigrams, and unigrams
         model = Model(self.store)
 
-        # Test before and after a save
         model.train("one two three".split())
         model.train("one two four".split())
 
         ngram = "one two three".split()
         token, context = ngram[-1], ngram[:-1]
         self.assertAlmostEqual(0.5, model.prob(token, context))
-
-    def test_autosave(self):
-        model = Model(self.store)
-        self.assertEqual(0, len(model.counts_log))
-
-        # force the autosave threshold down and make sure it fires
-        # once enough counts have been logged
-        model.SAVE_THRESHOLD = 5
-
-        for num in xrange(model.SAVE_THRESHOLD):
-            trigram = [str(num)] * 3
-
-            model._train_tokens(trigram)
-            model._autosave()
-
-            self.assert_(len(model.counts_log) <= model.SAVE_THRESHOLD)
 
     def test_choose_random_word(self):
         model = Model(self.store)
