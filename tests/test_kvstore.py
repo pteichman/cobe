@@ -176,15 +176,13 @@ class KVStoreBase(object):
 class TestBsddbStore(unittest.TestCase, KVStoreBase):
     DB = "tests.test_bsddb_store"
 
-    @classmethod
-    def setUpClass(cls):
+    def setUp(self):
         try:
             import bsddb
             bsddb  # reference bsddb to satisfy pyflakes
         except ImportError:  # pragma: no cover
             raise unittest.SkipTest("bsddb not installed")
 
-    def setUp(self):
         self.store = cobe.kvstore.BsddbStore(self.DB)
 
         def cleanup():
