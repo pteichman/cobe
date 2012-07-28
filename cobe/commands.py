@@ -1,6 +1,7 @@
-# Copyright (C) 2011 Peter Teichman
+# Copyright (C) 2012 Peter Teichman
 
 import atexit
+import fileinput
 import logging
 import os
 import re
@@ -9,91 +10,71 @@ import Stemmer
 import sys
 import time
 
+from . import analysis
+from . import search
+
 from .brain import Brain
 from .irc import Runner
+from .kvstore import SqliteStore
+from .model import Model
+from .varint import decode, decode_one, encode_one
 
 log = logging.getLogger("cobe")
 
 
-class InitCommand:
+class DumpCommand(object):
     @classmethod
     def add_subparser(cls, parser):
-        subparser = parser.add_parser("init", help="Initialize a new brain")
-
-        subparser.add_argument("--force", action="store_true")
-        subparser.add_argument("--order", type=int, default=3)
-        subparser.add_argument("--megahal", action="store_true",
-                               help="Use MegaHAL-compatible tokenizer")
+        subparser = parser.add_parser("dump")
         subparser.set_defaults(run=cls.run)
 
     @staticmethod
     def run(args):
-        filename = args.brain
+        store = SqliteStore("cobe.store")
+        model = Model(store)
 
-        if os.path.exists(filename):
-            if args.force:
-                os.remove(filename)
-            else:
-                log.error("%s already exists!", filename)
-                return
+        print "Tokens:"
+        for token, token_id in model.tokens.token_ids.iteritems():
+            print token, decode_one(token_id)
 
-        tokenizer = None
-        if args.megahal:
-            tokenizer = "MegaHAL"
-
-        Brain.init(filename, order=args.order, tokenizer=tokenizer)
-
-
-def progress_generator(filename):
-    s = os.stat(filename)
-    size_left = s.st_size
-
-    fd = open(filename)
-    for line in fd.xreadlines():
-        size_left = size_left - len(line)
-        progress = 100 * (1. - (float(size_left) / float(s.st_size)))
-
-        yield line, progress
-
-    fd.close()
+        print "3-gram counts:"
+        get_token = model.tokens.get_token
+        for ngram, count in model._prefix_items("3", skip_prefix=True):
+            # This needs a more efficient way to get the token ids,
+            # maybe a simple varint-aware string split.
+            grams = [get_token(encode_one(i)) for i in decode(ngram)]
+            print grams, decode_one(count)
 
 
-class LearnCommand:
+class LearnCommand(object):
     @classmethod
     def add_subparser(cls, parser):
-        subparser = parser.add_parser("learn", help="Learn a file of text")
+        subparser = parser.add_parser("learn", help="Learn files of text")
         subparser.add_argument("file", nargs="+")
         subparser.set_defaults(run=cls.run)
 
     @staticmethod
     def run(args):
-        b = Brain(args.brain)
-        b.start_batch_learning()
+        store = SqliteStore("cobe.store")
+        model = Model(store)
 
-        for filename in args.file:
-            now = time.time()
-            print filename
+        files = fileinput.FileInput(args.file,
+                                    openhook=fileinput.hook_compressed)
 
-            count = 0
-            for line, progress in progress_generator(filename):
-                show_progress = ((count % 1000) == 0)
+        def tokens():
+            for line in files:
+                if files.isfirstline():
+                    print
+                    print files.filename()
 
-                if show_progress:
-                    elapsed = time.time() - now
-                    sys.stdout.write("\r%.0f%% (%d/s)" % (progress,
-                                                          count / elapsed))
+                if (files.lineno() % 1000) == 0:
+                    print "%d..." % files.lineno(),
                     sys.stdout.flush()
 
-                b.learn(line.strip())
-                count = count + 1
+                yield line.split()
 
-                if (count % 10000) == 0:
-                    b.graph.commit()
-
-            elapsed = time.time() - now
-            print "\r100%% (%d/s)" % (count / elapsed)
-
-        b.stop_batch_learning()
+        model.train_many(tokens())
+        files.close()
 
 
 class LearnIrcLogCommand:
@@ -123,20 +104,8 @@ class LearnIrcLogCommand:
             print filename
 
             count = 0
-            for line, progress in progress_generator(filename):
-                show_progress = ((count % 100) == 0)
-
-                if show_progress:
-                    elapsed = time.time() - now
-                    sys.stdout.write("\r%.0f%% (%d/s)" % (progress,
-                                                          count / elapsed))
-                    sys.stdout.flush()
-
-                count = count + 1
-
-                if (count % 1000) == 0:
-                    b.graph.commit()
-
+            fd = open(filename, "r")
+            for line in fd:
                 parsed = cls._parse_irc_message(line.strip(),
                                                 args.ignored_nicks,
                                                 args.only_nicks)
@@ -193,7 +162,9 @@ class ConsoleCommand:
 
     @staticmethod
     def run(args):
-        b = Brain(args.brain)
+        model = Model(SqliteStore("cobe.store"))
+        analyzer = analysis.WhitespaceAnalyzer()
+        searcher = search.Searcher(model)
 
         history = os.path.expanduser("~/.cobe_history")
         try:
@@ -209,8 +180,12 @@ class ConsoleCommand:
                 print
                 sys.exit(0)
 
-            b.learn(cmd)
-            print b.reply(cmd).encode("utf-8")
+            tokens = analyzer.tokens(cmd)
+
+            # Learn tokens
+            query = analyzer.query(tokens)
+            for result in searcher.search(query):
+                print analyzer.join(result)
 
 
 class IrcClientCommand:
