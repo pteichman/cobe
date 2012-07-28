@@ -181,7 +181,7 @@ class TestBsddbStore(unittest.TestCase, KVStoreBase):
         try:
             import bsddb
             bsddb  # reference bsddb to satisfy pyflakes
-        except ImportError:
+        except ImportError:  # pragma: no cover
             raise unittest.SkipTest("bsddb not installed")
 
     def setUp(self):
