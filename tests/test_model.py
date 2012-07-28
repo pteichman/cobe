@@ -116,6 +116,10 @@ class TestModel(unittest.TestCase):
         for count, ngram in counts:
             self.assertEquals(count, model.ngram_count(ngram))
 
+        # Make sure the right number of reverse tokens have been trained
+        self.assertEqual(len(list(model._prefix_items("3"))),
+                         len(list(model._prefix_items("r"))))
+
         # Now train the phrase again and make sure the new counts were
         # merged.
         model.train(tokens)
@@ -312,5 +316,25 @@ class TestModel(unittest.TestCase):
             "<S> this is a test sentence that continues </S>".split(),
             "<S> this is another test sentence </S>".split(),
             "<S> this is another test sentence that continues </S>".split()]
+
+        self.assertEqual(sorted(results), sorted(expected))
+
+    def test_search_bfs_reverse(self):
+        model = Model(self.store)
+
+        model.train("<S> this is a test sentence </S>".split())
+        model.train("<S> this is a test sentence that continues </S>".split())
+        model.train("<S> this is another test sentence </S>".split())
+
+        results = list(model.search_bfs_reverse(
+                "test sentence </S>".split(), "<S>"))
+
+        # There should be two results
+        self.assertEquals(2, len(results))
+
+        expected = [
+            "<S> this is a test sentence </S>".split(),
+            "<S> this is another test sentence </S>".split()
+            ]
 
         self.assertEqual(sorted(results), sorted(expected))

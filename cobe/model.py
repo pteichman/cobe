@@ -110,17 +110,17 @@ class Model(object):
             n = len(token_ids)
         return str(n) + "".join(token_ids)
 
-    def _tokens_reverse_key(self, key):
-        # Create a reverse n-gram key from a count key as returned by
-        # _tokens_count_key.
+    def _tokens_reverse_train_key(self, token_ids):
+        # token_ids are e.g. [ token1, token2, token3 ]. Rotate the
+        # tokens to [ token2, token3, token1 ] so the tokens that
+        # precede [ token2, token3 ] can be enumerated.
+        return "r" + "".join(token_ids[1:]) + token_ids[0]
 
-        # key is e.g. "3" + token1token2token3. Strip the number
-        # prefix and rotate its grams to token2token3token1 so we can
-        # easily enumerate the tokens that precede token2token3
-        token_nums = varint.decode(key[1:])
-
-        token_nums.append(token_nums[0])
-        return "r" + "".join(varint.encode(token_nums[1:]))
+    def _tokens_reverse_key(self, token_ids):
+        # token_ids are e.g. [ token1, token2, token3 ]. Rotate the
+        # tokens to [ token2, token3, token1 ] so the tokens that
+        # precede [ token2, token3 ] can be enumerated.
+        return "r" + "".join(token_ids)
 
     def _ngrams(self, grams, n):
         for i in xrange(0, len(grams) - n + 1):
@@ -153,22 +153,31 @@ class Model(object):
         padding = [self.tokens.get_id("")] * (self.orders[0] - 1)
 
         token_ids = map(self.tokens.get_id, tokens)
+        max_order = max(self.orders)
 
         for order in self.orders:
             to_train = padding[:order - 1] + token_ids + padding[:order - 1]
+
+            # Count each n-gram we've seen
             for ngram in self._ngrams(to_train, order):
                 yield self._tokens_count_key(ngram), 1
+
+                if order == max_order:
+                    # For the highest-order n-grams, also train their
+                    # reverse. This allows dicovery of which tokens
+                    # precede others. But don't bother tracking counts.
+                    yield self._tokens_reverse_train_key(ngram), 0
 
     def train(self, tokens):
         self.train_many([tokens])
 
     def train_many(self, tokens_gen):
-        def ngram_counts(tokens_gen):
+        def ngram_counts():
             for tokens in tokens_gen:
                 for item in self._ngram_keys_and_counts(tokens):
                     yield item
 
-        counts = MergeCounter().count(ngram_counts(tokens_gen))
+        counts = MergeCounter().count(ngram_counts())
         self._save(counts)
 
     def choose_random_context(self, token, rng=random):
@@ -179,7 +188,11 @@ class Model(object):
 
         if len(items):
             context = rng.choice(items)
-            return [token] + map(self.tokens.get_token, context)
+
+            # FIXME: this is a terrible way to split the token ids
+            token_ids = map(varint.encode_one, varint.decode(context))
+
+            return [token] + map(self.tokens.get_token, token_ids)
 
     def choose_random_word(self, context, rng=random):
         token_ids = map(self.tokens.get_id, context)
@@ -263,3 +276,23 @@ class Model(object):
 
             for next_token in self._prefix_keys(key, skip_prefix=True):
                 left.append(path + (next_token,))
+
+    def search_bfs_reverse(self, context, end):
+        end_token = self.tokens.get_id(end)
+
+        token_ids = tuple(map(self.tokens.get_id, context))
+
+        left = collections.deque([token_ids])
+        n = self.orders[0] - 1
+
+        while left:
+            path = left.popleft()
+            if path[0] == end_token:
+                yield map(self.tokens.get_token, path)
+                continue
+
+            token_ids = path[:n]
+            key = self._tokens_reverse_key(token_ids)
+
+            for prev_token in self._prefix_keys(key, skip_prefix=True):
+                left.append((prev_token,) + path)
