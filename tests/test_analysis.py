@@ -9,10 +9,12 @@ from cobe import search
 class LowercaseNormalizerTest(unittest.TestCase):
     def test_prefix(self):
         # Make sure the prefix of a TokenNormalizer subclass is
-        # derived from the subclass's name (even though .prefix()) is
-        # implemented in the superclass.
+        # derived from the subclass's name.
         norm = analysis.LowercaseNormalizer()
-        self.assertEqual("LowercaseNormalizer", norm.prefix())
+        self.assertEqual("LowercaseNormalizer", norm.prefix)
+
+        norm = analysis.LowercaseNormalizer(prefix="asdf")
+        self.assertEqual("asdf", norm.prefix)
 
     def test_lowercase(self):
         norm = analysis.LowercaseNormalizer()
@@ -22,6 +24,47 @@ class LowercaseNormalizerTest(unittest.TestCase):
         self.assertEqual(u"foo", norm.normalize(u"FOO"))
 
         self.assertEqual(u"foo\nbar", norm.normalize(u"FOO\nBar"))
+
+
+class AnalyzerTest(unittest.TestCase):
+    def test_normalizer(self):
+        class PrefixNormalizer(analysis.TokenNormalizer):
+            def __init__(self, length, prefix=None):
+                self.length = length
+                super(PrefixNormalizer, self).__init__(prefix=prefix)
+
+            def normalize(self, token):
+                return token[:self.length]
+
+        # Create an analyzer and add a LowercaseNormalizer and this
+        # PrefixNormalizer.
+        analyzer = analysis.WhitespaceAnalyzer()
+
+        ret = analyzer.add_token_normalizer(PrefixNormalizer(3))
+        ret = analyzer.add_token_normalizer(analysis.LowercaseNormalizer())
+
+        # Make sure add_token_normalizer returns the analyzer, for chaining
+        self.assertIs(analyzer, ret)
+
+        expected = [
+            ("PrefixNormalizer", "Foo"),
+            ("LowercaseNormalizer", "foobarbaz")
+            ]
+
+        result = analyzer.normalize_token("Foobarbaz")
+
+        self.assertListEqual(expected, result)
+
+    def test_normalizer_returns_none(self):
+        class NoneNormalizer(analysis.TokenNormalizer):
+            def normalize(self, token):
+                return None
+
+        analyzer = analysis.WhitespaceAnalyzer()
+        analyzer.add_token_normalizer(NoneNormalizer())
+
+        result = analyzer.normalize_token("Foobarbaz")
+        self.assertListEqual([], result)
 
 
 class WhitespaceAnalyzerTest(unittest.TestCase):
