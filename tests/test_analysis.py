@@ -6,6 +6,24 @@ from cobe import analysis
 from cobe import search
 
 
+class LowercaseNormalizerTest(unittest.TestCase):
+    def test_prefix(self):
+        # Make sure the prefix of a TokenNormalizer subclass is
+        # derived from the subclass's name (even though .prefix()) is
+        # implemented in the superclass.
+        norm = analysis.LowercaseNormalizer()
+        self.assertEqual("LowercaseNormalizer", norm.prefix())
+
+    def test_lowercase(self):
+        norm = analysis.LowercaseNormalizer()
+
+        self.assertEqual(u"foo", norm.normalize(u"foo"))
+        self.assertEqual(u"foo", norm.normalize(u"Foo"))
+        self.assertEqual(u"foo", norm.normalize(u"FOO"))
+
+        self.assertEqual(u"foo\nbar", norm.normalize(u"FOO\nBar"))
+
+
 class WhitespaceAnalyzerTest(unittest.TestCase):
     def test_tokens(self):
         analyzer = analysis.WhitespaceAnalyzer()
