@@ -30,11 +30,11 @@ class TokenRegistry(object):
         self.token_log = []
 
     def load(self, tokens):
-        """Load (token_text, token_id) pairs from an iterable."""
-        for token, token_id in tokens:
-            self._put(token, token_id)
+        """Load (token_id, token) pairs from an iterable."""
+        for token_id, token in tokens:
+            self._put(token_id, token)
 
-    def _put(self, token, token_id):
+    def _put(self, token_id, token):
         self.token_ids[token] = token_id
         self.tokens[token_id] = token
 
@@ -53,7 +53,7 @@ class TokenRegistry(object):
             # as its id.
             token_id = varint.encode_one(len(self.tokens))
 
-            self._put(token, token_id)
+            self._put(token_id, token)
             self.token_log.append((token, token_id))
 
         return self.token_ids[token]
@@ -132,7 +132,7 @@ class Model(object):
             logger.info("flushing new tokens")
 
             for token, token_id in self.tokens.token_log:
-                yield self._token_key(token), token_id
+                yield self._token_key(token_id), token
             self.tokens.token_log[:] = []
 
             # Then merge in-memory n-gram counts with the database
