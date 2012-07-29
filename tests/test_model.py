@@ -243,15 +243,15 @@ class TestModel(unittest.TestCase):
         # prefix iterators are working
         model = Model(self.store)
 
-        model.kv.put("a/", "a")
-        model.kv.put("a/b", "b")
-        model.kv.put("a/c", "c")
-        model.kv.put("a/d", "d")
-        model.kv.put("a/e", "e")
-        model.kv.put("a/f", "f")
-        model.kv.put("b/", "b")
-        model.kv.put("c/", "c")
-        model.kv.put("d/", "d")
+        model.store.put("a/", "a")
+        model.store.put("a/b", "b")
+        model.store.put("a/c", "c")
+        model.store.put("a/d", "d")
+        model.store.put("a/e", "e")
+        model.store.put("a/f", "f")
+        model.store.put("b/", "b")
+        model.store.put("c/", "c")
+        model.store.put("d/", "d")
 
         a_list = list(model._prefix_keys("a/"))
         self.assertEqual("a/ a/b a/c a/d a/e a/f".split(), a_list)
@@ -268,15 +268,15 @@ class TestModel(unittest.TestCase):
         # prefix iterators are working
         model = Model(self.store)
 
-        model.kv.put("a/", "a")
-        model.kv.put("a/b", "b")
-        model.kv.put("a/c", "c")
-        model.kv.put("a/d", "d")
-        model.kv.put("a/e", "e")
-        model.kv.put("a/f", "f")
-        model.kv.put("b/", "b")
-        model.kv.put("c/", "c")
-        model.kv.put("d/", "d")
+        model.store.put("a/", "a")
+        model.store.put("a/b", "b")
+        model.store.put("a/c", "c")
+        model.store.put("a/d", "d")
+        model.store.put("a/e", "e")
+        model.store.put("a/f", "f")
+        model.store.put("b/", "b")
+        model.store.put("c/", "c")
+        model.store.put("d/", "d")
 
         expected = [("a/", "a"),
                     ("a/b", "b"),

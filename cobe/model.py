@@ -85,8 +85,8 @@ class Model(object):
     NgramModel.
     """
 
-    def __init__(self, kv, n=3):
-        self.kv = kv
+    def __init__(self, store, n=3):
+        self.store = store
 
         # Count n-grams, (n-1)-grams, ..., bigrams, unigrams
         # P(wordN|word1,word2,...,wordN-1)
@@ -139,13 +139,13 @@ class Model(object):
             logger.info("merging counts")
 
             for key, count in counts:
-                val = self.kv.get(key, default=None)
+                val = self.store.get(key, default=None)
                 if val is not None:
                     count += varint.decode_one(val)
 
                 yield key, varint.encode_one(count)
 
-        self.kv.put_many(kv_pairs())
+        self.store.put_many(kv_pairs())
 
     def _ngram_keys_and_counts(self, tokens):
         # As each series of tokens is learned, pad the beginning and
@@ -225,13 +225,13 @@ class Model(object):
         token_ids = map(self.tokens.get_id, tokens)
 
         key = self._tokens_count_key(token_ids)
-        count = varint.decode_one(self.kv.get(key, default="\0"))
+        count = varint.decode_one(self.store.get(key, default="\0"))
 
         return count
 
     def _prefix_items(self, prefix, skip_prefix=False):
         """yield all (key, value) pairs from keys that begin with $prefix"""
-        items = self.kv.items(key_from=prefix)
+        items = self.store.items(key_from=prefix)
 
         start = 0
         if skip_prefix:
@@ -244,7 +244,7 @@ class Model(object):
 
     def _prefix_keys(self, prefix, skip_prefix=False):
         """yield all keys that begin with $prefix"""
-        keys = self.kv.keys(key_from=prefix)
+        keys = self.store.keys(key_from=prefix)
 
         start = 0
         if skip_prefix:
