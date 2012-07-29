@@ -85,7 +85,8 @@ class Model(object):
     NgramModel.
     """
 
-    def __init__(self, store, n=3):
+    def __init__(self, analyzer, store, n=3):
+        self.analyzer = analyzer
         self.store = store
 
         # Count n-grams, (n-1)-grams, ..., bigrams, unigrams
