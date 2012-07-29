@@ -3,6 +3,8 @@
 import unittest2 as unittest
 
 from cobe import analysis
+from cobe import kvstore
+from cobe import model
 from cobe import search
 
 
@@ -66,6 +68,27 @@ class AnalyzerTest(unittest.TestCase):
         result = analyzer.normalize_token("Foobarbaz")
         self.assertListEqual([], result)
 
+    def test_conflated_query(self):
+        analyzer = analysis.WhitespaceAnalyzer()
+        analyzer.add_token_normalizer(analysis.LowercaseNormalizer())
+
+        m = model.Model(analyzer, kvstore.SqliteStore(":memory:"))
+        m.train("This is a test")
+        m.train("this is a test")
+
+        tokens = analyzer.tokens("this is a query")
+        query = analyzer.query(tokens, m)
+
+        expected = [
+            dict(term="this", pos=0),
+            dict(term="This", pos=0),
+            dict(term="is", pos=1),
+            dict(term="a", pos=2),
+            dict(term="query", pos=3)
+            ]
+
+        self.assertListEqual(expected, query.terms)
+
 
 class WhitespaceAnalyzerTest(unittest.TestCase):
     def test_tokens(self):
@@ -95,9 +118,9 @@ class WhitespaceAnalyzerTest(unittest.TestCase):
         self.assertIsInstance(query, search.Query)
 
         expected_terms = [
-            dict(term="foo", position=0),
-            dict(term="bar", position=1),
-            dict(term="baz", position=2)
+            dict(term="foo", pos=0),
+            dict(term="bar", pos=1),
+            dict(term="baz", pos=2)
             ]
 
-        self.assertItemsEqual(expected_terms, query.terms())
+        self.assertItemsEqual(expected_terms, query.terms)

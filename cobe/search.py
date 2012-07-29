@@ -4,15 +4,8 @@ import random
 
 
 class Query(object):
-    def __init__(self, tokens):
-        self.tokens = tokens
-
-    def terms(self):
-        ret = []
-        for index, token in enumerate(self.tokens):
-            ret.append(dict(term=token, position=index))
-
-        return ret
+    def __init__(self, terms):
+        self.terms = terms
 
 
 class Searcher(object):
@@ -22,7 +15,7 @@ class Searcher(object):
 
     def search(self, query):
         model = self.model
-        terms = query.terms()
+        terms = query.terms
 
         # Pick a random term and find a random context that contains it.
         pivot = random.choice(terms)

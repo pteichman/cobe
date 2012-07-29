@@ -79,6 +79,23 @@ class Analyzer(object):
 
         return ret
 
+    def query(self, tokens, model=None):
+        terms = []
+        for index, token in enumerate(tokens):
+            terms.append(dict(term=token, pos=index))
+
+            # Conflate this term to any terms that normalize to the
+            # same things.
+            if model is None:
+                continue
+
+            for prefix, norm in self.normalize_token(token):
+                for norm_token in model.get_norm_tokens(prefix, norm):
+                    if norm_token != token:
+                        terms.append(dict(term=norm_token, pos=index))
+
+        return search.Query(terms)
+
 
 class WhitespaceAnalyzer(Analyzer):
     """An analyzer that splits tokens on whitespace.
@@ -92,6 +109,3 @@ class WhitespaceAnalyzer(Analyzer):
 
     def join(self, tokens):
         return " ".join(tokens)
-
-    def query(self, tokens):
-        return search.Query(tokens)

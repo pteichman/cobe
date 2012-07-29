@@ -174,10 +174,18 @@ class Model(object):
 
     def train_many(self, text_gen):
         tokenize = self.analyzer.tokens
+        normalize = self.analyzer.normalize_token
 
         def ngram_counts():
             for text in text_gen:
                 tokens = tokenize(text)
+
+                # Register the normalizations of any new tokens
+                for token in tokens:
+                    if token not in self.tokens.token_ids:
+                        for prefix, norm in normalize(token):
+                            yield self._norm_key(prefix, norm, token), 1
+
                 for item in self._ngram_keys_and_counts(tokens):
                     yield item
 
@@ -258,6 +266,15 @@ class Model(object):
             if not key.startswith(prefix):
                 break
             yield key[start:]
+
+    def _norm_key(self, prefix, norm, token):
+        return "/".join(("n", prefix, norm, token))
+
+    def get_norm_tokens(self, prefix, norm):
+        # Get any tokens that normalize to the same thing as norm
+        key = self._norm_key(prefix, norm, "")
+
+        return self._prefix_keys(key, skip_prefix=True)
 
     def search_bfs(self, context, end, reverse=False):
         end_token = self.tokens.get_id(end)

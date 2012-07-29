@@ -3,7 +3,7 @@
 import random
 import unittest2 as unittest
 
-from cobe.analysis import WhitespaceAnalyzer
+from cobe.analysis import LowercaseNormalizer, WhitespaceAnalyzer
 from cobe.model import Model, TokenRegistry
 from cobe.kvstore import SqliteStore
 
@@ -25,8 +25,9 @@ class TestTokenRegistry(unittest.TestCase):
 
 class TestModel(unittest.TestCase):
     def setUp(self):
+        self.analyzer = WhitespaceAnalyzer()
         self.store = SqliteStore(":memory:")
-        self.model = Model(WhitespaceAnalyzer(), self.store)
+        self.model = Model(self.analyzer, self.store)
 
     def test_init(self):
         # Don't specify any ngram orders, which should get trigrams
@@ -35,7 +36,7 @@ class TestModel(unittest.TestCase):
         self.assertEquals((3, 2, 1), model.orders)
 
         # And make sure n=5 yields 5-grams and 4-grams
-        model = Model(WhitespaceAnalyzer(), self.store, n=5)
+        model = Model(self.analyzer, self.store, n=5)
         self.assertEquals((5, 4, 3, 2, 1), model.orders)
 
     def test_load_tokens(self):
@@ -52,7 +53,7 @@ class TestModel(unittest.TestCase):
         save_token_ids = dict(model.tokens.token_ids)
         save_tokens = dict(model.tokens.tokens)
 
-        model = Model(WhitespaceAnalyzer(), self.store)
+        model = Model(self.analyzer, self.store)
 
         self.assertEqual(save_token_ids, model.tokens.token_ids)
         self.assertEqual(save_tokens, model.tokens.tokens)
@@ -337,3 +338,11 @@ class TestModel(unittest.TestCase):
             ]
 
         self.assertEqual(sorted(results), sorted(expected))
+
+    def test_normalizer(self):
+        model = self.model
+        analyzer = self.analyzer
+
+        analyzer.add_token_normalizer(LowercaseNormalizer())
+
+        model.train("This is a test")
