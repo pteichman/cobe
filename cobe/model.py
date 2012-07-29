@@ -184,7 +184,7 @@ class Model(object):
                 for token in tokens:
                     if token not in self.tokens.token_ids:
                         for prefix, norm in normalize(token):
-                            yield self._norm_key(prefix, norm, token), 1
+                            yield self._norm_key(prefix, norm, token), 0
 
                 for item in self._ngram_keys_and_counts(tokens):
                     yield item
@@ -267,14 +267,21 @@ class Model(object):
                 break
             yield key[start:]
 
-    def _norm_key(self, prefix, norm, token):
+    def _norm_key(self, prefix, norm, token=None):
+        if token is None:
+            token = ""
+        else:
+            token = self.tokens.get_id(token)
+
         return "/".join(("n", prefix, norm, token))
 
     def get_norm_tokens(self, prefix, norm):
         # Get any tokens that normalize to the same thing as norm
-        key = self._norm_key(prefix, norm, "")
+        key = self._norm_key(prefix, norm)
+        get_token = self.tokens.get_token
 
-        return self._prefix_keys(key, skip_prefix=True)
+        for token_id in self._prefix_keys(key, skip_prefix=True):
+            yield get_token(token_id)
 
     def search_bfs(self, context, end, reverse=False):
         end_token = self.tokens.get_id(end)
