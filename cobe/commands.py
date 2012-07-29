@@ -31,11 +31,16 @@ class DumpCommand(object):
     @staticmethod
     def run(args):
         store = SqliteStore("cobe.store")
-        model = Model(store)
+        analyzer = analysis.WhitespaceAnalyzer()
+        model = Model(analyzer, store)
 
         print "Tokens:"
         for token, token_id in model.tokens.token_ids.iteritems():
             print token, decode_one(token_id)
+
+        print "Normalized tokens:"
+        for key in model._prefix_keys("n"):
+            print key
 
         print "3-gram counts:"
         get_token = model.tokens.get_token
@@ -56,12 +61,15 @@ class LearnCommand(object):
     @staticmethod
     def run(args):
         store = SqliteStore("cobe.store")
-        model = Model(store)
+        analyzer = analysis.WhitespaceAnalyzer()
+        analyzer.add_token_normalizer(analysis.LowercaseNormalizer())
+
+        model = Model(analyzer, store)
 
         files = fileinput.FileInput(args.file,
                                     openhook=fileinput.hook_compressed)
 
-        def tokens():
+        def lines():
             for line in files:
                 if files.isfirstline():
                     print
@@ -71,9 +79,9 @@ class LearnCommand(object):
                     print "%d..." % files.lineno(),
                     sys.stdout.flush()
 
-                yield line.split()
+                yield line
 
-        model.train_many(tokens())
+        model.train_many(lines())
         files.close()
 
 
@@ -162,8 +170,10 @@ class ConsoleCommand:
 
     @staticmethod
     def run(args):
-        model = Model(SqliteStore("cobe.store"))
         analyzer = analysis.WhitespaceAnalyzer()
+        analyzer.add_token_normalizer(analysis.LowercaseNormalizer())
+
+        model = Model(analyzer, SqliteStore("cobe.store"))
         searcher = search.Searcher(model)
 
         history = os.path.expanduser("~/.cobe_history")
@@ -183,7 +193,8 @@ class ConsoleCommand:
             tokens = analyzer.tokens(cmd)
 
             # Learn tokens
-            query = analyzer.query(tokens)
+            query = analyzer.query(tokens, model)
+
             for result in searcher.search(query):
                 print analyzer.join(result)
 
