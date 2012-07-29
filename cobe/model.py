@@ -175,10 +175,17 @@ class Model(object):
     def train_many(self, text_gen):
         tokenize = self.analyzer.tokens
         normalize = self.analyzer.normalize_token
+        max_order = max(self.orders)
 
         def ngram_counts():
             for text in text_gen:
                 tokens = tokenize(text)
+
+                # Don't bother learning text that's shorter than our
+                # longest order. This is traditional cobe behavior and
+                # may not be right if using Model as a language model.
+                if len(tokens) < max_order:
+                    continue
 
                 # Register the normalizations of any new tokens
                 for token in tokens:

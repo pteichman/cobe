@@ -131,6 +131,40 @@ class TestModel(unittest.TestCase):
             # Make sure we have twice as many counts as before.
             self.assertEquals(2 * count, model.ngram_count(ngram))
 
+    def test_train_short(self):
+        model = self.model
+
+        # Make sure the short-text check in training ensures that no
+        # n-grams are counted for text with fewer than three tokens
+        model.train("")
+
+        self.assertEqual([], list(model._prefix_keys("1")))
+        self.assertEqual([], list(model._prefix_keys("2")))
+        self.assertEqual([], list(model._prefix_keys("3")))
+
+        model.train("one")
+
+        self.assertEqual([], list(model._prefix_keys("1")))
+        self.assertEqual([], list(model._prefix_keys("2")))
+        self.assertEqual([], list(model._prefix_keys("3")))
+
+        model.train("one two")
+
+        self.assertEqual([], list(model._prefix_keys("1")))
+        self.assertEqual([], list(model._prefix_keys("2")))
+        self.assertEqual([], list(model._prefix_keys("3")))
+
+        model.train("one two three")
+
+        # one / two / three
+        self.assertEqual(3, len(list(model._prefix_keys("1"))))
+
+        # "" one / one two / two three / three ""
+        self.assertEqual(4, len(list(model._prefix_keys("2"))))
+
+        # "" "" one / "" one two / one two three / two three "" / three "" ""
+        self.assertEqual(5, len(list(model._prefix_keys("3"))))
+
     def test_train_many(self):
         model = self.model
 
