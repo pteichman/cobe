@@ -1,11 +1,20 @@
 # Copyright (C) 2012 Peter Teichman
 
 import abc
+import itertools
 import logging
 import os
 import sqlite3
 
 logger = logging.getLogger(__name__)
+
+
+def batchiter(iterable, size):
+    """yield a series of batches from iterable, each size elements long"""
+    source = iter(iterable)
+    while True:
+        batch = itertools.islice(source, size)
+        yield itertools.chain([batch.next()], batch)
 
 
 class KVStore(object):
@@ -181,13 +190,13 @@ CREATE TABLE kv (
         self.conn.commit()
 
     def put_many(self, items):
-        c = self.conn.cursor()
+        for item_batch in batchiter(items, 30000):
+            c = self.conn.cursor()
 
-        put_one = self._put_one
-        for key, value in items:
-            put_one(c, key, value)
+            for key, value in item_batch:
+                self._put_one(c, key, value)
 
-        self.conn.commit()
+            self.conn.commit()
 
     def _range_where(self, key_from=None, key_to=None):
         if key_from is not None and key_to is None:
@@ -243,12 +252,13 @@ class LevelDBStore(KVStore):
         self.kv.Put(key, value)
 
     def put_many(self, items):
-        batch = self.leveldb.WriteBatch()
+        for item_batch in batchiter(items, 30000):
+            batch = self.leveldb.WriteBatch()
 
-        for key, value in items:
-            batch.Put(key, value)
+            for key, value in item_batch:
+                batch.Put(key, value)
 
-        self.kv.Write(batch)
+            self.kv.Write(batch)
 
     def items(self, key_from=None, key_to=None):
         return self.kv.RangeIter(key_from=key_from, key_to=key_to)
