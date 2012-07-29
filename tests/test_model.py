@@ -43,8 +43,8 @@ class TestModel(unittest.TestCase):
         # database when an old Model is loaded
         model = self.model
 
-        model.train("this is a test".split())
-        model.train("this is another test".split())
+        model.train("this is a test")
+        model.train("this is another test")
 
         # We save on train(), so make sure the new tokens log is empty.
         self.assertEqual(0, len(model.tokens.token_log))
@@ -98,8 +98,8 @@ class TestModel(unittest.TestCase):
     def test_train(self):
         model = self.model
 
-        tokens = "<S> this is a test string </S>".split()
-        model.train(tokens)
+        text = "<S> this is a test string </S>"
+        model.train(text)
 
         counts = [
             (0, ("", "", "")),
@@ -124,7 +124,7 @@ class TestModel(unittest.TestCase):
 
         # Now train the phrase again and make sure the new counts were
         # merged.
-        model.train(tokens)
+        model.train(text)
 
         for count, ngram in counts:
             # Make sure we have twice as many counts as before.
@@ -137,11 +137,7 @@ class TestModel(unittest.TestCase):
                      "this is another test",
                      "this is a third test"]
 
-        def tokens_gen(items):
-            for sentence in items:
-                yield sentence.split()
-
-        model.train_many(tokens_gen(sentences))
+        model.train_many(sentences)
 
         self.assertEquals(2, model.ngram_count("this is a".split()))
         self.assertEquals(1, model.ngram_count("is a test".split()))
@@ -155,14 +151,15 @@ class TestModel(unittest.TestCase):
         # in the database.
         model = self.model
 
-        ngram = "one two three".split()
+        text = "one two three"
+        ngram = text.split()
         self.assertEquals(0, model.ngram_count(ngram))
 
-        model.train(ngram)
+        model.train(text)
         self.assertEquals(1, model.ngram_count(ngram))
 
         # Ensure new counts are added to existing database counts
-        model.train(ngram)
+        model.train(text)
         self.assertEquals(2, model.ngram_count(ngram))
 
     def test_logprob_with_counts(self):
@@ -170,8 +167,8 @@ class TestModel(unittest.TestCase):
         # default trigrams, bigrams, and unigrams
         model = self.model
 
-        model.train("one two three".split())
-        model.train("one two four".split())
+        model.train("one two three")
+        model.train("one two four")
 
         ngram = "one two three".split()
         token, context = ngram[-1], ngram[:-1]
@@ -182,8 +179,8 @@ class TestModel(unittest.TestCase):
         # the default trigrams, bigrams, and unigrams
         model = self.model
 
-        model.train("one two three".split())
-        model.train("one two four".split())
+        model.train("one two three")
+        model.train("one two four")
 
         ngram = "one two three".split()
         token, context = ngram[-1], ngram[:-1]
@@ -194,7 +191,7 @@ class TestModel(unittest.TestCase):
 
         # First, train one sentence and make sure we randomly pick the
         # only possible option.
-        model.train("one two three".split())
+        model.train("one two three")
         context = ["one", "two"]
 
         self.assertEqual("three", model.choose_random_word(context))
@@ -207,7 +204,7 @@ class TestModel(unittest.TestCase):
         # WichmannHill PRNG to ensure reproducability, since the
         # default PRNG generator could conceivably change in a future
         # release.
-        model.train("one two four".split())
+        model.train("one two four")
 
         rng = random.WichmannHill()
 
@@ -220,7 +217,7 @@ class TestModel(unittest.TestCase):
 
         # First, train one sentence and make sure we randomly pick the
         # only possible option.
-        model.train("one two three".split())
+        model.train("one two three")
 
         self.assertEqual(["one", "two", "three"],
                          model.choose_random_context("one"))
@@ -230,7 +227,7 @@ class TestModel(unittest.TestCase):
 
         # Train another sentence and make sure we pick both options
         # with carefully chosen seeding.
-        model.train("one two four".split())
+        model.train("one two four")
 
         rng = random.WichmannHill()
 
@@ -303,9 +300,9 @@ class TestModel(unittest.TestCase):
     def test_search_bfs(self):
         model = self.model
 
-        model.train("<S> this is a test sentence </S>".split())
-        model.train("<S> this is a test sentence that continues </S>".split())
-        model.train("<S> this is another test sentence </S>".split())
+        model.train("<S> this is a test sentence </S>")
+        model.train("<S> this is a test sentence that continues </S>")
+        model.train("<S> this is another test sentence </S>")
 
         results = list(model.search_bfs("<S> this is".split(), "</S>"))
 
@@ -324,9 +321,9 @@ class TestModel(unittest.TestCase):
     def test_search_bfs_reverse(self):
         model = self.model
 
-        model.train("<S> this is a test sentence </S>".split())
-        model.train("<S> this is a test sentence that continues </S>".split())
-        model.train("<S> this is another test sentence </S>".split())
+        model.train("<S> this is a test sentence </S>")
+        model.train("<S> this is a test sentence that continues </S>")
+        model.train("<S> this is another test sentence </S>")
 
         results = list(model.search_bfs_reverse(
                 "test sentence </S>".split(), "<S>"))

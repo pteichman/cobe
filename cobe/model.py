@@ -169,12 +169,15 @@ class Model(object):
                     # precede others. But don't bother tracking counts.
                     yield self._tokens_reverse_train_key(ngram), 0
 
-    def train(self, tokens):
-        self.train_many([tokens])
+    def train(self, text):
+        self.train_many([text])
 
-    def train_many(self, tokens_gen):
+    def train_many(self, text_gen):
+        tokenize = self.analyzer.tokens
+
         def ngram_counts():
-            for tokens in tokens_gen:
+            for text in text_gen:
+                tokens = tokenize(text)
                 for item in self._ngram_keys_and_counts(tokens):
                     yield item
 
