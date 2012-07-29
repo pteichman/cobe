@@ -207,7 +207,8 @@ class ConsoleCommand:
             # Learn tokens
             query = analyzer.query(tokens, model)
 
-            for result in searcher.search(query):
+            results = itertools.islice(searcher.search(query), 20)
+            for result in results:
                 print analyzer.join(result)
 
 
