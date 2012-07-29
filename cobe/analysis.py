@@ -87,8 +87,8 @@ class WhitespaceAnalyzer(Analyzer):
     about words with leading or trailing punctuation being considered
     different from the same word without punctuation.
     """
-    def tokens(self, input):
-        return input.split()
+    def tokens(self, text):
+        return text.split()
 
     def join(self, tokens):
         return " ".join(tokens)
