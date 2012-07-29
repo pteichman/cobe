@@ -21,6 +21,11 @@ class Searcher(object):
         pivot = random.choice(terms)
         context = model.choose_random_context(pivot["term"])
 
-        results = model.search_bfs(context, "")
-        for result in results:
-            yield result
+        next = model.search_bfs(context, "")
+        prev = model.search_bfs_reverse(context, "")
+
+        def combine(prev_tokens, next_tokens):
+            # the two overlap by len(context) tokens
+            return prev_tokens[1:] + next_tokens[len(context):-1]
+
+        yield combine(prev.next(), next.next())
