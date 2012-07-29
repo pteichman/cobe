@@ -2,13 +2,13 @@
 
 import atexit
 import fileinput
+import itertools
 import logging
 import os
 import re
 import readline
 import Stemmer
 import sys
-import time
 
 from . import analysis
 from . import search
@@ -96,43 +96,58 @@ class LearnIrcLogCommand:
         subparser.add_argument("-o", "--only-nick", action="append",
                                dest="only_nicks",
                                help="Only learn from specified nicks")
-        subparser.add_argument("-r", "--reply-to", action="append",
-                               help="Reply (invisibly) to things said "
-                               "to specified nick")
         subparser.add_argument("file", nargs="+")
         subparser.set_defaults(run=cls.run)
 
     @classmethod
     def run(cls, args):
-        b = Brain(args.brain)
-        b.start_batch_learning()
+        store = SqliteStore("cobe.store")
+        analyzer = analysis.WhitespaceAnalyzer()
+        analyzer.add_token_normalizer(analysis.LowercaseNormalizer())
 
-        for filename in args.file:
-            now = time.time()
-            print filename
+        model = Model(analyzer, store)
 
-            count = 0
-            fd = open(filename, "r")
-            for line in fd:
-                parsed = cls._parse_irc_message(line.strip(),
-                                                args.ignored_nicks,
-                                                args.only_nicks)
-                if parsed is None:
-                    continue
+        files = fileinput.FileInput(args.file,
+                                    openhook=fileinput.hook_compressed)
 
-                to, msg = parsed
-                b.learn(msg)
+        def lines():
+            for line in files:
+                if files.isfirstline():
+                    print
+                    print files.filename()
 
-                if args.reply_to is not None and to in args.reply_to:
-                    b.reply(msg)
+                if (files.lineno() % 1000) == 0:
+                    print "%d..." % files.lineno(),
+                    sys.stdout.flush()
 
-            elapsed = time.time() - now
-            print "\r100%% (%d/s)" % (count / elapsed)
+                yield line
 
-        b.stop_batch_learning()
+            print
 
-    @staticmethod
-    def _parse_irc_message(msg, ignored_nicks=None, only_nicks=None):
+        lines = cls._irc_lines(files, ignored_nicks=args.ignored_nicks,
+                               only_nicks=args.only_nicks)
+        model.train_many(lines)
+        files.close()
+
+    @classmethod
+    def _irc_lines(cls, files, ignored_nicks=None, only_nicks=None):
+        for line in files:
+            if files.isfirstline():
+                print
+                print files.filename()
+
+            if (files.lineno() % 1000) == 0:
+                print "%d..." % files.lineno(),
+                sys.stdout.flush()
+
+            msg = cls._parse_irc_message(line, ignored_nicks=ignored_nicks,
+                                         only_nicks=only_nicks)
+
+            if msg is not None:
+                yield msg
+
+    @classmethod
+    def _parse_irc_message(cls, msg, ignored_nicks=None, only_nicks=None):
         # only match lines of the form "HH:MM <nick> message"
         match = re.match("\d+:\d+\s+<(.+?)>\s+(.*)", msg)
         if not match:
@@ -147,19 +162,16 @@ class LearnIrcLogCommand:
         if only_nicks is not None and nick not in only_nicks:
             return None
 
-        to = None
-
         # strip "username: " at the beginning of messages
-        match = re.search("^(\S+)[,:]\s+(\S.*)", msg)
+        match = re.search("^\S+[,:]\s+(\S.*)", msg)
         if match:
-            to = match.group(1)
-            msg = match.group(2)
+            msg = match.group(1)
 
         # strip kibot style '"asdf" --user, 06-oct-09' quotes
         msg = re.sub("\"(.*)\" --\S+,\s+\d+-\S+-\d+",
                      lambda m: m.group(1), msg)
 
-        return to, msg
+        return msg
 
 
 class ConsoleCommand:
