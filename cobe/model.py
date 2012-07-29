@@ -280,7 +280,7 @@ class Model(object):
         else:
             token = self.tokens.get_id(token)
 
-        return "/".join(("n", prefix, norm, token))
+        return "/".join(("n", prefix, norm)) + chr(0) + token
 
     def get_norm_tokens(self, prefix, norm):
         # Get any tokens that normalize to the same thing as norm
