@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+import sys
+
 # Require setuptools. See http://pypi.python.org/pypi/setuptools for
 # installation instructions, or run the ez_setup script found at
 # http://peak.telecommunity.com/dist/ez_setup.py
@@ -21,16 +23,16 @@ class CheckCommand(Command):
 
         print "Running pep8..."
         if subprocess.call(["pep8", "cobe", "tests"]):
-            return
+            sys.exit("ERROR: failed pep8 checks")
 
         print "Running pyflakes..."
         if subprocess.call(["pyflakes", "cobe", "tests"]):
-            return
+            sys.exit("ERROR: failed pyflakes checks")
 
         print "Running tests..."
         if subprocess.call(["coverage", "run", "--source=cobe,tests",
                             "./setup.py", "test"]):
-            return
+            sys.exit("ERROR: failed unit tests")
 
         subprocess.call(['coverage', 'report', '-m'])
 
