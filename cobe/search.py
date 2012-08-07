@@ -1,5 +1,6 @@
 # Copyright (C) 2012 Peter Teichman
 
+import abc
 import random
 
 
@@ -9,23 +10,47 @@ class Query(object):
 
 
 class Searcher(object):
-    """Search and scoring."""
+    """An abstract class for searching a language model."""
+    __metaclass__ = abc.ABCMeta
+
     def __init__(self, model):
         self.model = model
 
+    @abc.abstractmethod
+    def search(self, query):  # pragma: no cover
+        pass
+
+
+class RandomWalkSearcher(Searcher):
+    """Search the language model by randomly choosing next words.
+
+    This searcher behaves similarly to MegaHAL and creates its search
+    results using the following procedure:
+
+    1) Choose a random term from the input query.
+
+    2) Choose a random n-gram context from the model that includes the term.
+
+    3) From that context, follow the model's forward chain and
+       generate the end of the response. At each stage of the chain,
+       choose the next token randomly.
+
+    4) Use the same procedure to walk the model's reverse chain to
+       generate the beginning of the reponse.
+    """
     def search(self, query):
         model = self.model
         terms = query.terms
-
-        # Pick a random term and find a random context that contains it.
-        pivot = random.choice(terms)
-        context = model.choose_random_context(pivot["term"])
-
-        next = model.search_bfs(context, "")
-        prev = model.search_bfs_reverse(context, "")
 
         def combine(prev_tokens, next_tokens):
             # the two overlap by len(context) tokens
             return prev_tokens[1:] + next_tokens[len(context):-1]
 
-        yield combine(prev.next(), next.next())
+        while True:
+            pivot = random.choice(terms)
+            context = model.choose_random_context(pivot["term"])
+
+            next = model.search_bfs(context, "")
+            prev = model.search_bfs_reverse(context, "")
+
+            yield combine(prev.next(), next.next())

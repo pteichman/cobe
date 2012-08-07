@@ -183,7 +183,7 @@ class ConsoleCommand:
         analyzer.add_token_normalizer(analysis.LowercaseNormalizer())
 
         model = Model(analyzer, SqliteStore("cobe.store"))
-        searcher = search.Searcher(model)
+        searcher = search.RandomWalkSearcher(model)
 
         history = os.path.expanduser("~/.cobe_history")
         try:
