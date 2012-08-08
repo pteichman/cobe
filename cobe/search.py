@@ -1,6 +1,8 @@
 # Copyright (C) 2012 Peter Teichman
 
 import abc
+import itertools
+import operator
 import random
 
 
@@ -41,6 +43,30 @@ class RandomWalkSearcher(Searcher):
     Yields:
         An infinite series of randomly generated responses to the query.
     """
+    def pivots(self, terms):
+        """Generate pivots randomly chosen from query terms.
+
+        If no terms from the query have been learned by the model,
+        choose a random token from its token list.
+
+        Yields:
+            An infinite series of randomly chosen pivot terms.
+        """
+        model = self.model
+        token_ids = model.tokens.token_ids
+
+        texts = itertools.imap(operator.itemgetter("term"), terms)
+
+        # Limit the choices to tokens that exist in the model. If none
+        # have been seen, use all tokens.
+        choices = [text for text in texts if text in token_ids]
+        if not choices:
+            choices = token_ids.keys()
+
+        choice = random.choice
+        while True:
+            yield choice(choices)
+
     def search(self, query):
         model = self.model
         terms = query.terms
@@ -54,9 +80,11 @@ class RandomWalkSearcher(Searcher):
             # branch of the search tree.
             return [random.choice(tokens)]
 
+        pivots = self.pivots(terms)
+
         while True:
-            pivot = random.choice(terms)
-            context = model.choose_random_context(pivot["term"])
+            pivot = pivots.next()
+            context = model.choose_random_context(pivot)
 
             next = model.search_bfs(context, "", filter=random_walk)
             prev = model.search_bfs_reverse(context, "", filter=random_walk)
