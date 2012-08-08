@@ -61,7 +61,7 @@ class RandomWalkSearcher(Searcher):
         # have been seen, use all tokens.
         choices = [text for text in texts if text in token_ids]
         if not choices:
-            choices = token_ids.keys()
+            choices = model.tokens.all_tokens
 
         choice = random.choice
         while True:

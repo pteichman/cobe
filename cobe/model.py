@@ -26,6 +26,11 @@ class TokenRegistry(object):
         self.token_ids = {}
         self.tokens = {}
 
+        # Maintain a list of all the token texts, so a random walk can
+        # quickly pick a random learned token. This skips the empty
+        # token "", used for signaling the end of trained text.
+        self.all_tokens = []
+
         # Log newly created tokens, so they can be flushed to the database
         self.token_log = []
 
@@ -37,6 +42,10 @@ class TokenRegistry(object):
     def _put(self, token_id, token):
         self.token_ids[token] = token_id
         self.tokens[token_id] = token
+
+        # Skip the empty token in all_tokens
+        if token != "":
+            self.all_tokens.append(token)
 
     def get_id(self, token):
         """Get the id associated with a token.
