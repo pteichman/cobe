@@ -37,6 +37,9 @@ class RandomWalkSearcher(Searcher):
 
     4) Use the same procedure to walk the model's reverse chain to
        generate the beginning of the reponse.
+
+    Yields:
+        An infinite series of randomly generated responses to the query.
     """
     def search(self, query):
         model = self.model
@@ -46,11 +49,16 @@ class RandomWalkSearcher(Searcher):
             # the two overlap by len(context) tokens
             return prev_tokens[1:] + next_tokens[len(context):-1]
 
+        def random_walk(tokens):
+            # walk randomly by choosing one random token at each
+            # branch of the search tree.
+            return [random.choice(tokens)]
+
         while True:
             pivot = random.choice(terms)
             context = model.choose_random_context(pivot["term"])
 
-            next = model.search_bfs(context, "")
-            prev = model.search_bfs_reverse(context, "")
+            next = model.search_bfs(context, "", filter=random_walk)
+            prev = model.search_bfs_reverse(context, "", filter=random_walk)
 
             yield combine(prev.next(), next.next())

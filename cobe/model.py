@@ -290,7 +290,7 @@ class Model(object):
         for token_id in self._prefix_keys(key, skip_prefix=True):
             yield get_token(token_id)
 
-    def search_bfs(self, context, end, reverse=False):
+    def search_bfs(self, context, end, filter=None):
         end_token = self.tokens.get_id(end)
 
         token_ids = tuple(map(self.tokens.get_id, context))
@@ -309,10 +309,14 @@ class Model(object):
             token_ids = path[-n:]
             key = self._tokens_count_key(token_ids, len(token_ids) + 1)
 
-            for next_token in self._prefix_keys(key, skip_prefix=True):
+            next_tokens = list(self._prefix_keys(key, skip_prefix=True))
+            if next_tokens and filter is not None:
+                next_tokens = filter(next_tokens)
+
+            for next_token in next_tokens:
                 left.append(path + (next_token,))
 
-    def search_bfs_reverse(self, context, end):
+    def search_bfs_reverse(self, context, end, filter=None):
         end_token = self.tokens.get_id(end)
 
         token_ids = tuple(map(self.tokens.get_id, context))
@@ -329,5 +333,9 @@ class Model(object):
             token_ids = path[:n]
             key = self._tokens_reverse_key(token_ids)
 
-            for prev_token in self._prefix_keys(key, skip_prefix=True):
+            prev_tokens = list(self._prefix_keys(key, skip_prefix=True))
+            if prev_tokens and filter is not None:
+                prev_tokens = filter(prev_tokens)
+
+            for prev_token in prev_tokens:
                 left.append((prev_token,) + path)
