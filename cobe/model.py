@@ -94,6 +94,16 @@ class Model(object):
     NgramModel.
     """
 
+    # Reserve two tokens that will be inserted before & after every
+    # bit of trained text. These can be used by a search to find the
+    # beginning or end of trained data.
+
+    # Use binary values 0x02 (start of text) and 0x03 (end of text)
+    # since they're unlikely to be used in this otherwise
+    # text-oriented language model.
+    TRAIN_START = "\x02"
+    TRAIN_END = "\x03"
+
     def __init__(self, analyzer, store, n=3):
         self.analyzer = analyzer
         self.store = store
@@ -159,15 +169,16 @@ class Model(object):
 
     def _ngram_keys_and_counts(self, tokens):
         # As each series of tokens is learned, pad the beginning and
-        # end of phrase with n-1 empty strings.
-        padding = [self.tokens.get_id("")] * (self.orders[0] - 1)
-
+        # end of phrase with the magic start and end tokens.
         token_ids = map(self.tokens.get_id, tokens)
+
         max_order = max(self.orders)
+        pad_start = [self.tokens.get_id(self.TRAIN_START)] * (max_order - 1)
+        pad_end = [self.tokens.get_id(self.TRAIN_END)] * (max_order - 1)
+
+        to_train = pad_start + token_ids + pad_end
 
         for order in self.orders:
-            to_train = padding[:order - 1] + token_ids + padding[:order - 1]
-
             # Count each n-gram we've seen
             for ngram in self._ngrams(to_train, order):
                 yield self._tokens_count_key(ngram), 1

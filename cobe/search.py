@@ -67,21 +67,23 @@ class RandomWalkSearcher(Searcher):
         while True:
             yield choice(choices)
 
-    def list_strip(self, items, token):
-        """Strip a token from the beginning and end of a list of items."""
+    def list_strip(self, items, ltoken, rtoken):
+        """Strip tokens from the beginning and end of a list of items."""
         start = 0
         end = len(items)
 
-        while items[start] == token:
+        while items[start] == ltoken:
             start += 1
 
-        while items[end - 1] == token:
+        while items[end - 1] == rtoken:
             end -= 1
 
         return items[start:end]
 
     def search(self, query):
         model = self.model
+        start, end = model.TRAIN_START, model.TRAIN_END
+
         terms = query.terms
 
         def combine(prev_tokens, next_tokens):
@@ -89,7 +91,7 @@ class RandomWalkSearcher(Searcher):
             # overlapping tokens and strip any extra leading/trailing
             # end tokens from the response.
             path = prev_tokens[1:] + next_tokens[len(context):-1]
-            return self.list_strip(path, "")
+            return self.list_strip(path, model.TRAIN_START, model.TRAIN_END)
 
         def random_walk(tokens):
             # walk randomly by choosing one random token at each
@@ -102,7 +104,7 @@ class RandomWalkSearcher(Searcher):
             pivot = pivots.next()
             context = model.choose_random_context(pivot)
 
-            next = model.search_bfs(context, "", filter=random_walk)
-            prev = model.search_bfs_reverse(context, "", filter=random_walk)
+            next = model.search_bfs(context, end, filter=random_walk)
+            prev = model.search_bfs_reverse(context, start, filter=random_walk)
 
             yield combine(prev.next(), next.next())

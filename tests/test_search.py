@@ -32,21 +32,30 @@ class RandomWalkSearcherTest(unittest.TestCase):
         items = ["foo", "bar", "baz"]
 
         expected = ["foo", "bar", "baz"]
-        self.assertListEqual(expected, searcher.list_strip(items, ""))
+        self.assertListEqual(expected, searcher.list_strip(items, "", ""))
 
         expected = ["bar", "baz"]
-        self.assertListEqual(expected, searcher.list_strip(items, "foo"))
+        self.assertListEqual(expected,
+                             searcher.list_strip(items, "foo", "foo"))
 
         expected = ["foo", "bar"]
-        self.assertListEqual(expected, searcher.list_strip(items, "baz"))
+        self.assertListEqual(expected,
+                             searcher.list_strip(items, "baz", "baz"))
 
         items = ["foo", "bar", "baz", "foo"]
         expected = ["bar", "baz"]
-        self.assertListEqual(expected, searcher.list_strip(items, "foo"))
+        self.assertListEqual(expected,
+                             searcher.list_strip(items, "foo", "foo"))
 
         items = ["foo", "foo", "bar", "baz", "foo", "foo"]
         expected = ["bar", "baz"]
-        self.assertListEqual(expected, searcher.list_strip(items, "foo"))
+        self.assertListEqual(expected,
+                             searcher.list_strip(items, "foo", "foo"))
+
+        items = ["foo", "foo", "bar", "baz", "foo", "bar"]
+        expected = ["bar", "baz", "foo"]
+        self.assertListEqual(expected,
+                             searcher.list_strip(items, "foo", "bar"))
 
     def test_pivots(self):
         self.model.train("foo bar baz quux quuux")
@@ -72,13 +81,16 @@ class RandomWalkSearcherTest(unittest.TestCase):
         pivots = searcher.pivots([dict(term="unknown", position=0)])
         expected = self.analyzer.tokens("foo bar baz quux quuux")
 
+        # model.TRAIN_START and model.TRAIN_END may also be picked up
+        # as random pivots.
+        expected.extend([self.model.TRAIN_START, self.model.TRAIN_END])
+
         for i in xrange(100):
             self.assertIn(pivots.next(), expected)
 
         # Make sure that a query with no terms can return any token
         # from the model.
         pivots = searcher.pivots([])
-        expected = self.analyzer.tokens("foo bar baz quux quuux")
 
         for i in xrange(100):
             self.assertIn(pivots.next(), expected)

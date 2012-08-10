@@ -103,13 +103,13 @@ class TestModel(unittest.TestCase):
         model.train(text)
 
         counts = [
-            (0, ("", "", "")),
-            (1, ("", "", "<S>")),
-            (1, ("", "<S>", "this")),
+            (0, (model.TRAIN_START, model.TRAIN_START, model.TRAIN_START)),
+            (1, (model.TRAIN_START, model.TRAIN_START, "<S>")),
+            (1, (model.TRAIN_START, "<S>", "this")),
             (1, ("<S>", "this", "is")),
             (1, ("test", "string", "</S>")),
-            (1, ("string", "</S>", "")),
-            (1, ("</S>", "", "")),
+            (1, ("string", "</S>", model.TRAIN_END)),
+            (1, ("</S>", model.TRAIN_END, model.TRAIN_END)),
             (1, ("this", "is", "a")),
             (1, ("is", "a", "test")),
             (1, ("a", "test", "string")),
@@ -156,13 +156,15 @@ class TestModel(unittest.TestCase):
 
         model.train("one two three")
 
-        # one / two / three
-        self.assertEqual(3, len(list(model._prefix_keys("1"))))
+        # TRAIN_START / one / two / three / TRAIN_END
+        self.assertEqual(5, len(list(model._prefix_keys("1"))))
 
-        # "" one / one two / two three / three ""
-        self.assertEqual(4, len(list(model._prefix_keys("2"))))
+        # TRAIN_START TRAIN_START / TRAIN_START one / one two / two three /
+        # three TRAIN_END / TRAIN_END TRAIN_END
+        self.assertEqual(6, len(list(model._prefix_keys("2"))))
 
-        # "" "" one / "" one two / one two three / two three "" / three "" ""
+        # TRAIN_START TRAIN_START one / TRAIN_START one two /
+        # one two three / two three TRAIN_END / three TRAIN_END TRAIN_END
         self.assertEqual(5, len(list(model._prefix_keys("3"))))
 
     def test_train_many(self):
