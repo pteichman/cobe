@@ -2,6 +2,9 @@
 
 import unittest2 as unittest
 
+from cobe import analysis
+from cobe import kvstore
+from cobe import model
 from cobe import search
 
 
@@ -15,3 +18,85 @@ class QueryTest(unittest.TestCase):
 
         query = search.Query(terms)
         self.assertEqual(terms, query.terms)
+
+
+class RandomWalkSearcherTest(unittest.TestCase):
+    def setUp(self):
+        self.analyzer = analysis.WhitespaceAnalyzer()
+        self.store = kvstore.SqliteStore(":memory:")
+        self.model = model.Model(self.analyzer, self.store)
+
+    def test_list_strip(self):
+        searcher = search.RandomWalkSearcher(self.model)
+
+        items = ["foo", "bar", "baz"]
+
+        expected = ["foo", "bar", "baz"]
+        self.assertListEqual(expected, searcher.list_strip(items, ""))
+
+        expected = ["bar", "baz"]
+        self.assertListEqual(expected, searcher.list_strip(items, "foo"))
+
+        expected = ["foo", "bar"]
+        self.assertListEqual(expected, searcher.list_strip(items, "baz"))
+
+        items = ["foo", "bar", "baz", "foo"]
+        expected = ["bar", "baz"]
+        self.assertListEqual(expected, searcher.list_strip(items, "foo"))
+
+        items = ["foo", "foo", "bar", "baz", "foo", "foo"]
+        expected = ["bar", "baz"]
+        self.assertListEqual(expected, searcher.list_strip(items, "foo"))
+
+    def test_pivots(self):
+        self.model.train("foo bar baz quux quuux")
+
+        terms = [
+            dict(term="foo", position=0),
+            dict(term="bar", position=1),
+            dict(term="baz", position=2)
+            ]
+
+        searcher = search.RandomWalkSearcher(self.model)
+
+        # Make sure that a query with known terms doesn't pivot on
+        # the other terms in the model (quux, quuux).
+        pivots = searcher.pivots(terms)
+        expected = self.analyzer.tokens("foo bar baz")
+
+        for i in xrange(100):
+            self.assertIn(pivots.next(), expected)
+
+        # Make sure that a query with unknown terms can return any
+        # token from the model.
+        pivots = searcher.pivots([dict(term="unknown", position=0)])
+        expected = self.analyzer.tokens("foo bar baz quux quuux")
+
+        for i in xrange(100):
+            self.assertIn(pivots.next(), expected)
+
+        # Make sure that a query with no terms can return any token
+        # from the model.
+        pivots = searcher.pivots([])
+        expected = self.analyzer.tokens("foo bar baz quux quuux")
+
+        for i in xrange(100):
+            self.assertIn(pivots.next(), expected)
+
+    def test_search(self):
+        # Test random walk search by training a minimal set of data
+        # and making sure each response is the only possible one.
+        text = "foo bar baz quux quuux"
+        self.model.train(text)
+        expected = self.analyzer.tokens(text)
+
+        searcher = search.RandomWalkSearcher(self.model)
+
+        query = search.Query([dict(term="foo", position=0)])
+        self.assertEqual(expected, searcher.search(query).next())
+
+        query = search.Query([dict(term="bar", position=0)])
+        self.assertEqual(expected, searcher.search(query).next())
+
+        query = search.Query([dict(term="quuux", position=0)])
+        self.assertEqual(expected, searcher.search(query).next())

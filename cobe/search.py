@@ -67,13 +67,29 @@ class RandomWalkSearcher(Searcher):
         while True:
             yield choice(choices)
 
+    def list_strip(self, items, token):
+        """Strip a token from the beginning and end of a list of items."""
+        start = 0
+        end = len(items)
+
+        while items[start] == token:
+            start += 1
+
+        while items[end - 1] == token:
+            end -= 1
+
+        return items[start:end]
+
     def search(self, query):
         model = self.model
         terms = query.terms
 
         def combine(prev_tokens, next_tokens):
-            # the two overlap by len(context) tokens
-            return prev_tokens[1:] + next_tokens[len(context):-1]
+            # The two overlap by len(context) tokens. Remove the
+            # overlapping tokens and strip any extra leading/trailing
+            # end tokens from the response.
+            path = prev_tokens[1:] + next_tokens[len(context):-1]
+            return self.list_strip(path, "")
 
         def random_walk(tokens):
             # walk randomly by choosing one random token at each
