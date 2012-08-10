@@ -353,6 +353,21 @@ class TestModel(unittest.TestCase):
 
         self.assertEqual(sorted(results), sorted(expected))
 
+    def test_search_bfs_context_has_end(self):
+        # Test for correct results when the search context contains
+        # the end token.
+        model = self.model
+
+        model.train("foo bar baz quux")
+
+        context = ["baz", "quux", ""]
+        results = model.search_bfs(context, "")
+        self.assertEqual(["baz", "quux", ""], results.next())
+
+        context = ["quux", "", ""]
+        results = model.search_bfs(context, "")
+        self.assertEqual(["quux", "", ""], results.next())
+
     def test_search_bfs_reverse(self):
         model = self.model
 
@@ -372,6 +387,21 @@ class TestModel(unittest.TestCase):
             ]
 
         self.assertEqual(sorted(results), sorted(expected))
+
+    def test_search_bfs_reverse_context_has_end(self):
+        # Test for correct results when the search context contains
+        # the end token.
+        model = self.model
+
+        model.train("foo bar baz quux")
+
+        context = ["", "foo", "bar"]
+        results = model.search_bfs_reverse(context, "")
+        self.assertEqual(["", "foo", "bar"], results.next())
+
+        context = ["", "", "foo"]
+        results = model.search_bfs_reverse(context, "")
+        self.assertEqual(["", "", "foo"], results.next())
 
     def test_normalizer(self):
         model = self.model
