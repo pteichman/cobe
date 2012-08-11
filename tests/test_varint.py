@@ -37,7 +37,7 @@ class TestVarint(unittest.TestCase):
             self.assertEquals(i, decode_one(chr(i)))
 
     def test_encode_decode_one(self):
-        for i in xrange(100000):
+        for i in xrange(2048):
             self.assertEquals(i, decode_one(encode_one(i)))
 
     def test_encode_negative(self):
