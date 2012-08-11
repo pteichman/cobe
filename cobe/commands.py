@@ -48,10 +48,10 @@ class DumpCommand(object):
             print grams, decode_one(count)
 
 
-class LearnCommand(object):
+class TrainCommand(object):
     @classmethod
     def add_subparser(cls, parser):
-        subparser = parser.add_parser("learn", help="Learn files of text")
+        subparser = parser.add_parser("train", help="Train files of text")
         subparser.add_argument("file", nargs="+")
         subparser.set_defaults(run=cls.run)
 
@@ -85,25 +85,24 @@ class LearnCommand(object):
         files.close()
 
 
-class LearnIrcLogCommand:
+class TrainIrcLogCommand:
     @classmethod
     def add_subparser(cls, parser):
-        subparser = parser.add_parser("learn-irc-log",
-                                      help="Learn a file of IRC log text")
+        subparser = parser.add_parser("train-irc-log",
+                                      help="Train a file of IRC log text")
         subparser.add_argument("-i", "--ignore-nick", action="append",
                                dest="ignored_nicks",
                                help="Ignore an IRC nick")
         subparser.add_argument("-o", "--only-nick", action="append",
                                dest="only_nicks",
-                               help="Only learn from specified nicks")
+                               help="Only train from specified nicks")
         subparser.add_argument("file", nargs="+")
         subparser.set_defaults(run=cls.run)
 
     @classmethod
     def run(cls, args):
         store = SqliteStore("cobe.store")
-        analyzer = analysis.WhitespaceAnalyzer()
-        analyzer.add_token_normalizer(analysis.LowercaseNormalizer())
+        analyzer = analysis.StandardAnalyzer()
 
         model = Model(analyzer, store)
 
@@ -171,8 +170,7 @@ class ConsoleCommand:
 
     @staticmethod
     def run(args):
-        analyzer = analysis.WhitespaceAnalyzer()
-        analyzer.add_token_normalizer(analysis.LowercaseNormalizer())
+        analyzer = analysis.StandardAnalyzer()
 
         model = Model(analyzer, SqliteStore("cobe.store"))
         searcher = search.RandomWalkSearcher(model)

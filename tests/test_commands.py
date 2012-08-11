@@ -1,11 +1,11 @@
 import unittest
 
-from cobe.commands import LearnIrcLogCommand
+from cobe.commands import TrainIrcLogCommand
 
 
 class TestIrcLogParsing(unittest.TestCase):
     def setUp(self):
-        self.command = LearnIrcLogCommand()
+        self.command = TrainIrcLogCommand()
 
     def test_non_pubmsg(self):
         msg = "this is some non-pubmsg text found in a log"

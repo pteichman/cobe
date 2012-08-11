@@ -11,8 +11,8 @@ parser.add_argument("--debug", action="store_true", help=argparse.SUPPRESS)
 subparsers = parser.add_subparsers(title="Commands")
 commands.ConsoleCommand.add_subparser(subparsers)
 commands.DumpCommand.add_subparser(subparsers)
-commands.LearnCommand.add_subparser(subparsers)
-commands.LearnIrcLogCommand.add_subparser(subparsers)
+commands.TrainCommand.add_subparser(subparsers)
+commands.TrainIrcLogCommand.add_subparser(subparsers)
 
 
 def main():
