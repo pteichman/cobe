@@ -1,11 +1,30 @@
 # Copyright (C) 2012 Peter Teichman
 
+import abc
 import re
 import Stemmer
 import types
 
 
-class WhitespaceTokenizer(object):
+class Tokenizer(object):
+    """Base class for a Tokenizer
+
+    A Tokenizer includes methods for converting a text string to and
+    from a list of tokens.
+
+    """
+    __metaclass__ = abc.ABCMeta
+
+    @abc.abstractmethod
+    def split(self, text):  # pragma: no cover
+        pass
+
+    @abc.abstractmethod
+    def join(self, tokens):  # pragma: no cover
+        pass
+
+
+class WhitespaceTokenizer(Tokenizer):
     """A simple tokenizer that splits and joins with spaces.
 
     This is useful during testing or in applications that don't need
@@ -19,7 +38,7 @@ class WhitespaceTokenizer(object):
         return " ".join(tokens)
 
 
-class MegaHALTokenizer:
+class MegaHALTokenizer(Tokenizer):
     """A traditional MegaHAL style tokenizer.
 
     This considers any of these to be a token:
@@ -71,7 +90,7 @@ class MegaHALTokenizer:
         return u"".join(chars)
 
 
-class CobeTokenizer:
+class CobeTokenizer(Tokenizer):
     """A tokenizer that is somewhat improved from MegaHAL.
 
     These are considered tokens:
