@@ -19,6 +19,7 @@ class TokenRegistry(object):
     and they will increase in length as more tokens are known.
 
     The opaque token ids are currently strings.
+
     """
 
     def __init__(self):
@@ -72,6 +73,7 @@ class TokenRegistry(object):
 
         Raises: KeyError if the token_id doesn't correspond to a
             registered token.
+
         """
         return self.tokens[token_id]
 
@@ -79,8 +81,8 @@ class TokenRegistry(object):
 class Model(object):
     """An n-gram language model for online learning and text generation.
 
-    cobe's Model is an unsmoothed n-gram language model stored in a
-    LevelDB database.
+    cobe's Model is an unsmoothed n-gram language model keptb in a
+    key-value store.
 
     Most language models focus on fast lookup and compact
     representation after a single massive training session. This one
@@ -92,6 +94,7 @@ class Model(object):
 
     Model attempts to provide API compatibility with NLTK's ModelI and
     NgramModel.
+
     """
 
     # Reserve two tokens that will be inserted before & after every
@@ -247,7 +250,7 @@ class Model(object):
             return self.tokens.get_token(token_id)
 
     def prob(self, token, context):
-        """Calculate the conditional probability P(token|context)"""
+        """Calculate the conditional probability P(token|context)."""
         count = self.ngram_count(context + [token])
         count_all = self.ngram_count(context)
 
@@ -264,6 +267,7 @@ class Model(object):
         """Evaluate the total entropy of a text with respect to the model.
 
         This is the sum of the log probability of each token in the text.
+
         """
         # Pad the beginning and end of the list with max_order-1 empty
         # strings. This allows us to get the probabilities for the
@@ -295,7 +299,7 @@ class Model(object):
         return count
 
     def _prefix_items(self, prefix, skip_prefix=False):
-        """yield all (key, value) pairs from keys that begin with $prefix"""
+        """yield all (key, value) pairs from keys that begin with $prefix."""
         items = self.store.items(key_from=prefix)
 
         start = 0
@@ -308,7 +312,7 @@ class Model(object):
             yield key[start:], value
 
     def _prefix_keys(self, prefix, skip_prefix=False):
-        """yield all keys that begin with $prefix"""
+        """yield all keys that begin with $prefix."""
         keys = self.store.keys(key_from=prefix)
 
         start = 0

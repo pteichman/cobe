@@ -13,6 +13,7 @@ class TokenNormalizer(object):
 
     This allows many different tokens to be considered equivalent for
     querying purposes.
+
     """
     __metaclass__ = abc.ABCMeta
 
@@ -22,6 +23,7 @@ class TokenNormalizer(object):
         Args:
             prefix: a namespace for storing the result of this
                 normalization step in the data store.
+
         """
         self.prefix = prefix or self.__class__.__name__
 
@@ -69,6 +71,7 @@ class Analyzer(object):
             is the namespace prefix defined by the normalizer. If a
             normalizer returns None for the token, it will not be
             included.
+
         """
         ret = []
         for normalizer in self.token_normalizers:
@@ -103,6 +106,7 @@ class WhitespaceAnalyzer(Analyzer):
     This can be used for simple circumstances where you don't care
     about words with leading or trailing punctuation being considered
     different from the same word without punctuation.
+
     """
     def tokens(self, text):
         return text.split()

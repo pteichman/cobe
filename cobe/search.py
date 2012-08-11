@@ -42,6 +42,7 @@ class RandomWalkSearcher(Searcher):
 
     Yields:
         An infinite series of randomly generated responses to the query.
+
     """
     def pivots(self, terms):
         """Generate pivots randomly chosen from query terms.
@@ -51,6 +52,7 @@ class RandomWalkSearcher(Searcher):
 
         Yields:
             An infinite series of randomly chosen pivot terms.
+
         """
         model = self.model
         token_ids = model.tokens.token_ids

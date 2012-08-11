@@ -17,6 +17,7 @@ class MergeCounter(object):
     MergeCounter automatically scales to lists of items that cannot
     fit into memory, writing counts to disk and yielding its results
     by merging the on-disk files.
+
     """
     def __init__(self, max_fds=32, max_len=4000000):
         """Init MergeCounter with tunable resource parameters.
@@ -27,6 +28,7 @@ class MergeCounter(object):
                 flushing counts to disk. This is an estimate of memory
                 usage and not an accurate limit, as it doesn't include
                 item counts or dict overhead.
+
         """
 
         self.max_fds = max_fds
@@ -47,6 +49,7 @@ class MergeCounter(object):
             An iterable of (item, count) tuples in lexically sorted
             order. The counts will be the sum of all counts from the
             input for the same item.
+
         """
 
         # Keep a running dict of counted items. Maps item -> integer count
@@ -174,6 +177,7 @@ class NgramCounter(object):
         Args:
             tokenizer: a tokenizer object, must have a split() routine
                 that returns tokens for a string.
+
         """
         self.tokenizer = tokenizer
 
@@ -187,6 +191,7 @@ class NgramCounter(object):
         Args:
             iterable: an interable of tokenizable text
             orders: a tuple of n-gram orders to extract
+
         """
         ngrams = self._ngrams
         split = self.tokenizer.split

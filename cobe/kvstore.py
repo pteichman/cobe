@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 def batchiter(iterable, size):
-    """yield a series of batches from iterable, each size elements long"""
+    """yield a series of batches from iterable, each size elements long."""
     source = iter(iterable)
     while True:
         batch = itertools.islice(source, size)
@@ -29,6 +29,7 @@ class KVStore(object):
             The specified default if the key is not present in the
             store. This method does not raise KeyError for missing
             keys.
+
         """
         pass
 
@@ -37,6 +38,7 @@ class KVStore(object):
         """Set the value associated with a key.
 
         Both the key and value can be binary values.
+
         """
         pass
 
@@ -49,6 +51,7 @@ class KVStore(object):
 
         Args:
             items: An iterator producing (key, value) tuples.
+
         """
         pass
 
@@ -63,6 +66,7 @@ class KVStore(object):
         Returns:
             An iterator yielding all keys from the store where
             key_from <= key <= key_to.
+
         """
         pass
 
@@ -77,6 +81,7 @@ class KVStore(object):
         Returns:
             An iterator yielding all (key, value) pairs from the store
             where key_from <= key <= key_to.
+
         """
         pass
 
