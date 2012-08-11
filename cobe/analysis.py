@@ -108,7 +108,8 @@ class WhitespaceAnalyzer(Analyzer):
 
     """
     def __init__(self):
-        super(WhitespaceAnalyzer, self).__init__(tokenizers.SplitTokenizer())
+        super(WhitespaceAnalyzer, self).__init__(
+            tokenizers.WhitespaceTokenizer())
 
 
 class MegaHALAnalyzer(Analyzer):

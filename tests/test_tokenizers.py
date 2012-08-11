@@ -1,7 +1,7 @@
 import unittest
 
 from cobe.tokenizers import (
-    CobeStemmer, CobeTokenizer, MegaHALTokenizer, SplitTokenizer)
+    CobeStemmer, CobeTokenizer, MegaHALTokenizer, WhitespaceTokenizer)
 
 
 class TestMegaHALTokenizer(unittest.TestCase):
@@ -195,9 +195,9 @@ class TestCobeStemmer(unittest.TestCase):
         self.assertEquals(":(", self.stemmer.stem(":-("))
 
 
-class TestSplitTokenizer(unittest.TestCase):
+class TestWhitespaceTokenizer(unittest.TestCase):
     def test_split(self):
-        tok = SplitTokenizer()
+        tok = WhitespaceTokenizer()
 
         self.assertEquals([], tok.split(""))
 
@@ -205,7 +205,7 @@ class TestSplitTokenizer(unittest.TestCase):
                           tok.split("this is a test"))
 
     def test_join(self):
-        tok = SplitTokenizer()
+        tok = WhitespaceTokenizer()
 
         self.assertEquals("", tok.join([]))
 

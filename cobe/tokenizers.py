@@ -5,6 +5,20 @@ import Stemmer
 import types
 
 
+class WhitespaceTokenizer(object):
+    """A simple tokenizer that splits and joins with spaces.
+
+    This is useful during testing or in applications that don't need
+    to handle punctuation separately from words.
+
+    """
+    def split(self, text):
+        return text.split()
+
+    def join(self, tokens):
+        return " ".join(tokens)
+
+
 class MegaHALTokenizer:
     """A traditional MegaHAL style tokenizer.
 
@@ -55,20 +69,6 @@ class MegaHALTokenizer:
                     start = True
 
         return u"".join(chars)
-
-
-class SplitTokenizer(object):
-    """A simple tokenizer that splits and joins with spaces.
-
-    This is useful during testing or in applications that don't need
-    to handle punctuation separately from words.
-
-    """
-    def split(self, text):
-        return text.split()
-
-    def join(self, tokens):
-        return " ".join(tokens)
 
 
 class CobeTokenizer:
