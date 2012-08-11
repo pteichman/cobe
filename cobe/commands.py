@@ -107,20 +107,6 @@ class LearnIrcLogCommand:
         files = fileinput.FileInput(args.file,
                                     openhook=fileinput.hook_compressed)
 
-        def lines():
-            for line in files:
-                if files.isfirstline():
-                    print
-                    print files.filename()
-
-                if (files.lineno() % 1000) == 0:
-                    print "%d..." % files.lineno(),
-                    sys.stdout.flush()
-
-                yield line
-
-            print
-
         lines = cls._irc_lines(files, ignored_nicks=args.ignored_nicks,
                                only_nicks=args.only_nicks)
         model.train_many(lines)
