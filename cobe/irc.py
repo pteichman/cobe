@@ -4,7 +4,7 @@ import irclib
 import logging
 import re
 
-log = logging.getLogger("cobe.irc")
+log = logging.getLogger(__name__)
 
 
 class Bot(irclib.SimpleIRCClient):

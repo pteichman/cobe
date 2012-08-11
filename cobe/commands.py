@@ -16,7 +16,7 @@ from .kvstore import SqliteStore
 from .model import Model
 from .varint import decode, decode_one, encode_one
 
-log = logging.getLogger("cobe")
+log = logging.getLogger(__name__)
 
 
 class DumpCommand(object):

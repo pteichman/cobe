@@ -8,7 +8,7 @@ import tempfile
 
 from . import varint
 
-logger = logging.getLogger("cobe.counter")
+logger = logging.getLogger(__name__)
 
 
 class MergeCounter(object):
