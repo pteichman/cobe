@@ -88,7 +88,9 @@ class Analyzer(object):
 
         return ret
 
-    def query(self, tokens, model=None):
+    def query(self, text, model=None):
+        tokens = self.tokens(text)
+
         terms = []
         for index, token in enumerate(tokens):
             terms.append(dict(term=token, pos=index))
@@ -133,12 +135,14 @@ class MegaHALAnalyzer(Analyzer):
     def __init__(self):
         super(MegaHALAnalyzer, self).__init__(tokenizers.MegaHALTokenizer())
 
-    def query(self, tokens, model=None):
+    def query(self, text, model=None):
         """Create a MegaHAL query.
 
         This skips any non-word tokens in the input when building the query.
 
         """
+        tokens = self.tokens(text)
+
         terms = []
         for index, token in enumerate(tokens):
             if not re.match(r"[A-Z0-9']", token):

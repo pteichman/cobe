@@ -191,10 +191,8 @@ class ConsoleCommand:
                 print
                 sys.exit(0)
 
-            tokens = analyzer.tokens(cmd)
-
-            # Learn tokens
-            query = analyzer.query(tokens, model)
+            # Create a search query from the input
+            query = analyzer.query(cmd, model)
 
             results = itertools.islice(searcher.search(query), 20)
             for result in results:

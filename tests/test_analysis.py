@@ -82,8 +82,7 @@ class AnalyzerTest(unittest.TestCase):
         m.train(u"This is a test")
         m.train(u"this is a test")
 
-        tokens = analyzer.tokens(u"this is a query")
-        query = analyzer.query(tokens, m)
+        query = analyzer.query(u"this is a query", m)
 
         expected = [
             dict(term="this", pos=0),
@@ -124,8 +123,7 @@ class WhitespaceAnalyzerTest(unittest.TestCase):
     def test_query(self):
         analyzer = analysis.WhitespaceAnalyzer()
 
-        tokens = analyzer.tokens(u"foo bar baz")
-        query = analyzer.query(tokens)
+        query = analyzer.query(u"foo bar baz")
 
         self.assertIsInstance(query, search.Query)
 
@@ -146,9 +144,7 @@ class TestMegaHALAnalyzer(unittest.TestCase):
         # MegaHALAnalyzer strips any non-word tokens when building its
         # query. None of the whitespace or punctuation tokens should
         # show up in the query.
-        tokens = self.analyzer.tokens(u"this is a... test")
-
-        query = self.analyzer.query(tokens)
+        query = self.analyzer.query(u"this is a... test")
 
         expected = [dict(pos=0, term="THIS"),
                     dict(pos=2, term="IS"),
