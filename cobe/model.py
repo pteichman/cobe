@@ -260,6 +260,32 @@ class Model(object):
     def _logcount(self, tokens):
         return math.log(self.ngram_count(tokens), 2)
 
+    def entropy(self, text):
+        """Evaluate the total entropy of a text with respect to the model.
+
+        This is the sum of the log probability of each token in the text.
+        """
+        # Pad the beginning and end of the list with max_order-1 empty
+        # strings. This allows us to get the probabilities for the
+        # beginning and end of the phrase.
+        max_order = max(self.orders)
+
+        pad_start = [self.TRAIN_START] * (max_order - 1)
+        pad_end = [self.TRAIN_END] * (max_order - 1)
+
+        tokens = pad_start + self.analyzer.tokens(text) + pad_end
+
+        context_len = max_order - 1
+
+        entropy = 0.
+        for index in xrange(len(tokens) - max_order):
+            token = tokens[index + context_len]
+            context = tokens[index:index + context_len]
+
+            entropy += self.logprob(token, context)
+
+        return entropy
+
     def ngram_count(self, tokens):
         token_ids = map(self.tokens.get_id, tokens)
 
