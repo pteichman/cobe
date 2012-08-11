@@ -2,6 +2,8 @@
 
 import abc
 import logging
+import re
+import types
 
 from . import search
 
@@ -113,3 +115,72 @@ class WhitespaceAnalyzer(Analyzer):
 
     def join(self, tokens):
         return unicode(" ".join(tokens), "utf-8")
+
+
+class MegaHALAnalyzer(Analyzer):
+    """A traditional MegaHAL style analyzer.
+
+    This considers any of these to be a token:
+    * one or more consecutive alpha characters (plus apostrophe)
+    * one or more consecutive numeric characters
+    * one or more consecutive punctuation/space characters (not apostrophe)
+
+    This tokenizer ignores differences in capitalization.
+
+    """
+    def tokens(self, text):
+        if not isinstance(text, types.UnicodeType):
+            raise TypeError("Input must be Unicode")
+
+        if len(text) == 0:
+            return []
+
+        # add ending punctuation if it is missing
+        if text[-1] not in ".!?":
+            text = text + "."
+
+        words = re.findall("([A-Z']+|[0-9]+|[^A-Z'0-9]+)", text.upper(),
+                           re.UNICODE)
+
+        return words
+
+    def join(self, words):
+        """Re-join a MegaHAL style response.
+
+        Capitalizes the first alpha character in the reply and any
+        alpha character that follows [.?!] and a space.
+
+        """
+        chars = list(u"".join(words))
+        start = True
+
+        for i in xrange(len(chars)):
+            char = chars[i]
+            if char.isalpha():
+                if start:
+                    chars[i] = char.upper()
+                else:
+                    chars[i] = char.lower()
+
+                start = False
+            else:
+                if i > 2 and chars[i - 1] in ".?!" and char.isspace():
+                    start = True
+
+        return u"".join(chars)
+
+    def query(self, tokens, model=None):
+        """Create a MegaHAL query.
+
+        This skips any non-word tokens in the input when building the query.
+
+        """
+        terms = []
+        for index, token in enumerate(tokens):
+            if not re.match(r"[A-Z0-9']", token):
+                # Skip any non-word tokens when building the query.
+                continue
+
+            terms.append(dict(term=token, pos=index))
+
+        return search.Query(terms)
