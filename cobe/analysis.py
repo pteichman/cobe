@@ -3,9 +3,9 @@
 import abc
 import logging
 import re
-import types
 
 from . import search
+from . import tokenizers
 
 logger = logging.getLogger(__name__)
 
@@ -42,20 +42,17 @@ class LowercaseNormalizer(TokenNormalizer):
 
 
 class Analyzer(object):
-    __metaclass__ = abc.ABCMeta
-
-    def __init__(self):
+    def __init__(self, tokenizer):
+        self.tokenizer = tokenizer
         self.token_normalizers = []
 
-    @abc.abstractmethod
-    def tokens(self, input):  # pragma: no cover
+    def tokens(self, input):
         """Split the input into a sequence of learnable tokens."""
-        pass
+        return self.tokenizer.split(input)
 
-    @abc.abstractmethod
-    def join(self, tokens):  # pragma: no cover
+    def join(self, tokens):
         """Join a tokens list into a response string."""
-        return " ".join(tokens)
+        return self.tokenizer.join(tokens)
 
     def add_token_normalizer(self, token_normalizer):
         """Append a token normalizer to this analyzer's list."""
@@ -110,11 +107,8 @@ class WhitespaceAnalyzer(Analyzer):
     different from the same word without punctuation.
 
     """
-    def tokens(self, text):
-        return text.split()
-
-    def join(self, tokens):
-        return unicode(" ".join(tokens), "utf-8")
+    def __init__(self):
+        super(WhitespaceAnalyzer, self).__init__(tokenizers.SplitTokenizer())
 
 
 class MegaHALAnalyzer(Analyzer):
@@ -128,46 +122,8 @@ class MegaHALAnalyzer(Analyzer):
     This tokenizer ignores differences in capitalization.
 
     """
-    def tokens(self, text):
-        if not isinstance(text, types.UnicodeType):
-            raise TypeError("Input must be Unicode")
-
-        if len(text) == 0:
-            return []
-
-        # add ending punctuation if it is missing
-        if text[-1] not in ".!?":
-            text = text + "."
-
-        words = re.findall("([A-Z']+|[0-9]+|[^A-Z'0-9]+)", text.upper(),
-                           re.UNICODE)
-
-        return words
-
-    def join(self, words):
-        """Re-join a MegaHAL style response.
-
-        Capitalizes the first alpha character in the reply and any
-        alpha character that follows [.?!] and a space.
-
-        """
-        chars = list(u"".join(words))
-        start = True
-
-        for i in xrange(len(chars)):
-            char = chars[i]
-            if char.isalpha():
-                if start:
-                    chars[i] = char.upper()
-                else:
-                    chars[i] = char.lower()
-
-                start = False
-            else:
-                if i > 2 and chars[i - 1] in ".?!" and char.isspace():
-                    start = True
-
-        return u"".join(chars)
+    def __init__(self):
+        super(MegaHALAnalyzer, self).__init__(tokenizers.MegaHALTokenizer())
 
     def query(self, tokens, model=None):
         """Create a MegaHAL query.

@@ -130,55 +130,6 @@ class TestMegaHALAnalyzer(unittest.TestCase):
     def setUp(self):
         self.analyzer = analysis.MegaHALAnalyzer()
 
-    def test_split_empty(self):
-        self.assertEquals(len(self.analyzer.tokens(u"")), 0)
-
-    def test_split_sentence(self):
-        words = self.analyzer.tokens(u"hi.")
-        self.assertEquals(words, ["HI", "."])
-
-    def test_split_comma(self):
-        words = self.analyzer.tokens(u"hi, cobe")
-        self.assertEquals(words, ["HI", ", ", "COBE", "."])
-
-    def test_split_implicit_stop(self):
-        words = self.analyzer.tokens(u"hi")
-        self.assertEquals(words, ["HI", "."])
-
-    def test_split_url(self):
-        words = self.analyzer.tokens(u"http://www.google.com/")
-        self.assertEquals(words, ["HTTP", "://", "WWW", ".", "GOOGLE",
-                                  ".", "COM", "/."])
-
-    def test_split_non_unicode(self):
-        self.assertRaises(TypeError, self.analyzer.tokens, "foo")
-
-    def test_split_apostrophe(self):
-        words = self.analyzer.tokens(u"hal's brain")
-        self.assertEquals(words, ["HAL'S", " ", "BRAIN", "."])
-
-        words = self.analyzer.tokens(u"',','")
-        self.assertEquals(words, ["'", ",", "'", ",", "'", "."])
-
-    def test_split_alpha_and_numeric(self):
-        words = self.analyzer.tokens(u"hal9000, test blah 12312")
-        self.assertEquals(words, ["HAL", "9000", ", ", "TEST", " ",
-                                  "BLAH", " ", "12312", "."])
-
-        words = self.analyzer.tokens(u"hal9000's test")
-        self.assertEquals(words, ["HAL", "9000", "'S", " ", "TEST", "."])
-
-    def test_capitalize(self):
-        words = self.analyzer.tokens(u"this is a test")
-        self.assertEquals(u"This is a test.", self.analyzer.join(words))
-
-        words = self.analyzer.tokens(u"A.B. Hal test test. will test")
-        self.assertEquals(u"A.b. Hal test test. Will test.",
-                          self.analyzer.join(words))
-
-        words = self.analyzer.tokens(u"2nd place test")
-        self.assertEquals(u"2Nd place test.", self.analyzer.join(words))
-
     def test_query(self):
         # MegaHALAnalyzer strips any non-word tokens when building its
         # query. None of the whitespace or punctuation tokens should
