@@ -172,17 +172,33 @@ class Model(object):
 
     def _ngram_keys_and_counts(self, tokens):
         # As each series of tokens is learned, pad the beginning and
-        # end of phrase with the magic start and end tokens.
+        # end of phrase with start and end tokens.
         token_ids = map(self.tokens.get_id, tokens)
 
         max_order = max(self.orders)
-        pad_start = [self.tokens.get_id(self.TRAIN_START)] * (max_order - 1)
-        pad_end = [self.tokens.get_id(self.TRAIN_END)] * (max_order - 1)
+        pad_start = [self.tokens.get_id(self.TRAIN_START)] * max_order
+        pad_end = [self.tokens.get_id(self.TRAIN_END)] * max_order
 
-        to_train = pad_start + token_ids + pad_end
+        padded = pad_start + token_ids + pad_end
 
         for order in self.orders:
-            # Count each n-gram we've seen
+            # For each order smaller than our longest order, skip the
+            # first few tokens in the list. This is to solve problems
+            # of duplicate counts:
+            #
+            # [ TRAIN_START, TRAIN_START, TRAIN_START, "foo", "bar", ... ]
+            #
+            # Without skipping, training the above would count the
+            # bigram [ TRAIN_START, TRAIN_START ] twice, breaking the
+            # probability calculations for P(foo|TRAIN_START,TRAIN_START).
+
+            to_train = padded
+
+            to_skip = max_order - order
+            if to_skip > 0:
+                to_train = to_train[to_skip:-to_skip]
+
+            # Emit a count of 1 for each n-gram in the training list
             for ngram in self._ngrams(to_train, order):
                 yield self._tokens_count_key(ngram), 1
 

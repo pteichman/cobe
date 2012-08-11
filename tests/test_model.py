@@ -103,7 +103,7 @@ class TestModel(unittest.TestCase):
         model.train(text)
 
         counts = [
-            (0, (model.TRAIN_START, model.TRAIN_START, model.TRAIN_START)),
+            (1, (model.TRAIN_START, model.TRAIN_START, model.TRAIN_START)),
             (1, (model.TRAIN_START, model.TRAIN_START, "<S>")),
             (1, (model.TRAIN_START, "<S>", "this")),
             (1, ("<S>", "this", "is")),
@@ -130,6 +130,38 @@ class TestModel(unittest.TestCase):
         for count, ngram in counts:
             # Make sure we have twice as many counts as before.
             self.assertEquals(2 * count, model.ngram_count(ngram))
+
+        # Make sure the n-grams that only contain TRAIN_START and TRAIN_END
+        # have a count that is:
+        # 1) equal to the number of trained items and
+        # 2) equal to each other
+        self.assertEqual(2, model.ngram_count([model.TRAIN_START] * 3))
+        self.assertEqual(2, model.ngram_count([model.TRAIN_START] * 2))
+        self.assertEqual(2, model.ngram_count([model.TRAIN_START] * 1))
+
+        self.assertEqual(2, model.ngram_count([model.TRAIN_END] * 3))
+        self.assertEqual(2, model.ngram_count([model.TRAIN_END] * 2))
+        self.assertEqual(2, model.ngram_count([model.TRAIN_END] * 1))
+
+    def test_train_start_end_counts(self):
+        model = self.model
+
+        text = "foo bar baz"
+        model.train(text)
+
+        # Ensure we've only trained one start & end count
+        self.assertEqual(1, model.ngram_count([model.TRAIN_START]))
+        self.assertEqual(1, model.ngram_count([model.TRAIN_END]))
+
+        self.assertEqual(1, model.ngram_count([model.TRAIN_START,
+                                               model.TRAIN_START]))
+
+        self.assertEqual(1, model.ngram_count([model.TRAIN_END,
+                                               model.TRAIN_END]))
+
+        model.train(text)
+        self.assertEqual(2, model.ngram_count([model.TRAIN_START]))
+        self.assertEqual(2, model.ngram_count([model.TRAIN_END]))
 
     def test_train_short(self):
         model = self.model
@@ -163,9 +195,10 @@ class TestModel(unittest.TestCase):
         # three TRAIN_END / TRAIN_END TRAIN_END
         self.assertEqual(6, len(list(model._prefix_keys("2"))))
 
-        # TRAIN_START TRAIN_START one / TRAIN_START one two /
-        # one two three / two three TRAIN_END / three TRAIN_END TRAIN_END
-        self.assertEqual(5, len(list(model._prefix_keys("3"))))
+        # TRAIN_START TRAIN_START TRAIN_START / TRAIN_START TRAIN_START one /
+        # TRAIN_START one two / one two three / two three TRAIN_END /
+        # three TRAIN_END TRAIN_END / TRAIN_END TRAIN_END TRAIN_END
+        self.assertEqual(7, len(list(model._prefix_keys("3"))))
 
     def test_train_many(self):
         model = self.model
