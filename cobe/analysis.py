@@ -108,4 +108,4 @@ class WhitespaceAnalyzer(Analyzer):
         return text.split()
 
     def join(self, tokens):
-        return " ".join(tokens)
+        return unicode(" ".join(tokens), "utf-8")
