@@ -223,6 +223,15 @@ class TestModel(unittest.TestCase):
         token, context = ngram[-1], ngram[:-1]
         self.assertAlmostEqual(0.5, model.prob(token, context))
 
+    def test_entropy(self):
+        model = self.model
+
+        model.train("one two three")
+        self.assertAlmostEqual(0.0, model.entropy("one two three"))
+
+        model.train("one two four")
+        self.assertAlmostEqual(1.0, model.entropy("one two three"))
+
     def test_choose_random_word(self):
         model = self.model
 
