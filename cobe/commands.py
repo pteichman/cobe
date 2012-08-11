@@ -76,7 +76,7 @@ class LearnCommand(object):
                     print "%d..." % files.lineno(),
                     sys.stdout.flush()
 
-                yield line.decode("utf-8")
+                yield line.decode("utf-8", "replace")
 
         model.train_many(lines())
         files.close()
@@ -127,7 +127,7 @@ class LearnIrcLogCommand:
                                          only_nicks=only_nicks)
 
             if msg is not None:
-                yield msg.decode("utf-8")
+                yield msg.decode("utf-8", "replace")
 
     @classmethod
     def _parse_irc_message(cls, msg, ignored_nicks=None, only_nicks=None):
