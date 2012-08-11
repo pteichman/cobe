@@ -58,12 +58,12 @@ class RandomWalkSearcherTest(unittest.TestCase):
                              searcher.list_strip(items, "foo", "bar"))
 
     def test_pivots(self):
-        self.model.train("foo bar baz quux quuux")
+        self.model.train(u"foo bar baz quux quuux")
 
         terms = [
-            dict(term="foo", position=0),
-            dict(term="bar", position=1),
-            dict(term="baz", position=2)
+            dict(term=u"foo", position=0),
+            dict(term=u"bar", position=1),
+            dict(term=u"baz", position=2)
             ]
 
         searcher = search.RandomWalkSearcher(self.model)
@@ -71,15 +71,15 @@ class RandomWalkSearcherTest(unittest.TestCase):
         # Make sure that a query with known terms doesn't pivot on
         # the other terms in the model (quux, quuux).
         pivots = searcher.pivots(terms)
-        expected = self.analyzer.tokens("foo bar baz")
+        expected = self.analyzer.tokens(u"foo bar baz")
 
         for i in xrange(100):
             self.assertIn(pivots.next(), expected)
 
         # Make sure that a query with unknown terms can return any
         # token from the model.
-        pivots = searcher.pivots([dict(term="unknown", position=0)])
-        expected = self.analyzer.tokens("foo bar baz quux quuux")
+        pivots = searcher.pivots([dict(term=u"unknown", position=0)])
+        expected = self.analyzer.tokens(u"foo bar baz quux quuux")
 
         # model.TRAIN_START and model.TRAIN_END may also be picked up
         # as random pivots.
@@ -98,17 +98,17 @@ class RandomWalkSearcherTest(unittest.TestCase):
     def test_search(self):
         # Test random walk search by training a minimal set of data
         # and making sure each response is the only possible one.
-        text = "foo bar baz quux quuux"
+        text = u"foo bar baz quux quuux"
         self.model.train(text)
         expected = self.analyzer.tokens(text)
 
         searcher = search.RandomWalkSearcher(self.model)
 
-        query = search.Query([dict(term="foo", position=0)])
+        query = search.Query([dict(term=u"foo", position=0)])
         self.assertEqual(expected, searcher.search(query).next())
 
-        query = search.Query([dict(term="bar", position=0)])
+        query = search.Query([dict(term=u"bar", position=0)])
         self.assertEqual(expected, searcher.search(query).next())
 
-        query = search.Query([dict(term="quuux", position=0)])
+        query = search.Query([dict(term=u"quuux", position=0)])
         self.assertEqual(expected, searcher.search(query).next())

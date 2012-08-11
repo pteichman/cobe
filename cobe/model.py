@@ -4,6 +4,7 @@ import collections
 import logging
 import math
 import random
+import types
 import varint
 
 from .counter import MergeCounter
@@ -32,13 +33,15 @@ class TokenRegistry(object):
         # token "", used for signaling the end of trained text.
         self.all_tokens = []
 
-        # Log newly created tokens, so they can be flushed to the database
+        # Log newly created tokens, so they can be flushed to the
+        # database. This class handles converting the Unicode tokens
+        # to and from bytes.
         self.token_log = []
 
     def load(self, tokens):
         """Load (token_id, token) pairs from an iterable."""
         for token_id, token in tokens:
-            self._put(token_id, token)
+            self._put(token_id, token.decode("utf-8"))
 
     def _put(self, token_id, token):
         self.token_ids[token] = token_id
@@ -58,13 +61,16 @@ class TokenRegistry(object):
             token: A token string. Unicode and binary safe.
         """
 
+        if not isinstance(token, types.UnicodeType):
+            raise TypeError("token must be Unicode")
+
         if token not in self.token_ids:
             # Register the token, assigning the next available integer
             # as its id.
             token_id = varint.encode_one(len(self.tokens))
 
             self._put(token_id, token)
-            self.token_log.append((token, token_id))
+            self.token_log.append((token.encode("utf-8"), token_id))
 
         return self.token_ids[token]
 
@@ -104,8 +110,8 @@ class Model(object):
     # Use binary values 0x02 (start of text) and 0x03 (end of text)
     # since they're unlikely to be used in this otherwise
     # text-oriented language model.
-    TRAIN_START = "\x02"
-    TRAIN_END = "\x03"
+    TRAIN_START = u"\x02"
+    TRAIN_END = u"\x03"
 
     def __init__(self, analyzer, store, n=3):
         self.analyzer = analyzer
@@ -209,6 +215,9 @@ class Model(object):
                     yield self._tokens_reverse_train_key(ngram), 0
 
     def train(self, text):
+        if not isinstance(text, types.UnicodeType):
+            raise TypeError("Training text must be Unicode")
+
         self.train_many([text])
 
     def train_many(self, text_gen):
@@ -218,6 +227,9 @@ class Model(object):
 
         def ngram_counts():
             for text in text_gen:
+                if not isinstance(text, types.UnicodeType):
+                    raise TypeError("Training text must be Unicode")
+
                 tokens = tokenize(text)
 
                 # Don't bother learning text that's shorter than our
@@ -239,6 +251,9 @@ class Model(object):
         self._save(counts)
 
     def choose_random_context(self, token, rng=random):
+        if not isinstance(token, types.UnicodeType):
+            raise TypeError("token must be Unicode")
+
         token_id = self.tokens.get_id(token)
 
         prefix = self._tokens_count_key((token_id,), self.orders[0])
@@ -285,6 +300,9 @@ class Model(object):
         This is the sum of the log probability of each token in the text.
 
         """
+        if not isinstance(text, types.UnicodeType):
+            raise TypeError("text must be Unicode")
+
         # Pad the beginning and end of the list with max_order-1 empty
         # strings. This allows us to get the probabilities for the
         # beginning and end of the phrase.
@@ -346,6 +364,13 @@ class Model(object):
         else:
             token = self.tokens.get_id(token)
 
+        if isinstance(norm, types.UnicodeType):
+            # For convenience, a normalizer may emit unicode norms
+            # (this makes it easy to normalize on e.g. token.lower()).
+            # Encode unicode norms to strings before putting them in the
+            # store.
+            norm = norm.encode("utf-8")
+
         return "/".join(("n", prefix, norm)) + chr(0) + token
 
     def get_norm_tokens(self, prefix, norm):
@@ -357,6 +382,9 @@ class Model(object):
             yield get_token(token_id)
 
     def search_bfs(self, context, end, filter=None):
+        if not isinstance(end, types.UnicodeType):
+            raise TypeError("end token must be Unicode")
+
         end_token = self.tokens.get_id(end)
 
         token_ids = tuple(map(self.tokens.get_id, context))
@@ -383,6 +411,9 @@ class Model(object):
                 left.append(path + (next_token,))
 
     def search_bfs_reverse(self, context, end, filter=None):
+        if not isinstance(end, types.UnicodeType):
+            raise TypeError("end token must be Unicode")
+
         end_token = self.tokens.get_id(end)
 
         token_ids = tuple(map(self.tokens.get_id, context))

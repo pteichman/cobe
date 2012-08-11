@@ -3,6 +3,7 @@
 import abc
 import logging
 import re
+import types
 
 from . import search
 from . import tokenizers
@@ -48,6 +49,9 @@ class Analyzer(object):
 
     def tokens(self, input):
         """Split the input into a sequence of learnable tokens."""
+        if not isinstance(input, types.UnicodeType):
+            raise TypeError("token must be Unicode")
+
         return self.tokenizer.split(input)
 
     def join(self, tokens):
@@ -72,6 +76,9 @@ class Analyzer(object):
             included.
 
         """
+        if not isinstance(token, types.UnicodeType):
+            raise TypeError("token must be Unicode")
+
         ret = []
         for normalizer in self.token_normalizers:
             new_token = normalizer.normalize(token)

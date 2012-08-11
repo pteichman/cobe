@@ -49,13 +49,19 @@ class AnalyzerTest(unittest.TestCase):
         self.assertIs(analyzer, ret)
 
         expected = [
-            ("PrefixNormalizer", "Foo"),
-            ("LowercaseNormalizer", "foobarbaz")
+            ("PrefixNormalizer", u"Foo"),
+            ("LowercaseNormalizer", u"foobarbaz")
             ]
 
-        result = analyzer.normalize_token("Foobarbaz")
+        result = analyzer.normalize_token(u"Foobarbaz")
 
         self.assertListEqual(expected, result)
+
+    def test_normalizer_str(self):
+        analyzer = analysis.WhitespaceAnalyzer()
+
+        with self.assertRaises(TypeError):
+            analyzer.normalize_token("non-unicode")
 
     def test_normalizer_returns_none(self):
         class NoneNormalizer(analysis.TokenNormalizer):
@@ -65,7 +71,7 @@ class AnalyzerTest(unittest.TestCase):
         analyzer = analysis.WhitespaceAnalyzer()
         analyzer.add_token_normalizer(NoneNormalizer())
 
-        result = analyzer.normalize_token("Foobarbaz")
+        result = analyzer.normalize_token(u"Foobarbaz")
         self.assertListEqual([], result)
 
     def test_conflated_query(self):
@@ -73,10 +79,10 @@ class AnalyzerTest(unittest.TestCase):
         analyzer.add_token_normalizer(analysis.LowercaseNormalizer())
 
         m = model.Model(analyzer, kvstore.SqliteStore(":memory:"))
-        m.train("This is a test")
-        m.train("this is a test")
+        m.train(u"This is a test")
+        m.train(u"this is a test")
 
-        tokens = analyzer.tokens("this is a query")
+        tokens = analyzer.tokens(u"this is a query")
         query = analyzer.query(tokens, m)
 
         expected = [
@@ -91,19 +97,25 @@ class AnalyzerTest(unittest.TestCase):
 
 
 class WhitespaceAnalyzerTest(unittest.TestCase):
+    def test_tokens_str(self):
+        analyzer = analysis.WhitespaceAnalyzer()
+
+        with self.assertRaises(TypeError):
+            analyzer.tokens("non-unicode string")
+
     def test_tokens(self):
         analyzer = analysis.WhitespaceAnalyzer()
 
         # WhitespaceAnalyzer simply splits on whitespace.
         expected = ["foo", "bar", "baz"]
 
-        self.assertListEqual(expected, analyzer.tokens("foo bar baz"))
-        self.assertListEqual(expected, analyzer.tokens("foo  bar baz"))
-        self.assertListEqual(expected, analyzer.tokens(" foo bar baz"))
-        self.assertListEqual(expected, analyzer.tokens("foo bar baz "))
-        self.assertListEqual(expected, analyzer.tokens("foo bar baz\n"))
-        self.assertListEqual(expected, analyzer.tokens("foo\nbar baz"))
-        self.assertListEqual(expected, analyzer.tokens("\nfoo bar baz"))
+        self.assertListEqual(expected, analyzer.tokens(u"foo bar baz"))
+        self.assertListEqual(expected, analyzer.tokens(u"foo  bar baz"))
+        self.assertListEqual(expected, analyzer.tokens(u" foo bar baz"))
+        self.assertListEqual(expected, analyzer.tokens(u"foo bar baz "))
+        self.assertListEqual(expected, analyzer.tokens(u"foo bar baz\n"))
+        self.assertListEqual(expected, analyzer.tokens(u"foo\nbar baz"))
+        self.assertListEqual(expected, analyzer.tokens(u"\nfoo bar baz"))
 
     def test_join(self):
         analyzer = analysis.WhitespaceAnalyzer()
@@ -112,7 +124,7 @@ class WhitespaceAnalyzerTest(unittest.TestCase):
     def test_query(self):
         analyzer = analysis.WhitespaceAnalyzer()
 
-        tokens = analyzer.tokens("foo bar baz")
+        tokens = analyzer.tokens(u"foo bar baz")
         query = analyzer.query(tokens)
 
         self.assertIsInstance(query, search.Query)

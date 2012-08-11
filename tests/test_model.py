@@ -14,13 +14,20 @@ class TestTokenRegistry(unittest.TestCase):
 
         # First, register four new tokens and make sure they get the
         # expected ids.
-        for token_id, token in enumerate("this is a test".split()):
+        for token_id, token in enumerate(u"this is a test".split()):
             self.assertEquals(chr(token_id), tokens.get_id(token))
 
         # Then, repeat the same check to make sure they aren't
         # re-registered.
-        for token_id, token in enumerate("this is a test".split()):
+        for token_id, token in enumerate(u"this is a test".split()):
             self.assertEquals(chr(token_id), tokens.get_id(token))
+
+    def test_non_unicode(self):
+        # Test the Unicode-checking entry points in TokenRegistry
+        tokens = TokenRegistry()
+
+        with self.assertRaises(TypeError):
+            tokens.get_id("non-unicode")
 
 
 class TestModel(unittest.TestCase):
@@ -44,8 +51,8 @@ class TestModel(unittest.TestCase):
         # database when an old Model is loaded
         model = self.model
 
-        model.train("this is a test")
-        model.train("this is another test")
+        model.train(u"this is a test")
+        model.train(u"this is another test")
 
         # We save on train(), so make sure the new tokens log is empty.
         self.assertEqual(0, len(model.tokens.token_log))
@@ -57,6 +64,32 @@ class TestModel(unittest.TestCase):
 
         self.assertEqual(save_token_ids, model.tokens.token_ids)
         self.assertEqual(save_tokens, model.tokens.tokens)
+
+    def test_non_unicode(self):
+        # Test the Unicode-checking entry points in Model
+        model = self.model
+
+        with self.assertRaises(TypeError):
+            model.train("non-unicode")
+
+        with self.assertRaises(TypeError):
+            model.train_many(["non-unicode"])
+
+        with self.assertRaises(TypeError):
+            model.choose_random_context("non-unicode")
+
+        with self.assertRaises(TypeError):
+            model.choose_random_word("non-unicode")
+
+        with self.assertRaises(TypeError):
+            model.entropy("a longer non-unicode string")
+
+        with self.assertRaises(TypeError):
+            # search_bfs is a generator, so call next() to run the check
+            model.search_bfs(["context"], "non-unicode").next()
+
+        with self.assertRaises(TypeError):
+            model.search_bfs_reverse(["context"], "non-unicode").next()
 
     def test_ngrams(self):
         model = self.model
@@ -99,21 +132,21 @@ class TestModel(unittest.TestCase):
     def test_train(self):
         model = self.model
 
-        text = "<S> this is a test string </S>"
+        text = u"<S> this is a test string </S>"
         model.train(text)
 
         counts = [
             (1, (model.TRAIN_START, model.TRAIN_START, model.TRAIN_START)),
-            (1, (model.TRAIN_START, model.TRAIN_START, "<S>")),
-            (1, (model.TRAIN_START, "<S>", "this")),
-            (1, ("<S>", "this", "is")),
-            (1, ("test", "string", "</S>")),
-            (1, ("string", "</S>", model.TRAIN_END)),
-            (1, ("</S>", model.TRAIN_END, model.TRAIN_END)),
-            (1, ("this", "is", "a")),
-            (1, ("is", "a", "test")),
-            (1, ("a", "test", "string")),
-            (0, ("will", "not", "find"))
+            (1, (model.TRAIN_START, model.TRAIN_START, u"<S>")),
+            (1, (model.TRAIN_START, u"<S>", u"this")),
+            (1, (u"<S>", u"this", u"is")),
+            (1, (u"test", u"string", u"</S>")),
+            (1, (u"string", u"</S>", model.TRAIN_END)),
+            (1, (u"</S>", model.TRAIN_END, model.TRAIN_END)),
+            (1, (u"this", u"is", u"a")),
+            (1, (u"is", u"a", u"test")),
+            (1, (u"a", u"test", u"string")),
+            (0, (u"will", u"not", u"find"))
             ]
 
         for count, ngram in counts:
@@ -146,7 +179,7 @@ class TestModel(unittest.TestCase):
     def test_train_start_end_counts(self):
         model = self.model
 
-        text = "foo bar baz"
+        text = u"foo bar baz"
         model.train(text)
 
         # Ensure we've only trained one start & end count
@@ -168,25 +201,25 @@ class TestModel(unittest.TestCase):
 
         # Make sure the short-text check in training ensures that no
         # n-grams are counted for text with fewer than three tokens
-        model.train("")
+        model.train(u"")
 
         self.assertEqual([], list(model._prefix_keys("1")))
         self.assertEqual([], list(model._prefix_keys("2")))
         self.assertEqual([], list(model._prefix_keys("3")))
 
-        model.train("one")
+        model.train(u"one")
 
         self.assertEqual([], list(model._prefix_keys("1")))
         self.assertEqual([], list(model._prefix_keys("2")))
         self.assertEqual([], list(model._prefix_keys("3")))
 
-        model.train("one two")
+        model.train(u"one two")
 
         self.assertEqual([], list(model._prefix_keys("1")))
         self.assertEqual([], list(model._prefix_keys("2")))
         self.assertEqual([], list(model._prefix_keys("3")))
 
-        model.train("one two three")
+        model.train(u"one two three")
 
         # TRAIN_START / one / two / three / TRAIN_END
         self.assertEqual(5, len(list(model._prefix_keys("1"))))
@@ -203,16 +236,16 @@ class TestModel(unittest.TestCase):
     def test_train_many(self):
         model = self.model
 
-        sentences = ["this is a test",
-                     "this is another test",
-                     "this is a third test"]
+        sentences = [u"this is a test",
+                     u"this is another test",
+                     u"this is a third test"]
 
         model.train_many(sentences)
 
-        self.assertEquals(2, model.ngram_count("this is a".split()))
-        self.assertEquals(1, model.ngram_count("is a test".split()))
-        self.assertEquals(1, model.ngram_count("this is another".split()))
-        self.assertEquals(1, model.ngram_count("is a third".split()))
+        self.assertEquals(2, model.ngram_count(u"this is a".split()))
+        self.assertEquals(1, model.ngram_count(u"is a test".split()))
+        self.assertEquals(1, model.ngram_count(u"this is another".split()))
+        self.assertEquals(1, model.ngram_count(u"is a third".split()))
 
     def test_add_count(self):
         # Since _add_count adds to a LevelDB WriteBatch directly, and
@@ -221,7 +254,7 @@ class TestModel(unittest.TestCase):
         # in the database.
         model = self.model
 
-        text = "one two three"
+        text = u"one two three"
         ngram = text.split()
         self.assertEquals(0, model.ngram_count(ngram))
 
@@ -237,10 +270,10 @@ class TestModel(unittest.TestCase):
         # default trigrams, bigrams, and unigrams
         model = self.model
 
-        model.train("one two three")
-        model.train("one two four")
+        model.train(u"one two three")
+        model.train(u"one two four")
 
-        ngram = "one two three".split()
+        ngram = u"one two three".split()
         token, context = ngram[-1], ngram[:-1]
         self.assertAlmostEqual(1.0, model.logprob(token, context))
 
@@ -249,72 +282,72 @@ class TestModel(unittest.TestCase):
         # the default trigrams, bigrams, and unigrams
         model = self.model
 
-        model.train("one two three")
-        model.train("one two four")
+        model.train(u"one two three")
+        model.train(u"one two four")
 
-        ngram = "one two three".split()
+        ngram = u"one two three".split()
         token, context = ngram[-1], ngram[:-1]
         self.assertAlmostEqual(0.5, model.prob(token, context))
 
     def test_entropy(self):
         model = self.model
 
-        model.train("one two three")
-        self.assertAlmostEqual(0.0, model.entropy("one two three"))
+        model.train(u"one two three")
+        self.assertAlmostEqual(0.0, model.entropy(u"one two three"))
 
-        model.train("one two four")
-        self.assertAlmostEqual(1.0, model.entropy("one two three"))
+        model.train(u"one two four")
+        self.assertAlmostEqual(1.0, model.entropy(u"one two three"))
 
     def test_choose_random_word(self):
         model = self.model
 
         # First, train one sentence and make sure we randomly pick the
         # only possible option.
-        model.train("one two three")
-        context = ["one", "two"]
+        model.train(u"one two three")
+        context = [u"one", u"two"]
 
-        self.assertEqual("three", model.choose_random_word(context))
+        self.assertEqual(u"three", model.choose_random_word(context))
 
         # Make sure a context that hasn't been trained comes back None
-        self.assert_(model.choose_random_word(["missing", "context"]) is None)
+        self.assertIsNone(model.choose_random_word([u"missing", u"context"]))
 
         # Train another sentence and make sure we pick both options
         # with carefully chosen seeding. Explicitly use Python's (old)
         # WichmannHill PRNG to ensure reproducability, since the
         # default PRNG generator could conceivably change in a future
         # release.
-        model.train("one two four")
+        model.train(u"one two four")
 
         rng = random.WichmannHill()
 
         rng.seed(0)
-        self.assertEqual("three", model.choose_random_word(context, rng=rng))
-        self.assertEqual("four", model.choose_random_word(context, rng=rng))
+        self.assertEqual(u"three", model.choose_random_word(context, rng=rng))
+        self.assertEqual(u"four", model.choose_random_word(context, rng=rng))
 
     def test_choose_random_context(self):
         model = self.model
 
         # First, train one sentence and make sure we randomly pick the
         # only possible option.
-        model.train("one two three")
+        model.train(u"one two three")
 
-        self.assertEqual(["one", "two", "three"],
-                         model.choose_random_context("one"))
+        self.assertEqual([u"one", u"two", u"three"],
+                         model.choose_random_context(u"one"))
 
         # Make sure a context that hasn't been trained comes back None
-        self.assert_(model.choose_random_context("missing") is None)
+        self.assert_(model.choose_random_context(u"missing") is None)
 
         # Train another sentence and make sure we pick both options
         # with carefully chosen seeding.
-        model.train("one two four")
+        model.train(u"one two four")
 
         rng = random.WichmannHill()
 
         rng.seed(0)
-        self.assertEqual(["one", "two", "three"],
-                         model.choose_random_context("one", rng=rng))
-        self.assertEqual(["one", "two", "four"],
-                         model.choose_random_context("one", rng=rng))
+        self.assertEqual([u"one", u"two", u"three"],
+                         model.choose_random_context(u"one", rng=rng))
+        self.assertEqual([u"one", u"two", u"four"],
+                         model.choose_random_context(u"one", rng=rng))
 
     def test_prefix_keys(self):
         # Fake some interesting keys and values to make sure the
@@ -379,21 +412,21 @@ class TestModel(unittest.TestCase):
     def test_search_bfs(self):
         model = self.model
 
-        model.train("<S> this is a test sentence </S>")
-        model.train("<S> this is a test sentence that continues </S>")
-        model.train("<S> this is another test sentence </S>")
+        model.train(u"<S> this is a test sentence </S>")
+        model.train(u"<S> this is a test sentence that continues </S>")
+        model.train(u"<S> this is another test sentence </S>")
 
-        results = list(model.search_bfs("<S> this is".split(), "</S>"))
+        results = list(model.search_bfs(u"<S> this is".split(), u"</S>"))
 
         # There should be four results, the three explicitly trained
         # sentence and one combination of 2 & 3.
         self.assertEquals(4, len(results))
 
         expected = [
-            "<S> this is a test sentence </S>".split(),
-            "<S> this is a test sentence that continues </S>".split(),
-            "<S> this is another test sentence </S>".split(),
-            "<S> this is another test sentence that continues </S>".split()]
+            u"<S> this is a test sentence </S>".split(),
+            u"<S> this is a test sentence that continues </S>".split(),
+            u"<S> this is another test sentence </S>".split(),
+            u"<S> this is another test sentence that continues </S>".split()]
 
         self.assertEqual(sorted(results), sorted(expected))
 
@@ -402,32 +435,32 @@ class TestModel(unittest.TestCase):
         # the end token.
         model = self.model
 
-        model.train("foo bar baz quux")
+        model.train(u"foo bar baz quux")
 
-        context = ["baz", "quux", ""]
-        results = model.search_bfs(context, "")
-        self.assertEqual(["baz", "quux", ""], results.next())
+        context = [u"baz", u"quux", u""]
+        results = model.search_bfs(context, u"")
+        self.assertEqual([u"baz", u"quux", u""], results.next())
 
-        context = ["quux", "", ""]
-        results = model.search_bfs(context, "")
-        self.assertEqual(["quux", "", ""], results.next())
+        context = [u"quux", u"", u""]
+        results = model.search_bfs(context, u"")
+        self.assertEqual([u"quux", u"", u""], results.next())
 
     def test_search_bfs_reverse(self):
         model = self.model
 
-        model.train("<S> this is a test sentence </S>")
-        model.train("<S> this is a test sentence that continues </S>")
-        model.train("<S> this is another test sentence </S>")
+        model.train(u"<S> this is a test sentence </S>")
+        model.train(u"<S> this is a test sentence that continues </S>")
+        model.train(u"<S> this is another test sentence </S>")
 
         results = list(model.search_bfs_reverse(
-                "test sentence </S>".split(), "<S>"))
+                u"test sentence </S>".split(), u"<S>"))
 
         # There should be two results
         self.assertEquals(2, len(results))
 
         expected = [
-            "<S> this is a test sentence </S>".split(),
-            "<S> this is another test sentence </S>".split()
+            u"<S> this is a test sentence </S>".split(),
+            u"<S> this is another test sentence </S>".split()
             ]
 
         self.assertEqual(sorted(results), sorted(expected))
@@ -437,15 +470,15 @@ class TestModel(unittest.TestCase):
         # the end token.
         model = self.model
 
-        model.train("foo bar baz quux")
+        model.train(u"foo bar baz quux")
 
-        context = ["", "foo", "bar"]
-        results = model.search_bfs_reverse(context, "")
-        self.assertEqual(["", "foo", "bar"], results.next())
+        context = [u"", u"foo", u"bar"]
+        results = model.search_bfs_reverse(context, u"")
+        self.assertEqual([u"", u"foo", u"bar"], results.next())
 
-        context = ["", "", "foo"]
-        results = model.search_bfs_reverse(context, "")
-        self.assertEqual(["", "", "foo"], results.next())
+        context = [u"", u"", u"foo"]
+        results = model.search_bfs_reverse(context, u"")
+        self.assertEqual([u"", u"", u"foo"], results.next())
 
     def test_normalizer(self):
         model = self.model
@@ -453,4 +486,4 @@ class TestModel(unittest.TestCase):
 
         analyzer.add_token_normalizer(LowercaseNormalizer())
 
-        model.train("This is a test")
+        model.train(u"This is a test")
