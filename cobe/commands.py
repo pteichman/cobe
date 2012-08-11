@@ -78,6 +78,9 @@ class LearnCommand(object):
 
                 yield line.decode("utf-8", "replace")
 
+            # Finish the count status line printed above
+            print
+
         model.train_many(lines())
         files.close()
 
@@ -128,6 +131,9 @@ class LearnIrcLogCommand:
 
             if msg is not None:
                 yield msg.decode("utf-8", "replace")
+
+        # Finish the count status line printed above
+        print
 
     @classmethod
     def _parse_irc_message(cls, msg, ignored_nicks=None, only_nicks=None):
