@@ -227,22 +227,19 @@ CREATE TABLE kv (
 
         return str(row[0])
 
-    def _put_one(self, c, key, value):
-        q = "INSERT OR REPLACE INTO kv (key, value) VALUES (?, ?)"
-        c.execute(q, (sqlite3.Binary(key), sqlite3.Binary(value)))
-
     def put(self, key, value):
-        c = self.conn.cursor()
-        self._put_one(c, key, value)
-        self.conn.commit()
+        q = "INSERT OR REPLACE INTO kv (key, value) VALUES (?, ?)"
+        self.conn.execute(q, (sqlite3.Binary(key), sqlite3.Binary(value)))
 
     def put_many(self, items):
+        q = "INSERT OR REPLACE INTO kv (key, value) VALUES (?, ?)"
+        c = self.conn.cursor()
+
+        blob = sqlite3.Binary
         for batch in ibatch(items, 30000):
-            c = self.conn.cursor()
+            items = ((blob(key), blob(value)) for key, value in batch)
 
-            for key, value in batch:
-                self._put_one(c, key, value)
-
+            c.executemany(q, items)
             self.conn.commit()
 
     def _range_where(self, key_from=None, key_to=None):
