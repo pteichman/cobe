@@ -22,40 +22,40 @@ class LowercaseNormalizerTest(unittest.TestCase):
     def test_lowercase(self):
         norm = analysis.LowercaseNormalizer()
 
-        self.assertEqual(u"foo", norm.normalize(u"foo"))
-        self.assertEqual(u"foo", norm.normalize(u"Foo"))
-        self.assertEqual(u"foo", norm.normalize(u"FOO"))
+        self.assertEqual([u"foo"], list(norm.normalize(u"foo")))
+        self.assertEqual([u"foo"], list(norm.normalize(u"Foo")))
+        self.assertEqual([u"foo"], list(norm.normalize(u"FOO")))
 
         # Make sure accents are preserved, in contrast to AccentNormalizer
-        self.assertEqual(u"foö", norm.normalize(u"foö"))
+        self.assertEqual([u"foö"], list(norm.normalize(u"foö")))
 
-        self.assertEqual(u"foo\nbar", norm.normalize(u"FOO\nBar"))
+        self.assertEqual([u"foo\nbar"], list(norm.normalize(u"FOO\nBar")))
 
 
 class TestAccentNormalizer(unittest.TestCase):
     def test_normalize(self):
         norm = analysis.AccentNormalizer()
 
-        self.assertEqual(u"foo", norm.normalize(u"foö"))
+        self.assertEqual([u"foo"], list(norm.normalize(u"foö")))
 
 
 class TestStemNormalizer(unittest.TestCase):
     def test_stemmer(self):
         norm = analysis.StemNormalizer("english")
 
-        self.assertEquals("foo", norm.normalize("foo"))
-        self.assertEquals("jump", norm.normalize("jumping"))
-        self.assertEquals("run", norm.normalize("running"))
+        self.assertEqual(["foo"], list(norm.normalize("foo")))
+        self.assertEqual(["jump"], list(norm.normalize("jumping")))
+        self.assertEqual(["run"], list(norm.normalize("running")))
 
     def test_stemmer_case(self):
         norm = analysis.StemNormalizer("english")
 
-        self.assertEquals("foo", norm.normalize("Foo"))
-        self.assertEquals("foo", norm.normalize("FOO"))
+        self.assertEqual(["foo"], list(norm.normalize("Foo")))
+        self.assertEqual(["foo"], list(norm.normalize("FOO")))
 
-        self.assertEquals("foo", norm.normalize("FOO'S"))
-        self.assertEquals("foo", norm.normalize("FOOING"))
-        self.assertEquals("foo", norm.normalize("Fooing"))
+        self.assertEqual(["foo"], list(norm.normalize("FOO'S")))
+        self.assertEqual(["foo"], list(norm.normalize("FOOING")))
+        self.assertEqual(["foo"], list(norm.normalize("Fooing")))
 
 
 class AnalyzerTest(unittest.TestCase):
@@ -66,7 +66,7 @@ class AnalyzerTest(unittest.TestCase):
                 super(PrefixNormalizer, self).__init__(prefix=prefix)
 
             def normalize(self, token):
-                return token[:self.length]
+                yield token[:self.length]
 
         # Create an analyzer and add a LowercaseNormalizer and this
         # PrefixNormalizer.
@@ -85,7 +85,29 @@ class AnalyzerTest(unittest.TestCase):
 
         result = analyzer.normalize_token(u"Foobarbaz")
 
-        self.assertListEqual(expected, result)
+        self.assertEqual(expected, result)
+
+    def test_normalizer_multiple(self):
+        # Test a normalizer that maps a token to multiple things
+        class BigramNormalizer(analysis.TokenNormalizer):
+            def normalize(self, token):
+                # Yield all 2-character sequences in token
+                for i in xrange(len(token) - 1):
+                    yield token[i:i + 2]
+
+        norm = BigramNormalizer()
+        self.assertEqual(["te", "er", "rm"], list(norm.normalize(u"term")))
+
+        analyzer = analysis.WhitespaceAnalyzer()
+        analyzer.add_token_normalizer(norm)
+
+        expected = [
+            ("BigramNormalizer", u"te"),
+            ("BigramNormalizer", u"er"),
+            ("BigramNormalizer", u"rm")
+            ]
+
+        self.assertEqual(expected, analyzer.normalize_token(u"term"))
 
     def test_normalizer_str(self):
         analyzer = analysis.WhitespaceAnalyzer()
@@ -93,16 +115,16 @@ class AnalyzerTest(unittest.TestCase):
         with self.assertRaises(TypeError):
             analyzer.normalize_token("non-unicode")
 
-    def test_normalizer_returns_none(self):
-        class NoneNormalizer(analysis.TokenNormalizer):
+    def test_empty_normalizer(self):
+        class EmptyNormalizer(analysis.TokenNormalizer):
             def normalize(self, token):
-                return None
+                # yield nothing
+                return (i for i in [])
 
         analyzer = analysis.WhitespaceAnalyzer()
-        analyzer.add_token_normalizer(NoneNormalizer())
+        analyzer.add_token_normalizer(EmptyNormalizer())
 
-        result = analyzer.normalize_token(u"Foobarbaz")
-        self.assertListEqual([], result)
+        self.assertEqual([], list(analyzer.normalize_token(u"Foobarbaz")))
 
     def test_conflated_query(self):
         analyzer = analysis.WhitespaceAnalyzer()

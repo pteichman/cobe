@@ -46,7 +46,7 @@ class LowercaseNormalizer(TokenNormalizer):
 
     """
     def normalize(self, token):
-        return token.lower()
+        yield token.lower()
 
 
 class AccentNormalizer(TokenNormalizer):
@@ -60,7 +60,7 @@ class AccentNormalizer(TokenNormalizer):
     """
     def normalize(self, token):
         nkfd = unicodedata.normalize("NFKD", token.lower())
-        return u"".join([c for c in nkfd if not unicodedata.combining(c)])
+        yield u"".join([c for c in nkfd if not unicodedata.combining(c)])
 
 
 class StemNormalizer(TokenNormalizer):
@@ -87,7 +87,7 @@ class StemNormalizer(TokenNormalizer):
         self.stemmer = Stemmer.Stemmer(language.lower())
 
     def normalize(self, token):
-        return self.stemmer.stemWord(token.lower())
+        yield self.stemmer.stemWord(token.lower())
 
 
 class Analyzer(object):
@@ -129,9 +129,7 @@ class Analyzer(object):
 
         ret = []
         for normalizer in self.token_normalizers:
-            new_token = normalizer.normalize(token)
-
-            if new_token is not None:
+            for new_token in normalizer.normalize(token):
                 ret.append((normalizer.prefix, new_token))
 
         return ret
