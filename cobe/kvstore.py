@@ -1,20 +1,13 @@
 # Copyright (C) 2012 Peter Teichman
 
 import abc
-import itertools
 import logging
 import os
 import sqlite3
 
+from .utils import ibatch
+
 logger = logging.getLogger(__name__)
-
-
-def batchiter(iterable, size):
-    """yield a series of batches from iterable, each size elements long."""
-    source = iter(iterable)
-    while True:
-        batch = itertools.islice(source, size)
-        yield itertools.chain([batch.next()], batch)
 
 
 class KVStore(object):
@@ -244,10 +237,10 @@ CREATE TABLE kv (
         self.conn.commit()
 
     def put_many(self, items):
-        for item_batch in batchiter(items, 30000):
+        for batch in ibatch(items, 30000):
             c = self.conn.cursor()
 
-            for key, value in item_batch:
+            for key, value in batch:
                 self._put_one(c, key, value)
 
             self.conn.commit()
@@ -306,13 +299,13 @@ class LevelDBStore(KVStore):
         self.kv.Put(key, value)
 
     def put_many(self, items):
-        for item_batch in batchiter(items, 30000):
-            batch = self.leveldb.WriteBatch()
+        for batch in ibatch(items, 30000):
+            db_batch = self.leveldb.WriteBatch()
 
-            for key, value in item_batch:
-                batch.Put(key, value)
+            for key, value in batch:
+                db_batch.Put(key, value)
 
-            self.kv.Write(batch)
+            self.kv.Write(db_batch)
 
     def items(self, key_from=None, key_to=None):
         return self.kv.RangeIter(key_from=key_from, key_to=key_to)
