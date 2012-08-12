@@ -4,7 +4,7 @@ import itertools
 import logging
 
 from cobe.analysis import (
-    AccentNormalizer, StemNormalizer, TokenNormalizer, WhitespaceAnalyzer)
+    AccentNormalizer, StemNormalizer, WhitespaceAnalyzer)
 from cobe.kvstore import SqliteStore
 from cobe.model import Model
 from cobe.search import RandomWalkSearcher
