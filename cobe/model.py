@@ -161,19 +161,24 @@ class Model(object):
             # First, flush any new token ids to the database
             logger.info("flushing new tokens")
 
+            token_key = self._token_key
             for token, token_id in self.tokens.token_log:
-                yield self._token_key(token_id), token
+                yield token_key(token_id), token
             self.tokens.token_log[:] = []
 
             # Then merge in-memory n-gram counts with the database
             logger.info("merging counts")
 
-            for key, count in counts:
-                val = self.store.get(key, default=None)
-                if val is not None:
-                    count += varint.decode_one(val)
+            get = self.store.get
+            decode_one = varint.decode_one
+            encode_one = varint.encode_one
 
-                yield key, varint.encode_one(count)
+            for key, count in counts:
+                val = get(key, default=None)
+                if val is not None:
+                    count += decode_one(val)
+
+                yield key, encode_one(count)
 
         self.store.put_many(kv_pairs())
 
