@@ -31,14 +31,26 @@ def undiff(seq):
     return ret
 
 
-def encode_one(value):
+def encode_one(value, buf=array.array("B")):
+    append = buf.append
+
     if value >= 0:
-        return encode((value,))
+        bits = value & 0x7f
+        value >>= 7
+        while value:
+            append(0x80 | bits)
+            bits = value & 0x7f
+            value >>= 7
+        append(bits)
+
+        ret = buf.tostring()
+        del buf[:]
+        return ret
+
     raise ValueError("negative numbers not supported")
 
 
-def encode(values):
-    buf = array.array("B")
+def encode(values, buf=array.array("B")):
     append = buf.append
 
     for value in values:
@@ -50,33 +62,43 @@ def encode(values):
             value >>= 7
         append(bits)
 
-    return buf.tostring()
+    ret = buf.tostring()
+    del buf[:]
+    return ret
 
 
-def decode_one(value):
-    return decode(value)[0]
+def decode_one(data):
+    local_ord = ord
+    cur = shift = 0
+
+    for byte in iter(data):
+        b = local_ord(byte)
+        cur |= ((b & 0x7f) << shift)
+
+        if b & 0x80:
+            shift += 7
+        else:
+            return cur
 
 
 def decode(data):
+    # At least for small data, it's a significant performance
+    # improvement to copy the data into a byte array to avoid calling
+    # ord() on every byte.
+    bytes = array.array("B", data)
+
     ret = []
     append = ret.append
-    local_ord = ord
 
-    cur = pos = shift = 0
-    end = len(data)
-
-    while pos < end:
-        b = local_ord(data[pos])
+    cur = shift = 0
+    for b in bytes:
         cur |= ((b & 0x7f) << shift)
 
-        # If the high bit is set, continue reading the current int
         if b & 0x80:
             shift += 7
         else:
             append(cur)
             shift = 0
             cur = 0
-
-        pos += 1
 
     return ret
