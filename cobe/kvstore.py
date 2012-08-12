@@ -85,6 +85,55 @@ class KVStore(object):
         """
         pass
 
+    def prefix_items(self, prefix, skip_prefix=False):
+        """yield all (key, value) pairs with keys that begin with $prefix.
+
+        Args:
+            prefix: lexical prefix for keys to search.
+
+            skip_prefix: a boolean to specify whether the prefix
+                should be stripped from the generated keys.
+
+        Yields:
+            All the (key, value) pairs in the store where the keys
+                begin with the requested prefix.
+
+        """
+        items = self.items(key_from=prefix)
+
+        start = 0
+        if skip_prefix:
+            start = len(prefix)
+
+        for key, value in items:
+            if not key.startswith(prefix):
+                break
+            yield key[start:], value
+
+    def prefix_keys(self, prefix, skip_prefix=False):
+        """yield all keys that begin with $prefix.
+
+        Args:
+            prefix: lexical prefix for keys to search.
+
+            skip_prefix: a boolean to specify whether the prefix
+                should be stripped from the generated keys.
+
+        Yields:
+            All the keys in the store that begin with the requested prefix.
+
+        """
+        keys = self.keys(key_from=prefix)
+
+        start = 0
+        if skip_prefix:
+            start = len(prefix)
+
+        for key in keys:
+            if not key.startswith(prefix):
+                break
+            yield key[start:]
+
 
 class BsddbStore(KVStore):
     def __init__(self, path):

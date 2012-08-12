@@ -133,6 +133,31 @@ class KVStoreBase(object):
         expected = "five four nine one seven six three".split()
         self.assertEqual(expected, keys)
 
+    def test_prefix_keys(self):
+        # Fake some interesting keys and values to make sure the
+        # prefix iterators are working
+        store = self.store
+
+        store.put("a/", "a")
+        store.put("a/b", "b")
+        store.put("a/c", "c")
+        store.put("a/d", "d")
+        store.put("a/e", "e")
+        store.put("a/f", "f")
+        store.put("b/", "b")
+        store.put("c/", "c")
+        store.put("d/", "d")
+
+        a_list = list(store.prefix_keys("a/"))
+        self.assertEqual("a/ a/b a/c a/d a/e a/f".split(), a_list)
+
+        a_list = list(store.prefix_keys("a/", skip_prefix=True))
+        self.assertEqual(["", "b", "c", "d", "e", "f"], a_list)
+
+        self.assertEqual(["b/"], list(store.prefix_keys("b/")))
+        self.assertEqual(["c/"], list(store.prefix_keys("c/")))
+        self.assertEqual(["d/"], list(store.prefix_keys("d/")))
+
     def test_items(self):
         put_items = dict([
             ("one", "value1"),
@@ -171,6 +196,41 @@ class KVStoreBase(object):
         # And test them both together
         keys = list(self.store.items(key_from="five", key_to="three"))
         self.assertEqual(expected[1:8], keys)
+
+    def test_prefix_items(self):
+        # Fake some interesting keys and values to make sure the
+        # prefix iterators are working
+        store = self.store
+
+        store.put("a/", "a")
+        store.put("a/b", "b")
+        store.put("a/c", "c")
+        store.put("a/d", "d")
+        store.put("a/e", "e")
+        store.put("a/f", "f")
+        store.put("b/", "b")
+        store.put("c/", "c")
+        store.put("d/", "d")
+
+        expected = [("a/", "a"),
+                    ("a/b", "b"),
+                    ("a/c", "c"),
+                    ("a/d", "d"),
+                    ("a/e", "e"),
+                    ("a/f", "f")]
+
+        a_list = list(store.prefix_items("a/"))
+        self.assertEqual(expected, a_list)
+
+        expected = [("", "a"),
+                    ("b", "b"),
+                    ("c", "c"),
+                    ("d", "d"),
+                    ("e", "e"),
+                    ("f", "f")]
+
+        a_list = list(store.prefix_items("a/", skip_prefix=True))
+        self.assertEqual(expected, a_list)
 
 
 class TestBsddbStore(unittest.TestCase, KVStoreBase):

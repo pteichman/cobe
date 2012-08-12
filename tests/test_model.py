@@ -153,8 +153,8 @@ class TestModel(unittest.TestCase):
             self.assertEquals(count, model.ngram_count(ngram))
 
         # Make sure the right number of reverse tokens have been trained
-        self.assertEqual(len(list(model._prefix_items("3"))),
-                         len(list(model._prefix_items("r"))))
+        self.assertEqual(len(list(model.store.prefix_items("3"))),
+                         len(list(model.store.prefix_items("r"))))
 
         # Now train the phrase again and make sure the new counts were
         # merged.
@@ -198,40 +198,41 @@ class TestModel(unittest.TestCase):
 
     def test_train_short(self):
         model = self.model
+        store = self.model.store
 
         # Make sure the short-text check in training ensures that no
         # n-grams are counted for text with fewer than three tokens
         model.train(u"")
 
-        self.assertEqual([], list(model._prefix_keys("1")))
-        self.assertEqual([], list(model._prefix_keys("2")))
-        self.assertEqual([], list(model._prefix_keys("3")))
+        self.assertEqual([], list(store.prefix_keys("1")))
+        self.assertEqual([], list(store.prefix_keys("2")))
+        self.assertEqual([], list(store.prefix_keys("3")))
 
         model.train(u"one")
 
-        self.assertEqual([], list(model._prefix_keys("1")))
-        self.assertEqual([], list(model._prefix_keys("2")))
-        self.assertEqual([], list(model._prefix_keys("3")))
+        self.assertEqual([], list(store.prefix_keys("1")))
+        self.assertEqual([], list(store.prefix_keys("2")))
+        self.assertEqual([], list(store.prefix_keys("3")))
 
         model.train(u"one two")
 
-        self.assertEqual([], list(model._prefix_keys("1")))
-        self.assertEqual([], list(model._prefix_keys("2")))
-        self.assertEqual([], list(model._prefix_keys("3")))
+        self.assertEqual([], list(store.prefix_keys("1")))
+        self.assertEqual([], list(store.prefix_keys("2")))
+        self.assertEqual([], list(store.prefix_keys("3")))
 
         model.train(u"one two three")
 
         # TRAIN_START / one / two / three / TRAIN_END
-        self.assertEqual(5, len(list(model._prefix_keys("1"))))
+        self.assertEqual(5, len(list(store.prefix_keys("1"))))
 
         # TRAIN_START TRAIN_START / TRAIN_START one / one two / two three /
         # three TRAIN_END / TRAIN_END TRAIN_END
-        self.assertEqual(6, len(list(model._prefix_keys("2"))))
+        self.assertEqual(6, len(list(store.prefix_keys("2"))))
 
         # TRAIN_START TRAIN_START TRAIN_START / TRAIN_START TRAIN_START one /
         # TRAIN_START one two / one two three / two three TRAIN_END /
         # three TRAIN_END TRAIN_END / TRAIN_END TRAIN_END TRAIN_END
-        self.assertEqual(7, len(list(model._prefix_keys("3"))))
+        self.assertEqual(7, len(list(store.prefix_keys("3"))))
 
     def test_train_many(self):
         model = self.model
@@ -348,66 +349,6 @@ class TestModel(unittest.TestCase):
                          model.choose_random_context(u"one", rng=rng))
         self.assertEqual([u"one", u"two", u"four"],
                          model.choose_random_context(u"one", rng=rng))
-
-    def test_prefix_keys(self):
-        # Fake some interesting keys and values to make sure the
-        # prefix iterators are working
-        model = self.model
-
-        model.store.put("a/", "a")
-        model.store.put("a/b", "b")
-        model.store.put("a/c", "c")
-        model.store.put("a/d", "d")
-        model.store.put("a/e", "e")
-        model.store.put("a/f", "f")
-        model.store.put("b/", "b")
-        model.store.put("c/", "c")
-        model.store.put("d/", "d")
-
-        a_list = list(model._prefix_keys("a/"))
-        self.assertEqual("a/ a/b a/c a/d a/e a/f".split(), a_list)
-
-        a_list = list(model._prefix_keys("a/", skip_prefix=True))
-        self.assertEqual(["", "b", "c", "d", "e", "f"], a_list)
-
-        self.assertEqual(["b/"], list(model._prefix_keys("b/")))
-        self.assertEqual(["c/"], list(model._prefix_keys("c/")))
-        self.assertEqual(["d/"], list(model._prefix_keys("d/")))
-
-    def test_prefix_items(self):
-        # Fake some interesting keys and values to make sure the
-        # prefix iterators are working
-        model = self.model
-
-        model.store.put("a/", "a")
-        model.store.put("a/b", "b")
-        model.store.put("a/c", "c")
-        model.store.put("a/d", "d")
-        model.store.put("a/e", "e")
-        model.store.put("a/f", "f")
-        model.store.put("b/", "b")
-        model.store.put("c/", "c")
-        model.store.put("d/", "d")
-
-        expected = [("a/", "a"),
-                    ("a/b", "b"),
-                    ("a/c", "c"),
-                    ("a/d", "d"),
-                    ("a/e", "e"),
-                    ("a/f", "f")]
-
-        a_list = list(model._prefix_items("a/"))
-        self.assertEqual(expected, a_list)
-
-        expected = [("", "a"),
-                    ("b", "b"),
-                    ("c", "c"),
-                    ("d", "d"),
-                    ("e", "e"),
-                    ("f", "f")]
-
-        a_list = list(model._prefix_items("a/", skip_prefix=True))
-        self.assertEqual(expected, a_list)
 
     def test_search_bfs(self):
         model = self.model
