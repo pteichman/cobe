@@ -1,4 +1,5 @@
 # Copyright (C) 2012 Peter Teichman
+# coding=utf8
 
 import unittest2 as unittest
 
@@ -25,7 +26,17 @@ class LowercaseNormalizerTest(unittest.TestCase):
         self.assertEqual(u"foo", norm.normalize(u"Foo"))
         self.assertEqual(u"foo", norm.normalize(u"FOO"))
 
+        # Make sure accents are preserved, in contrast to AccentNormalizer
+        self.assertEqual(u"foö", norm.normalize(u"foö"))
+
         self.assertEqual(u"foo\nbar", norm.normalize(u"FOO\nBar"))
+
+
+class TestAccentNormalizer(unittest.TestCase):
+    def test_normalize(self):
+        norm = analysis.AccentNormalizer()
+
+        self.assertEqual(u"foo", norm.normalize(u"foö"))
 
 
 class AnalyzerTest(unittest.TestCase):

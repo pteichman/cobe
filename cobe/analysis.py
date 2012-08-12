@@ -4,6 +4,7 @@ import abc
 import logging
 import re
 import types
+import unicodedata
 
 from . import search
 from . import tokenizers
@@ -37,9 +38,28 @@ class TokenNormalizer(object):
 
 
 class LowercaseNormalizer(TokenNormalizer):
-    """Normalize tokens by lowercasing their text."""
+    """Normalize tokens by ignoring upper/lower case.
+
+    This allows a search for a token to return results containing any
+    mixture of case of its characters.
+
+    """
     def normalize(self, token):
         return token.lower()
+
+
+class AccentNormalizer(TokenNormalizer):
+    """Normalize tokens by ignoring upper/lower case and accents.
+
+    This normalizer uses the Python Unicode database to convert each
+    token to the NFKD normal form, then discards combining
+    characters. This normalizes Unicode characters with multiple forms
+    and discards accents.
+
+    """
+    def normalize(self, token):
+        nkfd = unicodedata.normalize("NFKD", token.lower())
+        return u"".join([c for c in nkfd if not unicodedata.combining(c)])
 
 
 class Analyzer(object):
