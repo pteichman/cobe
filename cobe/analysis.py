@@ -84,6 +84,8 @@ class StemNormalizer(TokenNormalizer):
                 Porter stemmer for English.
 
         """
+        super(StemNormalizer, self).__init__()
+
         self.stemmer = Stemmer.Stemmer(language.lower())
 
     def normalize(self, token):
