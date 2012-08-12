@@ -19,6 +19,19 @@ from .varint import decode, decode_one, encode_one
 log = logging.getLogger(__name__)
 
 
+class StandardAnalyzer(analysis.WhitespaceAnalyzer):
+    """A basic analyzer for test purposes.
+
+    This combines a whitespace tokenizer with AccentNormalizer.
+
+    """
+    def __init__(self):
+        super(StandardAnalyzer, self).__init__()
+
+        self.add_token_normalizer(analysis.AccentNormalizer())
+        self.add_token_normalizer(analysis.StemNormalizer("english"))
+
+
 class DumpCommand(object):
     @classmethod
     def add_subparser(cls, parser):
@@ -58,8 +71,7 @@ class TrainCommand(object):
     @staticmethod
     def run(args):
         store = SqliteStore("cobe.store")
-        analyzer = analysis.WhitespaceAnalyzer()
-        analyzer.add_token_normalizer(analysis.LowercaseNormalizer())
+        analyzer = StandardAnalyzer()
 
         model = Model(analyzer, store)
 
@@ -102,7 +114,7 @@ class TrainIrcLogCommand:
     @classmethod
     def run(cls, args):
         store = SqliteStore("cobe.store")
-        analyzer = analysis.StandardAnalyzer()
+        analyzer = StandardAnalyzer()
 
         model = Model(analyzer, store)
 
@@ -170,7 +182,7 @@ class ConsoleCommand:
 
     @staticmethod
     def run(args):
-        analyzer = analysis.StandardAnalyzer()
+        analyzer = StandardAnalyzer()
 
         model = Model(analyzer, SqliteStore("cobe.store"))
         searcher = search.RandomWalkSearcher(model)
