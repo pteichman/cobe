@@ -2,7 +2,6 @@
 
 import abc
 import re
-import Stemmer
 import types
 
 
@@ -145,30 +144,3 @@ class CobeTokenizer(Tokenizer):
 
     def join(self, words):
         return u"".join(words)
-
-
-class CobeStemmer:
-    def __init__(self, name):
-        # use the PyStemmer Snowball stemmer bindings
-        self.stemmer = Stemmer.Stemmer(name)
-
-    def stem(self, token):
-        if not re.search("\w", token, re.UNICODE):
-            return self.stem_nonword(token)
-
-        # Don't preserve case when stemming, i.e. create lowercase stems.
-        # This will allow us to create replies that switch the case of
-        # input words, but still generate the reply in context with the
-        # generated case.
-
-        stem = self.stemmer.stemWord(token.lower())
-
-        return stem
-
-    def stem_nonword(self, token):
-        # Stem common smile and frown emoticons down to :) and :(
-        if re.search(":-?[ \)]*\)", token):
-            return ":)"
-
-        if re.search(":-?[' \(]*\(", token):
-            return ":("

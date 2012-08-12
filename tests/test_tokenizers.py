@@ -1,7 +1,7 @@
 import unittest
 
 from cobe.tokenizers import (
-    CobeStemmer, CobeTokenizer, MegaHALTokenizer, WhitespaceTokenizer)
+    CobeTokenizer, MegaHALTokenizer, WhitespaceTokenizer)
 
 
 class TestMegaHALTokenizer(unittest.TestCase):
@@ -164,35 +164,6 @@ class TestCobeTokenizer(unittest.TestCase):
     def test_join(self):
         self.assertEquals("foo bar baz",
                           self.tokenizer.join(["foo", " ", "bar", " ", "baz"]))
-
-
-class TestCobeStemmer(unittest.TestCase):
-    def setUp(self):
-        self.stemmer = CobeStemmer("english")
-
-    def test_stemmer(self):
-        self.assertEquals("foo", self.stemmer.stem("foo"))
-        self.assertEquals("jump", self.stemmer.stem("jumping"))
-        self.assertEquals("run", self.stemmer.stem("running"))
-
-    def test_stemmer_case(self):
-        self.assertEquals("foo", self.stemmer.stem("Foo"))
-        self.assertEquals("foo", self.stemmer.stem("FOO"))
-
-        self.assertEquals("foo", self.stemmer.stem("FOO'S"))
-        self.assertEquals("foo", self.stemmer.stem("FOOING"))
-        self.assertEquals("foo", self.stemmer.stem("Fooing"))
-
-    def test_stem_nonword(self):
-        self.assertEquals(":)", self.stemmer.stem(":)"))
-        self.assertEquals(":)", self.stemmer.stem(": )"))
-        self.assertEquals(":)", self.stemmer.stem(":  )"))
-        self.assertEquals(":)", self.stemmer.stem(":-)"))
-
-        self.assertEquals(":(", self.stemmer.stem(":("))
-        self.assertEquals(":(", self.stemmer.stem(": ("))
-        self.assertEquals(":(", self.stemmer.stem(":  ("))
-        self.assertEquals(":(", self.stemmer.stem(":-("))
 
 
 class TestWhitespaceTokenizer(unittest.TestCase):

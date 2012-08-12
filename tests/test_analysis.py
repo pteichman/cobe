@@ -39,6 +39,25 @@ class TestAccentNormalizer(unittest.TestCase):
         self.assertEqual(u"foo", norm.normalize(u"foö"))
 
 
+class TestStemNormalizer(unittest.TestCase):
+    def test_stemmer(self):
+        norm = analysis.StemNormalizer("english")
+
+        self.assertEquals("foo", norm.normalize("foo"))
+        self.assertEquals("jump", norm.normalize("jumping"))
+        self.assertEquals("run", norm.normalize("running"))
+
+    def test_stemmer_case(self):
+        norm = analysis.StemNormalizer("english")
+
+        self.assertEquals("foo", norm.normalize("Foo"))
+        self.assertEquals("foo", norm.normalize("FOO"))
+
+        self.assertEquals("foo", norm.normalize("FOO'S"))
+        self.assertEquals("foo", norm.normalize("FOOING"))
+        self.assertEquals("foo", norm.normalize("Fooing"))
+
+
 class AnalyzerTest(unittest.TestCase):
     def test_normalizer(self):
         class PrefixNormalizer(analysis.TokenNormalizer):

@@ -3,6 +3,7 @@
 import abc
 import logging
 import re
+import Stemmer
 import types
 import unicodedata
 
@@ -60,6 +61,33 @@ class AccentNormalizer(TokenNormalizer):
     def normalize(self, token):
         nkfd = unicodedata.normalize("NFKD", token.lower())
         return u"".join([c for c in nkfd if not unicodedata.combining(c)])
+
+
+class StemNormalizer(TokenNormalizer):
+    """Normalize tokens by reducing them to their lexical stems.
+
+    This normalizer uses PyStemmer, an implementation of the Snowball
+    stemming algorithms, to reduce tokens to their stems.
+
+    """
+    def __init__(self, language):
+        """Initialize a StemNormalizer.
+
+        Args:
+            language: a PyStemmer language. These can be seen by
+                listing Stemmer.algorithms(), but current options are:
+                danish, dutch, english, finnish, french, german,
+                hungarian, italian, norwegian, portuguese, romanian,
+                russian, spanish, swedish, turkish.
+
+                You can also specify "porter" to get the classic
+                Porter stemmer for English.
+
+        """
+        self.stemmer = Stemmer.Stemmer(language.lower())
+
+    def normalize(self, token):
+        return self.stemmer.stemWord(token.lower())
 
 
 class Analyzer(object):
