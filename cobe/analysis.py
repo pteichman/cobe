@@ -148,10 +148,13 @@ class Analyzer(object):
             if model is None:
                 continue
 
+            seen_tokens = set([token])
+
             for prefix, norm in self.normalize_token(token):
                 for norm_token in model.get_norm_tokens(prefix, norm):
-                    if norm_token != token:
+                    if norm_token not in seen_tokens:
                         terms.append(dict(term=norm_token, pos=index))
+                        seen_tokens.add(norm_token)
 
         return search.Query(terms)
 
