@@ -12,24 +12,12 @@ import sys
 from . import analysis
 from . import search
 
+from .brain import StandardAnalyzer
 from .kvstore import SqliteStore
 from .model import Model
 from .varint import decode, decode_one, encode_one
 
 log = logging.getLogger(__name__)
-
-
-class StandardAnalyzer(analysis.WhitespaceAnalyzer):
-    """A basic analyzer for test purposes.
-
-    This combines a whitespace tokenizer with AccentNormalizer.
-
-    """
-    def __init__(self):
-        super(StandardAnalyzer, self).__init__()
-
-        self.add_token_normalizer(analysis.AccentNormalizer())
-        self.add_token_normalizer(analysis.StemNormalizer("english"))
 
 
 class DumpCommand(object):
