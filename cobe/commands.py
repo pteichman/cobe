@@ -2,7 +2,6 @@
 
 import atexit
 import fileinput
-import itertools
 import logging
 import os
 import re
@@ -10,9 +9,8 @@ import readline
 import sys
 
 from . import analysis
-from . import search
 
-from .brain import StandardAnalyzer
+from .brain import Brain
 from .kvstore import SqliteStore
 from .model import Model
 from .varint import decode, decode_one, encode_one
@@ -58,10 +56,7 @@ class TrainCommand(object):
 
     @staticmethod
     def run(args):
-        store = SqliteStore("cobe.store")
-        analyzer = StandardAnalyzer()
-
-        model = Model(analyzer, store)
+        brain = Brain("cobe.store")
 
         files = fileinput.FileInput(args.file,
                                     openhook=fileinput.hook_compressed)
@@ -81,7 +76,7 @@ class TrainCommand(object):
             # Finish the count status line printed above
             print
 
-        model.train_many(lines())
+        brain.train_many(lines())
         files.close()
 
 
@@ -101,17 +96,14 @@ class TrainIrcLogCommand:
 
     @classmethod
     def run(cls, args):
-        store = SqliteStore("cobe.store")
-        analyzer = StandardAnalyzer()
-
-        model = Model(analyzer, store)
+        brain = Brain("cobe.store")
 
         files = fileinput.FileInput(args.file,
                                     openhook=fileinput.hook_compressed)
 
         lines = cls._irc_lines(files, ignored_nicks=args.ignored_nicks,
                                only_nicks=args.only_nicks)
-        model.train_many(lines)
+        brain.train_many(lines)
         files.close()
 
     @classmethod
@@ -170,10 +162,7 @@ class ConsoleCommand:
 
     @staticmethod
     def run(args):
-        analyzer = StandardAnalyzer()
-
-        model = Model(analyzer, SqliteStore("cobe.store"))
-        searcher = search.RandomWalkSearcher(model)
+        brain = Brain("cobe.store")
 
         history = os.path.expanduser("~/.cobe_history")
         try:
@@ -184,14 +173,10 @@ class ConsoleCommand:
 
         while True:
             try:
-                cmd = raw_input("> ").decode("utf-8")
+                text = raw_input("> ").decode("utf-8")
             except EOFError:
                 print
                 sys.exit(0)
 
-            # Create a search query from the input
-            query = analyzer.query(cmd, model)
-
-            results = itertools.islice(searcher.search(query), 20)
-            for result in results:
-                print analyzer.join(result)
+            brain.train(text)
+            print brain.reply(text)
