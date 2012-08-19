@@ -24,9 +24,9 @@ def itime(iterable, seconds):
     occurred.
 
     """
-    end = time.time() + seconds
-
     items = iter(iterable)
+
+    end = time.time() + seconds
     yield items.next()
 
     for item in itertools.takewhile(lambda _: time.time() < end, items):
