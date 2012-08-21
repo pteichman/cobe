@@ -1,3 +1,5 @@
+# Copyright (C) 2012 Peter Teichman
+
 import argparse
 import codecs
 import logging
@@ -5,17 +7,25 @@ import sys
 
 from . import commands
 
-parser = argparse.ArgumentParser(description="Cobe control")
-parser.add_argument("--debug", action="store_true", help=argparse.SUPPRESS)
 
-subparsers = parser.add_subparsers(title="Commands")
-commands.ConsoleCommand.add_subparser(subparsers)
-commands.DumpCommand.add_subparser(subparsers)
-commands.TrainCommand.add_subparser(subparsers)
-commands.TrainIrcLogCommand.add_subparser(subparsers)
+def get_parser():
+    def add_module(parsers, submodule):
+        for name in dir(submodule):
+            obj = getattr(submodule, name)
+            if hasattr(obj, "add_subparser"):
+                obj.add_subparser(parsers)
+
+    parser = argparse.ArgumentParser(description="Cobe control")
+    parser.add_argument("--debug", action="store_true", help=argparse.SUPPRESS)
+    cmd_parsers = parser.add_subparsers()
+
+    add_module(cmd_parsers, commands)
+
+    return parser
 
 
 def main():
+    parser = get_parser()
     args = parser.parse_args()
 
     formatter = logging.Formatter("%(levelname)s: %(message)s")
