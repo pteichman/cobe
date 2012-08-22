@@ -6,6 +6,7 @@ import logging
 import sys
 
 from . import commands
+from . import irc_commands
 
 
 def get_parser():
@@ -20,6 +21,7 @@ def get_parser():
     cmd_parsers = parser.add_subparsers()
 
     add_module(cmd_parsers, commands)
+    add_module(cmd_parsers, irc_commands)
 
     return parser
 
