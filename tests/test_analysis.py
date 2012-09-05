@@ -1,10 +1,10 @@
 # Copyright (C) 2012 Peter Teichman
 # coding=utf8
 
+import park
 import unittest2 as unittest
 
 from cobe import analysis
-from cobe import kvstore
 from cobe import model
 from cobe import search
 
@@ -130,7 +130,7 @@ class AnalyzerTest(unittest.TestCase):
         analyzer = analysis.WhitespaceAnalyzer()
         analyzer.add_token_normalizer(analysis.LowercaseNormalizer())
 
-        m = model.Model(analyzer, kvstore.SqliteStore(":memory:"))
+        m = model.Model(analyzer, park.SQLiteStore(":memory:"))
         m.train(u"This is a test")
         m.train(u"this is a test")
 

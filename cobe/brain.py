@@ -3,10 +3,10 @@
 import itertools
 import logging
 import math
+import park
 
 from cobe.analysis import (
     AccentNormalizer, StemNormalizer, WhitespaceAnalyzer)
-from cobe.kvstore import SqliteStore
 from cobe.model import Model
 from cobe.search import RandomWalkSearcher
 from cobe.utils import itime
@@ -42,7 +42,7 @@ class Brain(object):
     def __init__(self, filename):
         self.analyzer = StandardAnalyzer()
 
-        store = SqliteStore(filename)
+        store = park.SQLiteStore(filename)
 
         self.model = Model(self.analyzer, store)
         self.searcher = RandomWalkSearcher(self.model)

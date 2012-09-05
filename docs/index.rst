@@ -33,20 +33,6 @@ Contents:
 .. autoclass:: NgramCounter
     :members:
 
-.. automodule:: cobe.kvstore
-
-.. autoclass:: KVStore
-    :members:
-
-.. autoclass:: BsddbStore
-    :members:
-
-.. autoclass:: SqliteStore
-    :members:
-
-.. autoclass:: LevelDBStore
-    :members:
-
 .. automodule:: cobe.model
 
 .. autoclass:: Model

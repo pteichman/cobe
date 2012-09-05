@@ -1,9 +1,9 @@
 # Copyright (C) 2012 Peter Teichman
 
+import park
 import unittest2 as unittest
 
 from cobe import analysis
-from cobe import kvstore
 from cobe import model
 from cobe import search
 
@@ -23,7 +23,7 @@ class QueryTest(unittest.TestCase):
 class RandomWalkSearcherTest(unittest.TestCase):
     def setUp(self):
         self.analyzer = analysis.WhitespaceAnalyzer()
-        self.store = kvstore.SqliteStore(":memory:")
+        self.store = park.SQLiteStore(":memory:")
         self.model = model.Model(self.analyzer, self.store)
 
     def test_list_strip(self):

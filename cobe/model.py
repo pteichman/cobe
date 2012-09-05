@@ -126,7 +126,7 @@ class Model(object):
         # Leverage LevelDB's sorting to extract all tokens (the things
         # prefixed with the token key for an empty string)
         token_prefix = self._token_key("")
-        all_tokens = self.store.prefix_items(token_prefix, skip_prefix=True)
+        all_tokens = self.store.prefix_items(token_prefix, strip_prefix=True)
 
         self.tokens.load(all_tokens)
 
@@ -263,7 +263,7 @@ class Model(object):
         token_id = self.tokens.get_id(token)
 
         prefix = self._tokens_count_key((token_id,), self.orders[0])
-        items = list(self.store.prefix_keys(prefix, skip_prefix=True))
+        items = list(self.store.prefix_keys(prefix, strip_prefix=True))
 
         if len(items):
             context = rng.choice(items)
@@ -280,7 +280,7 @@ class Model(object):
         # with the key for token_ids
         key = self._tokens_count_key(token_ids, len(token_ids) + 1)
 
-        items = list(self.store.prefix_keys(key, skip_prefix=True))
+        items = list(self.store.prefix_keys(key, strip_prefix=True))
 
         if len(items):
             token_id = rng.choice(items)
@@ -358,7 +358,7 @@ class Model(object):
         key = self._norm_key(prefix, norm)
         get_token = self.tokens.get_token
 
-        for token_id in self.store.prefix_keys(key, skip_prefix=True):
+        for token_id in self.store.prefix_keys(key, strip_prefix=True):
             yield get_token(token_id)
 
     def search_bfs(self, context, end, filter=None):
@@ -383,7 +383,7 @@ class Model(object):
             token_ids = path[-n:]
             key = self._tokens_count_key(token_ids, len(token_ids) + 1)
 
-            next_tokens = list(self.store.prefix_keys(key, skip_prefix=True))
+            next_tokens = list(self.store.prefix_keys(key, strip_prefix=True))
             if next_tokens and filter is not None:
                 next_tokens = filter(next_tokens)
 
@@ -410,7 +410,7 @@ class Model(object):
             token_ids = path[:n]
             key = self._tokens_reverse_key(token_ids)
 
-            prev_tokens = list(self.store.prefix_keys(key, skip_prefix=True))
+            prev_tokens = list(self.store.prefix_keys(key, strip_prefix=True))
             if prev_tokens and filter is not None:
                 prev_tokens = filter(prev_tokens)
 

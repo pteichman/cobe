@@ -4,14 +4,6 @@ import itertools
 import time
 
 
-def ibatch(iterable, size):
-    """Yield a series of batches from iterable, each size elements long."""
-    source = iter(iterable)
-    while True:
-        batch = itertools.islice(source, size)
-        yield itertools.chain([batch.next()], batch)
-
-
 def itime(iterable, seconds):
     """Yield items from iterable until a time duration has passed.
 

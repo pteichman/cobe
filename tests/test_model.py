@@ -1,11 +1,11 @@
 # Copyright (C) 2012 Peter Teichman
 
+import park
 import random
 import unittest2 as unittest
 
 from cobe.analysis import LowercaseNormalizer, WhitespaceAnalyzer
 from cobe.model import Model, TokenRegistry
-from cobe.kvstore import SqliteStore
 
 
 class TestTokenRegistry(unittest.TestCase):
@@ -33,7 +33,7 @@ class TestTokenRegistry(unittest.TestCase):
 class TestModel(unittest.TestCase):
     def setUp(self):
         self.analyzer = WhitespaceAnalyzer()
-        self.store = SqliteStore(":memory:")
+        self.store = park.SQLiteStore(":memory:")
         self.model = Model(self.analyzer, self.store)
 
     def test_init(self):

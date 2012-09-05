@@ -4,6 +4,7 @@ import atexit
 import fileinput
 import logging
 import os
+import park
 import re
 import readline
 import sys
@@ -11,7 +12,6 @@ import sys
 from . import analysis
 
 from .brain import Brain
-from .kvstore import SqliteStore
 from .model import Model
 from .varint import decode, decode_one, encode_one
 
@@ -26,7 +26,7 @@ class DumpCommand(object):
 
     @staticmethod
     def run(args):
-        store = SqliteStore("cobe.store")
+        store = park.SQLiteStore("cobe.store")
         analyzer = analysis.WhitespaceAnalyzer()
         model = Model(analyzer, store)
 
@@ -40,7 +40,7 @@ class DumpCommand(object):
 
         print "3-gram counts:"
         get_token = model.tokens.get_token
-        for ngram, count in model._prefix_items("3", skip_prefix=True):
+        for ngram, count in model._prefix_items("3", strip_prefix=True):
             # This needs a more efficient way to get the token ids,
             # maybe a simple varint-aware string split.
             grams = [get_token(encode_one(i)) for i in decode(ngram)]
