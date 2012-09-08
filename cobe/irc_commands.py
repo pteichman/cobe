@@ -4,7 +4,7 @@ import irc.client
 import logging
 import re
 
-from cobe.brain import Brain
+import cobe.brain
 
 logger = logging.getLogger(__name__)
 
@@ -117,7 +117,7 @@ class IrcClientCommand(object):
 
     @staticmethod
     def run(args):
-        brain = Brain("cobe.store")
+        brain = cobe.brain.Brain("cobe.store")
 
         client = IrcClient(brain, args.ignored_nicks, args.only_nicks)
         client.connect(args.server, args.port, args.nick)

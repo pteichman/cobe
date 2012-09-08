@@ -3,6 +3,7 @@
 import mock
 import unittest2 as unittest
 
+from cobe import control
 from cobe import irc_commands
 
 
@@ -88,3 +89,30 @@ class TestIrcClient(unittest.TestCase):
         client.on_pubmsg(mock_conn, event)
         self.assertFalse(self.brain.train.called)
         self.assertFalse(self.brain.reply.called)
+
+
+class TestIrcCommand(unittest.TestCase):
+    def setUp(self):
+        self.parser = control.get_parser()
+
+    @mock.patch("cobe.brain.Brain")
+    def test_run_command(self, brain):
+        cmdline = "irc-client -s irc.example.org -c #channel".split()
+
+        args = self.parser.parse_args(cmdline)
+
+        with mock.patch("cobe.irc_commands.IrcClient") as client_class:
+            client_class.return_value = client = mock.Mock()
+
+            irc_commands.IrcClientCommand.run(args)
+
+            self.assertTrue(brain.called)
+
+            # client was created
+            self.assertTrue(client_class.called)
+
+            # correct channel was joined
+            client.join.assert_called_with("#channel")
+
+            # irc client was started
+            self.assertTrue(client.start.called)
