@@ -72,11 +72,6 @@ class IrcClient(irc.client.SimpleIRCClient):
         # strip pasted nicks from messages
         msg = re.sub("<\S+>\s+", "", msg)
 
-        # strip kibot style quotes from messages
-        match = re.match("\"(.*)\" --\S+, \d+-\S+\d+.", msg)
-        if match:
-            msg = match.group(1)
-
         # look for messages directed to a user
         match = re.match("\s*(\S+)[,:]\s+(.*?)\s*$", msg)
 
