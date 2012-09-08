@@ -3,7 +3,7 @@ python:
   - "2.7"
   - "2.6"
 
-install: pip install --use-mirrors .
+install: pip install --use-mirrors flake8
 script:
   - flake8 cobe tests
   - python setup.py test
