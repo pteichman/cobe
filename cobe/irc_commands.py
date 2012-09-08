@@ -111,7 +111,7 @@ class IrcClientCommand(object):
         subparser.add_argument("-n", "--nick", default="cobe",
                                help="IRC nickname")
         subparser.add_argument("-c", "--channel", action="append",
-                               help="IRC channel")
+                               required=True, help="IRC channel")
 
         subparser.set_defaults(run=cls.run)
 
