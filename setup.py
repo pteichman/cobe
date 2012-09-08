@@ -8,35 +8,6 @@ import sys
 from setuptools import setup, find_packages, Command
 
 
-class CheckCommand(Command):
-    description = "Run tests."
-    user_options = []
-
-    def initialize_options(self):
-        pass
-
-    def finalize_options(self):
-        pass
-
-    def run(self):
-        import subprocess
-
-        print "Running pep8..."
-        if subprocess.call(["pep8", "cobe", "tests"]):
-            sys.exit("ERROR: failed pep8 checks")
-
-        print "Running pyflakes..."
-        if subprocess.call(["pyflakes", "cobe", "tests"]):
-            sys.exit("ERROR: failed pyflakes checks")
-
-        print "Running tests..."
-        if subprocess.call(["coverage", "run", "--source=cobe,tests",
-                            "./setup.py", "test"]):
-            sys.exit("ERROR: failed unit tests")
-
-        subprocess.call(['coverage', 'report', '-m'])
-
-
 setup(
     name = "cobe",
     version = "2.0.4",
@@ -46,6 +17,11 @@ setup(
     description = "Markov chain based text generator library and chatbot",
     packages = ["cobe"],
     test_suite = "unittest2.collector",
+
+    tests_require = [
+        "mock==0.8.0",
+        "unittest2==0.5.1"
+    ],
 
     install_requires = [
         "PyStemmer==1.2.0",
@@ -64,10 +40,6 @@ setup(
         "Programming Language :: Python",
         "Topic :: Scientific/Engineering :: Artificial Intelligence"
         ],
-
-    cmdclass = {
-        "check": CheckCommand
-        },
 
     entry_points = {
         "console_scripts" : [
