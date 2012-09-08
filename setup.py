@@ -50,17 +50,8 @@ setup(
     install_requires = [
         "PyStemmer==1.2.0",
         "argparse==1.2.1",
-        "park==1.0",
-        "python-irclib==0.4.8"
-        ],
-
-    # The PyPI entry for python-irclib points at a SourceForge files
-    # page. These no longer work with pip's url discovery, as they
-    # append the string "/download" to each filename. I have uploaded
-    # python-irclib 0.4.8's zip file from SourceForge (unmodified) to
-    # the page below so that "pip install cobe" will work.
-    dependency_links = [
-        "http://github.com/pteichman/python-irclib/downloads"
+        "irc==3.0",
+        "park==1.0"
         ],
 
     classifiers = [
