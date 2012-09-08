@@ -19,7 +19,7 @@ setup(
     test_suite = "unittest2.collector",
 
     tests_require = [
-        "mock==0.8.0",
+        "mock==1.0b1",
         "unittest2==0.5.1"
     ],
 
