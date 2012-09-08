@@ -4,6 +4,7 @@
 *.instatrace
 *.pyc
 .coverage
+.tox
 build
 cobe.egg-info
 cobe.pstats
