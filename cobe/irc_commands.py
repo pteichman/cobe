@@ -93,7 +93,7 @@ class IrcClient(irc.client.SimpleIRCClient):
         if not self.only_nicks or user in self.only_nicks:
             self.brain.train(text)
 
-        if to == self.nick:
+        if to == conn.nickname:
             reply = self.brain.reply(text).encode("utf-8")
             conn.privmsg(event.target(), "%s: %s" % (user, reply))
 
