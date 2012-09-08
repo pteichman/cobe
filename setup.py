@@ -50,7 +50,7 @@ setup(
     install_requires = [
         "PyStemmer==1.2.0",
         "argparse==1.2.1",
-        "park==0.9.1",
+        "park==1.0",
         "python-irclib==0.4.8"
         ],
 
