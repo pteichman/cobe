@@ -3,5 +3,7 @@ python:
   - "2.7"
   - "2.6"
 
-install: pip install -r requirements-develop.txt --use-mirrors
-script: python setup.py check
+install: pip install --use-mirrors .
+script:
+  - flake8 cobe tests
+  - python setup.py test
