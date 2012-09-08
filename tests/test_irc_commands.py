@@ -22,7 +22,7 @@ class TestIrcClient(unittest.TestCase):
         self.brain = mock.Mock()
 
     def test_not_channel(self, mock_conn):
-        client = irc_commands.IrcClient(self.brain, [], [])
+        client = irc_commands.IrcClient(self.brain)
 
         # ensure a message that isn't on a channel is ignored
         event = self.pubmsg_event("test message")
@@ -33,7 +33,7 @@ class TestIrcClient(unittest.TestCase):
         self.assertFalse(self.brain.reply.called)
 
     def test_train_on_pubmsg(self, mock_conn):
-        client = irc_commands.IrcClient(self.brain, [], [])
+        client = irc_commands.IrcClient(self.brain)
 
         # make sure an untargeted message is learned but not replied
         client.on_pubmsg(mock_conn, self.pubmsg_event("test message"))
@@ -48,7 +48,7 @@ class TestIrcClient(unittest.TestCase):
         self.assertFalse(self.brain.reply.called)
 
     def test_reply_on_pubmsg(self, mock_conn):
-        client = irc_commands.IrcClient(self.brain, [], [])
+        client = irc_commands.IrcClient(self.brain)
 
         # make sure a targeted message is trained properly
         client.on_pubmsg(mock_conn, self.pubmsg_event("cobe: test message"))
@@ -56,7 +56,7 @@ class TestIrcClient(unittest.TestCase):
         self.brain.reply.assert_called_once_with("test message")
 
     def test_ignored_nicks(self, mock_conn):
-        client = irc_commands.IrcClient(self.brain, ["ignored"], [])
+        client = irc_commands.IrcClient(self.brain, ignored_nicks=["ignored"])
 
         client.on_pubmsg(mock_conn, self.pubmsg_event("cobe: test message"))
         self.brain.train.assert_called_once_with("test message")
@@ -73,7 +73,7 @@ class TestIrcClient(unittest.TestCase):
         self.assertFalse(self.brain.reply.called)
 
     def test_only_nicks(self, mock_conn):
-        client = irc_commands.IrcClient(self.brain, [], ["speaker"])
+        client = irc_commands.IrcClient(self.brain, only_nicks=["speaker"])
 
         client.on_pubmsg(mock_conn, self.pubmsg_event("cobe: test message"))
         self.brain.train.assert_called_once_with("test message")

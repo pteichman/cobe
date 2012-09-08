@@ -10,12 +10,12 @@ logger = logging.getLogger(__name__)
 
 
 class IrcClient(irc.client.SimpleIRCClient):
-    def __init__(self, brain, ignored_nicks, only_nicks):
+    def __init__(self, brain, ignored_nicks=None, only_nicks=None):
         super(IrcClient, self).__init__()
 
         self.brain = brain
-        self.ignored_nicks = ignored_nicks
-        self.only_nicks = only_nicks
+        self.ignored_nicks = set(ignored_nicks or [])
+        self.only_nicks = set(only_nicks or [])
 
         self.channels = set()
 
