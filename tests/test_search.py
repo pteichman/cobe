@@ -14,7 +14,7 @@ class QueryTest(unittest.TestCase):
             dict(term="foo", position=0),
             dict(term="bar", position=1),
             dict(term="baz", position=2)
-            ]
+        ]
 
         query = search.Query(terms)
         self.assertEqual(terms, query.terms)
@@ -64,7 +64,7 @@ class RandomWalkSearcherTest(unittest.TestCase):
             dict(term=u"foo", position=0),
             dict(term=u"bar", position=1),
             dict(term=u"baz", position=2)
-            ]
+        ]
 
         searcher = search.RandomWalkSearcher(self.model)
 

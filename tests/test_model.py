@@ -147,7 +147,7 @@ class TestModel(unittest.TestCase):
             (1, (u"is", u"a", u"test")),
             (1, (u"a", u"test", u"string")),
             (0, (u"will", u"not", u"find"))
-            ]
+        ]
 
         for count, ngram in counts:
             self.assertEquals(count, model.ngram_count(ngram))
@@ -393,8 +393,8 @@ class TestModel(unittest.TestCase):
         model.train(u"<S> this is a test sentence that continues </S>")
         model.train(u"<S> this is another test sentence </S>")
 
-        results = list(model.search_bfs_reverse(
-                u"test sentence </S>".split(), u"<S>"))
+        results = list(
+            model.search_bfs_reverse(u"test sentence </S>".split(), u"<S>"))
 
         # There should be two results
         self.assertEquals(2, len(results))
@@ -402,7 +402,7 @@ class TestModel(unittest.TestCase):
         expected = [
             u"<S> this is a test sentence </S>".split(),
             u"<S> this is another test sentence </S>".split()
-            ]
+        ]
 
         self.assertEqual(sorted(results), sorted(expected))
 

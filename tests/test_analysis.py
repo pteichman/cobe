@@ -81,7 +81,7 @@ class AnalyzerTest(unittest.TestCase):
         expected = [
             ("PrefixNormalizer", u"Foo"),
             ("LowercaseNormalizer", u"foobarbaz")
-            ]
+        ]
 
         result = analyzer.normalize_token(u"Foobarbaz")
 
@@ -105,7 +105,7 @@ class AnalyzerTest(unittest.TestCase):
             ("BigramNormalizer", u"te"),
             ("BigramNormalizer", u"er"),
             ("BigramNormalizer", u"rm")
-            ]
+        ]
 
         self.assertEqual(expected, analyzer.normalize_token(u"term"))
 
@@ -142,7 +142,7 @@ class AnalyzerTest(unittest.TestCase):
             dict(term="is", pos=1),
             dict(term="a", pos=2),
             dict(term="query", pos=3)
-            ]
+        ]
 
         self.assertListEqual(expected, query.terms)
 
@@ -183,7 +183,7 @@ class WhitespaceAnalyzerTest(unittest.TestCase):
             dict(term="foo", pos=0),
             dict(term="bar", pos=1),
             dict(term="baz", pos=2)
-            ]
+        ]
 
         self.assertItemsEqual(expected_terms, query.terms)
 

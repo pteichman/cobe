@@ -18,7 +18,7 @@ class TestVarint(unittest.TestCase):
             8: 0x2000000000000L,
             9: 0x100000000000000L,
             10: 0x8000000000000000L
-            }
+        }
 
         for i in xrange(128):
             self.assertEquals(1, len(encode_one(i)))

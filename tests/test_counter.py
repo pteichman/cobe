@@ -19,7 +19,7 @@ class TestMergeCounter(unittest.TestCase):
             "can read": 2,
             "can read about": 1,
             "can read about its": 1
-            }
+        }
 
     def test_dict_counts(self):
         # dict_counts returns the lexically sorted item tuples from
@@ -34,7 +34,7 @@ class TestMergeCounter(unittest.TestCase):
             ("can read", 2),
             ("can read about", 1),
             ("can read about its", 1)
-            ]
+        ]
 
         counts = counter.dict_counts(self.items)
 
@@ -59,7 +59,7 @@ class TestMergeCounter(unittest.TestCase):
             ("can read", 2),
             ("can read about", 1),
             ("can read about its", 1)
-            ]
+        ]
 
         counts = list(counter.file_counts(tmpfile))
 
@@ -87,7 +87,7 @@ class TestMergeCounter(unittest.TestCase):
             file_item("can read", 2),
             file_item("can read about", 1),
             file_item("can read about its", 1)
-            ]
+        ]
 
         fd.seek(0)
 
@@ -155,7 +155,7 @@ class TestMergeCounter(unittest.TestCase):
             ("can read", 2),
             ("can read about", 1),
             ("can read about its", 1)
-            ]
+        ]
 
         # Merge a single source's items
         merge = counter._sum_merge(counter.dict_counts(self.items))
@@ -164,7 +164,7 @@ class TestMergeCounter(unittest.TestCase):
         items = {
             "one": 1,
             "two": 2
-            }
+        }
 
         expected = [("one", 2), ("two", 4)]
 
@@ -193,7 +193,7 @@ class TestNgramCounter(unittest.TestCase):
             "foo bar baz",
             "foo bar baz2",
             "foo bar baz2"
-            ]
+        ]
 
         expected = [
             ("bar", 7),
@@ -205,7 +205,7 @@ class TestNgramCounter(unittest.TestCase):
             ("foo\tbar", 7),
             ("foo\tbar\tbaz", 4),
             ("foo\tbar\tbaz2", 2)
-            ]
+        ]
 
         self.assertEqual(expected, list(ext.count(items, orders=(3, 2, 1))))
 
