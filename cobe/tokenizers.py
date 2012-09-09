@@ -1,20 +1,55 @@
-# Copyright (C) 2010 Peter Teichman
+# Copyright (C) 2012 Peter Teichman
 
+import abc
 import re
-import Stemmer
 import types
 
 
-class MegaHALTokenizer:
-    """A traditional MegaHAL style tokenizer. This considers any of these
-to be a token:
-  * one or more consecutive alpha characters (plus apostrophe)
-  * one or more consecutive numeric characters
-  * one or more consecutive punctuation/space characters (not apostrophe)
+class Tokenizer(object):
+    """Base class for a Tokenizer
 
-This tokenizer ignores differences in capitalization."""
+    A Tokenizer includes methods for converting a text string to and
+    from a list of tokens.
+
+    """
+    __metaclass__ = abc.ABCMeta
+
+    @abc.abstractmethod
+    def split(self, text):  # pragma: no cover
+        pass
+
+    @abc.abstractmethod
+    def join(self, tokens):  # pragma: no cover
+        pass
+
+
+class WhitespaceTokenizer(Tokenizer):
+    """A simple tokenizer that splits and joins with spaces.
+
+    This is useful during testing or in applications that don't need
+    to handle punctuation separately from words.
+
+    """
+    def split(self, text):
+        return text.split()
+
+    def join(self, tokens):
+        return " ".join(tokens)
+
+
+class MegaHALTokenizer(Tokenizer):
+    """A traditional MegaHAL style tokenizer.
+
+    This considers any of these to be a token:
+    * one or more consecutive alpha characters (plus apostrophe)
+    * one or more consecutive numeric characters
+    * one or more consecutive punctuation/space characters (not apostrophe)
+
+    This tokenizer ignores differences in capitalization.
+
+    """
     def split(self, phrase):
-        if type(phrase) != types.UnicodeType:
+        if not isinstance(phrase, types.UnicodeType):
             raise TypeError("Input must be Unicode")
 
         if len(phrase) == 0:
@@ -29,9 +64,12 @@ This tokenizer ignores differences in capitalization."""
         return words
 
     def join(self, words):
-        """Capitalize the first alpha character in the reply and the
-        first alpha character that follows one of [.?!] and a
-        space."""
+        """Re-join a MegaHAL style response.
+
+        Capitalizes the first alpha character in the reply and any
+        alpha character that follows [.?!] and a space.
+
+        """
         chars = list(u"".join(words))
         start = True
 
@@ -51,20 +89,24 @@ This tokenizer ignores differences in capitalization."""
         return u"".join(chars)
 
 
-class CobeTokenizer:
-    """A tokenizer that is somewhat improved from MegaHAL. These are
-considered tokens:
-  * one or more consecutive Unicode word characters (plus apostrophe and dash)
-  * one or more consecutive Unicode non-word characters, possibly with
-    internal whitespace
-  * the whitespace between word or non-word tokens
-  * an HTTP url, [word]: followed by any run of non-space characters.
+class CobeTokenizer(Tokenizer):
+    """A tokenizer that is somewhat improved from MegaHAL.
 
-This tokenizer collapses multiple spaces in a whitespace token into a
-single space character.
+    These are considered tokens:
+    * one or more consecutive Unicode word characters (plus apostrophe
+      and dash)
+    * one or more consecutive Unicode non-word characters, possibly with
+      internal whitespace
+    * the whitespace between word or non-word tokens
+    * an HTTP url, [word]: followed by any run of non-space characters.
 
-It preserves differences in case. foo, Foo, and FOO are different
-tokens."""
+    This tokenizer collapses multiple spaces in a whitespace token
+    into a single space character.
+
+    It preserves differences in case. foo, Foo, and FOO are different
+    tokens.
+
+    """
     def __init__(self):
         # Add hyphen to the list of possible word characters, so hyphenated
         # words become one token (e.g. hy-phen). But don't remove it from
@@ -79,7 +121,7 @@ tokens."""
                                 re.UNICODE)
 
     def split(self, phrase):
-        if type(phrase) != types.UnicodeType:
+        if not isinstance(phrase, types.UnicodeType):
             raise TypeError("Input must be Unicode")
 
         # Strip leading and trailing whitespace. This might not be the
@@ -102,30 +144,3 @@ tokens."""
 
     def join(self, words):
         return u"".join(words)
-
-
-class CobeStemmer:
-    def __init__(self, name):
-        # use the PyStemmer Snowball stemmer bindings
-        self.stemmer = Stemmer.Stemmer(name)
-
-    def stem(self, token):
-        if not re.search("\w", token, re.UNICODE):
-            return self.stem_nonword(token)
-
-        # Don't preserve case when stemming, i.e. create lowercase stems.
-        # This will allow us to create replies that switch the case of
-        # input words, but still generate the reply in context with the
-        # generated case.
-
-        stem = self.stemmer.stemWord(token.lower())
-
-        return stem
-
-    def stem_nonword(self, token):
-        # Stem common smile and frown emoticons down to :) and :(
-        if re.search(":-?[ \)]*\)", token):
-            return ":)"
-
-        if re.search(":-?[' \(]*\(", token):
-            return ":("
