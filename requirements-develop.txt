@@ -1,5 +1,0 @@
-coverage==3.5.2
-nose==1.1.2
-pep8==1.0.1
-pyflakes==0.5.0
-unittest2==0.5.1
