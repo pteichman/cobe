@@ -1,161 +1,133 @@
-# Copyright (C) 2011 Peter Teichman
+# Copyright (C) 2012 Peter Teichman
 
 import atexit
+import fileinput
 import logging
 import os
+import park
 import re
 import readline
-import Stemmer
 import sys
-import time
+
+from . import analysis
 
 from .brain import Brain
-from .irc import Runner
+from .model import Model
+from .varint import decode, decode_one, encode_one
 
-log = logging.getLogger("cobe")
+log = logging.getLogger(__name__)
 
 
-class InitCommand:
+class DumpCommand(object):
     @classmethod
     def add_subparser(cls, parser):
-        subparser = parser.add_parser("init", help="Initialize a new brain")
-
-        subparser.add_argument("--force", action="store_true")
-        subparser.add_argument("--order", type=int, default=3)
-        subparser.add_argument("--megahal", action="store_true",
-                               help="Use MegaHAL-compatible tokenizer")
+        subparser = parser.add_parser("dump")
         subparser.set_defaults(run=cls.run)
 
     @staticmethod
     def run(args):
-        filename = args.brain
+        store = park.SQLiteStore("cobe.store")
+        analyzer = analysis.WhitespaceAnalyzer()
+        model = Model(analyzer, store)
 
-        if os.path.exists(filename):
-            if args.force:
-                os.remove(filename)
-            else:
-                log.error("%s already exists!", filename)
-                return
+        print "Tokens:"
+        for token, token_id in model.tokens.token_ids.iteritems():
+            print token, decode_one(token_id)
 
-        tokenizer = None
-        if args.megahal:
-            tokenizer = "MegaHAL"
+        print "Normalized tokens:"
+        for key in model._prefix_keys("n"):
+            print key
 
-        Brain.init(filename, order=args.order, tokenizer=tokenizer)
-
-
-def progress_generator(filename):
-    s = os.stat(filename)
-    size_left = s.st_size
-
-    fd = open(filename)
-    for line in fd.xreadlines():
-        size_left = size_left - len(line)
-        progress = 100 * (1. - (float(size_left) / float(s.st_size)))
-
-        yield line, progress
-
-    fd.close()
+        print "3-gram counts:"
+        get_token = model.tokens.get_token
+        for ngram, count in model._prefix_items("3", strip_prefix=True):
+            # This needs a more efficient way to get the token ids,
+            # maybe a simple varint-aware string split.
+            grams = [get_token(encode_one(i)) for i in decode(ngram)]
+            print grams, decode_one(count)
 
 
-class LearnCommand:
+class TrainCommand(object):
     @classmethod
     def add_subparser(cls, parser):
-        subparser = parser.add_parser("learn", help="Learn a file of text")
+        subparser = parser.add_parser("train", help="Train files of text")
         subparser.add_argument("file", nargs="+")
         subparser.set_defaults(run=cls.run)
 
     @staticmethod
     def run(args):
-        b = Brain(args.brain)
-        b.start_batch_learning()
+        brain = Brain("cobe.store")
 
-        for filename in args.file:
-            now = time.time()
-            print filename
+        files = fileinput.FileInput(args.file,
+                                    openhook=fileinput.hook_compressed)
 
-            count = 0
-            for line, progress in progress_generator(filename):
-                show_progress = ((count % 1000) == 0)
+        def lines():
+            for line in files:
+                if files.isfirstline():
+                    print
+                    print files.filename()
 
-                if show_progress:
-                    elapsed = time.time() - now
-                    sys.stdout.write("\r%.0f%% (%d/s)" % (progress,
-                                                          count / elapsed))
+                if (files.lineno() % 1000) == 0:
+                    print "%d..." % files.lineno(),
                     sys.stdout.flush()
 
-                b.learn(line.strip())
-                count = count + 1
+                yield line.decode("utf-8", "replace")
 
-                if (count % 10000) == 0:
-                    b.graph.commit()
+            # Finish the count status line printed above
+            print
 
-            elapsed = time.time() - now
-            print "\r100%% (%d/s)" % (count / elapsed)
-
-        b.stop_batch_learning()
+        brain.train_many(lines())
+        files.close()
 
 
-class LearnIrcLogCommand:
+class TrainIrcLogCommand:
     @classmethod
     def add_subparser(cls, parser):
-        subparser = parser.add_parser("learn-irc-log",
-                                      help="Learn a file of IRC log text")
+        subparser = parser.add_parser("train-irc-log",
+                                      help="Train a file of IRC log text")
         subparser.add_argument("-i", "--ignore-nick", action="append",
                                dest="ignored_nicks",
                                help="Ignore an IRC nick")
         subparser.add_argument("-o", "--only-nick", action="append",
                                dest="only_nicks",
-                               help="Only learn from specified nicks")
-        subparser.add_argument("-r", "--reply-to", action="append",
-                               help="Reply (invisibly) to things said "
-                               "to specified nick")
+                               help="Only train from specified nicks")
         subparser.add_argument("file", nargs="+")
         subparser.set_defaults(run=cls.run)
 
     @classmethod
     def run(cls, args):
-        b = Brain(args.brain)
-        b.start_batch_learning()
+        brain = Brain("cobe.store")
 
-        for filename in args.file:
-            now = time.time()
-            print filename
+        files = fileinput.FileInput(args.file,
+                                    openhook=fileinput.hook_compressed)
 
-            count = 0
-            for line, progress in progress_generator(filename):
-                show_progress = ((count % 100) == 0)
+        lines = cls._irc_lines(files, ignored_nicks=args.ignored_nicks,
+                               only_nicks=args.only_nicks)
+        brain.train_many(lines)
+        files.close()
 
-                if show_progress:
-                    elapsed = time.time() - now
-                    sys.stdout.write("\r%.0f%% (%d/s)" % (progress,
-                                                          count / elapsed))
-                    sys.stdout.flush()
+    @classmethod
+    def _irc_lines(cls, files, ignored_nicks=None, only_nicks=None):
+        for line in files:
+            if files.isfirstline():
+                print
+                print files.filename()
 
-                count = count + 1
+            if (files.lineno() % 1000) == 0:
+                print "%d..." % files.lineno(),
+                sys.stdout.flush()
 
-                if (count % 1000) == 0:
-                    b.graph.commit()
+            msg = cls._parse_irc_message(line, ignored_nicks=ignored_nicks,
+                                         only_nicks=only_nicks)
 
-                parsed = cls._parse_irc_message(line.strip(),
-                                                args.ignored_nicks,
-                                                args.only_nicks)
-                if parsed is None:
-                    continue
+            if msg is not None:
+                yield msg.decode("utf-8", "replace")
 
-                to, msg = parsed
-                b.learn(msg)
+        # Finish the count status line printed above
+        print
 
-                if args.reply_to is not None and to in args.reply_to:
-                    b.reply(msg)
-
-            elapsed = time.time() - now
-            print "\r100%% (%d/s)" % (count / elapsed)
-
-        b.stop_batch_learning()
-
-    @staticmethod
-    def _parse_irc_message(msg, ignored_nicks=None, only_nicks=None):
+    @classmethod
+    def _parse_irc_message(cls, msg, ignored_nicks=None, only_nicks=None):
         # only match lines of the form "HH:MM <nick> message"
         match = re.match("\d+:\d+\s+<(.+?)>\s+(.*)", msg)
         if not match:
@@ -170,19 +142,16 @@ class LearnIrcLogCommand:
         if only_nicks is not None and nick not in only_nicks:
             return None
 
-        to = None
-
         # strip "username: " at the beginning of messages
-        match = re.search("^(\S+)[,:]\s+(\S.*)", msg)
+        match = re.search("^\S+[,:]\s+(\S.*)", msg)
         if match:
-            to = match.group(1)
-            msg = match.group(2)
+            msg = match.group(1)
 
         # strip kibot style '"asdf" --user, 06-oct-09' quotes
         msg = re.sub("\"(.*)\" --\S+,\s+\d+-\S+-\d+",
                      lambda m: m.group(1), msg)
 
-        return to, msg
+        return msg
 
 
 class ConsoleCommand:
@@ -193,7 +162,7 @@ class ConsoleCommand:
 
     @staticmethod
     def run(args):
-        b = Brain(args.brain)
+        brain = Brain("cobe.store")
 
         history = os.path.expanduser("~/.cobe_history")
         try:
@@ -204,72 +173,10 @@ class ConsoleCommand:
 
         while True:
             try:
-                cmd = raw_input("> ")
+                text = raw_input("> ").decode("utf-8")
             except EOFError:
                 print
                 sys.exit(0)
 
-            b.learn(cmd)
-            print b.reply(cmd).encode("utf-8")
-
-
-class IrcClientCommand:
-    @classmethod
-    def add_subparser(cls, parser):
-        subparser = parser.add_parser("irc-client",
-                                      help="IRC client [requires twisted]")
-        subparser.add_argument("-s", "--server", required=True,
-                               help="IRC server hostname")
-        subparser.add_argument("-p", "--port", type=int, default=6667,
-                               help="IRC server port")
-        subparser.add_argument("-n", "--nick", default="cobe",
-                               help="IRC nick")
-        subparser.add_argument("-c", "--channel", required=True,
-                               help="IRC channel")
-        subparser.add_argument("-l", "--log-channel",
-                               help="IRC channel for logging")
-        subparser.add_argument("-i", "--ignore-nick", action="append",
-                               dest="ignored_nicks",
-                               help="Ignore an IRC nick")
-        subparser.add_argument("-o", "--only-nick", action="append",
-                               dest="only_nicks",
-                               help="Only learn from a specific IRC nick")
-
-        subparser.set_defaults(run=cls.run)
-
-    @staticmethod
-    def run(args):
-        b = Brain(args.brain)
-
-        Runner().run(b, args)
-
-
-class SetStemmerCommand:
-    @classmethod
-    def add_subparser(cls, parser):
-        subparser = parser.add_parser("set-stemmer",
-                                      help="Configure a stemmer")
-
-        subparser.set_defaults(run=cls.run)
-
-        subparser.add_argument("language", choices=Stemmer.algorithms(),
-                               help="Stemmer language")
-
-    @staticmethod
-    def run(args):
-        b = Brain(args.brain)
-
-        b.set_stemmer(args.language)
-
-
-class DelStemmerCommand:
-    @classmethod
-    def add_subparser(cls, parser):
-        subparser = parser.add_parser("del-stemmer", help="Delete the stemmer")
-        subparser.set_defaults(run=cls.run)
-
-    @staticmethod
-    def run(args):
-        b = Brain(args.brain)
-
-        b.del_stemmer()
+            brain.train(text)
+            print brain.reply(text)

@@ -1,28 +1,33 @@
+# Copyright (C) 2012 Peter Teichman
+
 import argparse
 import codecs
 import logging
 import sys
 
 from . import commands
-from . import instatrace
+from . import irc_commands
 
-parser = argparse.ArgumentParser(description="Cobe control")
-parser.add_argument("-b", "--brain", default="cobe.brain")
-parser.add_argument("--debug", action="store_true", help=argparse.SUPPRESS)
-parser.add_argument("--instatrace", metavar="FILE",
-                    help="log performance statistics to FILE")
 
-subparsers = parser.add_subparsers(title="Commands")
-commands.ConsoleCommand.add_subparser(subparsers)
-commands.InitCommand.add_subparser(subparsers)
-commands.IrcClientCommand.add_subparser(subparsers)
-commands.LearnCommand.add_subparser(subparsers)
-commands.LearnIrcLogCommand.add_subparser(subparsers)
-commands.SetStemmerCommand.add_subparser(subparsers)
-commands.DelStemmerCommand.add_subparser(subparsers)
+def get_parser():
+    def add_module(parsers, submodule):
+        for name in dir(submodule):
+            obj = getattr(submodule, name)
+            if hasattr(obj, "add_subparser"):
+                obj.add_subparser(parsers)
+
+    parser = argparse.ArgumentParser(description="Cobe control")
+    parser.add_argument("--debug", action="store_true", help=argparse.SUPPRESS)
+    cmd_parsers = parser.add_subparsers()
+
+    add_module(cmd_parsers, commands)
+    add_module(cmd_parsers, irc_commands)
+
+    return parser
 
 
 def main():
+    parser = get_parser()
     args = parser.parse_args()
 
     formatter = logging.Formatter("%(levelname)s: %(message)s")
@@ -34,9 +39,6 @@ def main():
         logging.root.setLevel(logging.DEBUG)
     else:
         logging.root.setLevel(logging.INFO)
-
-    if args.instatrace:
-        instatrace.init_trace(args.instatrace)
 
     try:
         args.run(args)

@@ -1,11 +1,14 @@
 *.brain
-*.brain-journal
+*-journal
 *.egg
 *.instatrace
 *.pyc
 .coverage
+.tox
 build
 cobe.egg-info
 cobe.pstats
 dist
+docs/_build
+test_model.cobe
 virtualenv/
