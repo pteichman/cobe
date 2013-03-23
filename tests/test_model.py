@@ -1,7 +1,11 @@
-# Copyright (C) 2012 Peter Teichman
+# Copyright (C) 2013 Peter Teichman
+# coding=utf-8
 
+import os
 import park
 import random
+import shutil
+import tempfile
 import unittest2 as unittest
 
 from cobe.analysis import LowercaseNormalizer, WhitespaceAnalyzer
@@ -9,27 +13,215 @@ from cobe.model import Model, TokenRegistry
 
 
 class TestTokenRegistry(unittest.TestCase):
+    def setUp(self):
+        tf = tempfile.NamedTemporaryFile(delete=False)
+        tf.close()
+
+        self.filename = tf.name
+
+    def tearDown(self):
+        os.remove(self.filename)
+
     def test_get_new_tokens(self):
-        tokens = TokenRegistry()
+        tokens = TokenRegistry(self.filename)
 
         # First, register four new tokens and make sure they get the
         # expected ids.
         for token_id, token in enumerate(u"this is a test".split()):
-            self.assertEquals(chr(token_id), tokens.get_id(token))
+            self.assertEquals(token_id, tokens.get_id(token))
 
         # Then, repeat the same check to make sure they aren't
         # re-registered.
         for token_id, token in enumerate(u"this is a test".split()):
-            self.assertEquals(chr(token_id), tokens.get_id(token))
+            self.assertEquals(token_id, tokens.get_id(token))
 
     def test_non_unicode(self):
         # Test the Unicode-checking entry points in TokenRegistry
-        tokens = TokenRegistry()
+        tokens = TokenRegistry(self.filename)
 
         with self.assertRaises(TypeError):
-            tokens.get_id("non-unicode")
+            tokens.get_id("non-unicode string")
+
+    def test_unicode(self):
+        tokens = TokenRegistry(self.filename)
+        self.assertEquals(0, tokens.get_id(u"<∅>"))
+
+        # Reopen the file and ensure the token is loaded from disk
+        tokens = TokenRegistry(self.filename)
+        self.assertIn(u"<∅>", tokens.token_ids)
+        self.assertEquals(0, tokens.get_id(u"<∅>"))
+
+        # And make sure it's not re-registered on subsequent gets
+        self.assertEquals(0, tokens.get_id(u"<∅>"))
+
+    def test_del(self):
+        tokens = TokenRegistry(self.filename)
+
+        # Ensure that a token with a DEL character (0x7f) is saved and
+        # loaded correctly. This is not likely in practice, but
+        # codecs.open() considers a DEL an end of line character.
+
+        token = u"foo\x7fbar"
+        self.assertEquals(0, tokens.get_id(token))
+
+        # Reopen the file and ensure the token is loaded from disk
+        tokens = TokenRegistry(self.filename)
+        self.assertIn(token, tokens.token_ids)
+        self.assertEquals(0, tokens.get_id(token))
 
 
+class SharedModelTests(object):
+    # subclasses must set self.order to an integer ngram order
+    def setUp(self):
+        self.model = Model(self.__class__.__name__, self.order)
+
+        training = [
+            u"this is a test",
+            u"this is another test"
+            ]
+
+        for text in training:
+            self.model.train(text)
+
+    def tearDown(self):
+        shutil.rmtree(self.model.path)
+        del self.model
+
+    def test_limits(self):
+        with self.assertRaises(ValueError):
+            self.model.get_ngram_count(tuple())
+
+        with self.assertRaises(ValueError):
+            ng = ("foo",) * (self.order + 1)
+            self.model.get_ngram_count(ng)
+
+    def assertNgramCounts(self, model, expected):
+        for each in expected:
+            ngram, count = tuple(each[:-1]), each[-1]
+            self.assertEquals(count, model.get_ngram_count(ngram), str(ngram))
+
+    def do_test_unigram_counts(self):
+        # At this point the model has 7 known tokens:
+        # <∅> </∅> a another is test this
+        #
+        # With these counts:
+        expected = [
+            (u"<∅>", 2),
+            (u"</∅>", 2),
+            (u"a", 1),
+            (u"another", 1),
+            (u"is", 2),
+            (u"test", 2),
+            (u"this", 2)
+            ]
+
+        self.assertNgramCounts(self.model, expected)
+
+    def do_test_bigram_counts(self):
+        expected = [
+            (u"<∅>", u"this", 2),
+            (u"this", u"is", 2),
+            (u"is", u"a", 1),
+            (u"a", u"test", 1),
+            (u"test", u"</∅>", 2),
+            (u"is", u"another", 1),
+            (u"another", u"test", 1),
+            ]
+
+        self.assertNgramCounts(self.model, expected)
+
+    def do_test_trigram_counts(self):
+        expected = [
+            (u"<∅>", u"this", u"is", 2),
+            (u"this", u"is", u"a", 1),
+            (u"is", u"a", u"test", 1),
+            (u"a", u"test", u"</∅>", 1),
+            (u"this", u"is", u"another", 1),
+            (u"is", u"another", u"test", 1),
+            (u"another", u"test", u"</∅>", 1),
+            ]
+
+        self.assertNgramCounts(self.model, expected)
+
+    def do_test_entropy(self):
+        e1 = self.model.entropy(u"this is a test")
+        e2 = self.model.entropy(u"this is another test")
+
+        self.assertAlmostEquals(e1, e2)
+
+        self.assertAlmostEquals(0.0, self.model.entropy("never trained"))
+        self.assertAlmostEquals(
+            0.0, self.model.entropy("this is another test too"))
+
+
+class TestUnigramModel(SharedModelTests, unittest.TestCase):
+    order = 1
+
+    def test_counts(self):
+        self.do_test_unigram_counts()
+
+
+class TestBigramModel(SharedModelTests, unittest.TestCase):
+    order = 2
+
+    def test_counts(self):
+        self.do_test_unigram_counts()
+        self.do_test_bigram_counts()
+
+    def test_entropy(self):
+        self.do_test_entropy()
+
+    def test_prob(self):
+        self.assertAlmostEquals(1.0, self.model.prob(u"is", [u"this"]))
+        self.assertAlmostEquals(0.5, self.model.prob(u"a", [u"is"]))
+
+    def test_logprob(self):
+        self.assertAlmostEquals(0.0, self.model.logprob(u"is", [u"this"]))
+        self.assertAlmostEquals(1.0, self.model.logprob(u"a", [u"is"]))
+
+
+class TestTrigramModel(SharedModelTests, unittest.TestCase):
+    order = 3
+
+    def test_counts(self):
+        self.do_test_unigram_counts()
+        self.do_test_bigram_counts()
+        self.do_test_trigram_counts()
+
+    def test_entropy(self):
+        self.do_test_entropy()
+
+    def test_prob(self):
+        # context, token, expected
+        tests = [
+            ([u"this"], u"is", 1.0),
+            ([u"is"], u"a", 0.5),
+            ([u"<∅>", u"this"], u"is", 1.0),
+            ([u"this", u"is"], u"a", 0.5),
+            ]
+
+        for test in tests:
+            context, token, expected = test
+            self.assertAlmostEquals(expected, self.model.prob(token, context),
+                                    msg=test)
+
+    def test_logprob(self):
+        # context, token, expected
+        tests = [
+            ([u"this"], u"is", 0.0),
+            ([u"is"], u"a", 1.0),
+            ([u"<∅>", u"this"], u"is", 0.0),
+            ([u"this", u"is"], u"a", 1.0),
+            ]
+
+        for test in tests:
+            context, token, expected = test
+            self.assertAlmostEquals(expected,
+                                    self.model.logprob(token, context),
+                                    msg=test)
+
+
+@unittest.skip("skip old model tests")
 class TestModel(unittest.TestCase):
     def setUp(self):
         self.analyzer = WhitespaceAnalyzer()
@@ -90,44 +282,6 @@ class TestModel(unittest.TestCase):
 
         with self.assertRaises(TypeError):
             model.search_bfs_reverse(["context"], "non-unicode").next()
-
-    def test_ngrams(self):
-        model = self.model
-        tokens = "this is a test string for n-grams".split()
-
-        # Test n=3
-        ngrams = list(model._ngrams(tokens, 3))
-        expected = [["this", "is", "a"],
-                    ["is", "a", "test"],
-                    ["a", "test", "string"],
-                    ["test", "string", "for"],
-                    ["string", "for", "n-grams"]]
-
-        # Test n=2
-        ngrams = list(model._ngrams(tokens, 2))
-        expected = [["this", "is"],
-                    ["is", "a"],
-                    ["a", "test"],
-                    ["test", "string"],
-                    ["string", "for"],
-                    ["for", "n-grams"]]
-
-        # Test unigrams
-        ngrams = list(model._ngrams(tokens, 1))
-        expected = [["this"], ["is"], ["a"], ["test"], ["string"],
-                    ["for"], ["n-grams"]]
-
-        self.assertEquals(expected, ngrams)
-
-    def test_ngrams_short(self):
-        model = self.model
-        tokens = "this is".split()
-
-        # Test n=3 with a string that doesn't have any 3-grams
-        ngrams = list(model._ngrams(tokens, 3))
-        expected = []
-
-        self.assertEquals(expected, ngrams)
 
     def test_train(self):
         model = self.model

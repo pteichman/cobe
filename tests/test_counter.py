@@ -21,25 +21,6 @@ class TestMergeCounter(unittest.TestCase):
             "can read about its": 1
         }
 
-    def test_dict_counts(self):
-        # dict_counts returns the lexically sorted item tuples from
-        # its argument. Use n-grams from cobe's README as test data.
-        counter = cobe.counter.MergeCounter()
-
-        expected = [
-            ("an", 1),
-            ("an on-disk", 1),
-            ("an on-disk data", 1),
-            ("can", 3),
-            ("can read", 2),
-            ("can read about", 1),
-            ("can read about its", 1)
-        ]
-
-        counts = counter.dict_counts(self.items)
-
-        self.assertEqual(expected, counts)
-
     def test_file_counts(self):
         counter = cobe.counter.MergeCounter()
 
@@ -143,35 +124,6 @@ class TestMergeCounter(unittest.TestCase):
 
         for item, count in counts:
             self.assertEqual(self.items[item], count)
-
-    def test_sum_merge(self):
-        counter = cobe.counter.MergeCounter()
-
-        expected = [
-            ("an", 1),
-            ("an on-disk", 1),
-            ("an on-disk data", 1),
-            ("can", 3),
-            ("can read", 2),
-            ("can read about", 1),
-            ("can read about its", 1)
-        ]
-
-        # Merge a single source's items
-        merge = counter._sum_merge(counter.dict_counts(self.items))
-        self.assertEqual(expected, list(merge))
-
-        items = {
-            "one": 1,
-            "two": 2
-        }
-
-        expected = [("one", 2), ("two", 4)]
-
-        # Merge these items twice
-        merge = counter._sum_merge(counter.dict_counts(items),
-                                   counter.dict_counts(items))
-        self.assertEqual(expected, list(merge))
 
 
 class TestNgramCounter(unittest.TestCase):

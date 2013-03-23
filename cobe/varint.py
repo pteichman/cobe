@@ -81,6 +81,40 @@ def decode_one(data):
             return cur
 
 
+def write_one(value, fd):
+    local_chr = chr
+    local_write = fd.write
+
+    if value >= 0:
+        bits = value & 0x7f
+        value >>= 7
+        while value:
+            fd.write(local_chr(0x80 | bits))
+            bits = value & 0x7f
+            value >>= 7
+        fd.write(local_chr(bits))
+
+
+def read_one(fd):
+    local_ord = ord
+    local_read = fd.read
+
+    cur = shift = 0
+
+    while 1:
+        r = local_read(1)
+        if not r:
+            break
+
+        b = local_ord(r)
+        cur |= ((b & 0x7f) << shift)
+
+        if b & 0x80:
+            shift += 7
+        else:
+            return cur
+
+
 def decode(data):
     # At least for small data, it's a significant performance
     # improvement to copy the data into a byte array to avoid calling

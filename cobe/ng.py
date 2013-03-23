@@ -6,6 +6,7 @@ import heapq
 import io
 import itertools
 import logging
+import math
 import operator
 import os
 import tempfile
@@ -14,11 +15,45 @@ import varint
 START_TOKEN = u"<∅>"
 END_TOKEN = u"</∅>"
 
+Brain = collections.namedtuple("Brain", "model tokenizer")
+NgramCount = collections.namedtuple("NgramCount", "ngram count")
+
 
 def ngrams(grams, n):
     """Yield successive n-length ranges from grams"""
     for i in xrange(0, len(grams) - n + 1):
-        yield grams[i:i+n]
+        yield tuple(grams[i:i+n])
+
+
+def ngram_counts(grams, orders):
+    c = collections.Counter(many_ngrams(grams, orders))
+
+    return frozenset(itertools.starmap(NgramCount, c.iteritems()))
+
+
+def sentence(grams):
+    """Wrap a sequence of grams in sentence start and end tokens"""
+    return (START_TOKEN,) + grams + (END_TOKEN,)
+
+
+def train(brain, text):
+    t = sentence(brain.tokenizer(unicode(text)))
+
+    counts = ngram_counts(t, range(1, brain.model.order + 1))
+
+    brain.model.update_counts(counts)
+
+
+def entropy(brain, text):
+    t = sentence(brain.tokenizer(unicode(text)))
+
+    log = math.log
+    count = brain.model.get_count
+
+    def logprob(ngram):
+        return log(count(ngram[:-1])) - log(count(ngram))
+
+    return sum(map(logprob, ngrams(t, brain.model.order)))
 
 
 def many_ngrams(grams, orders):
@@ -34,7 +69,7 @@ def iter_ngrams(tokenize, iterable, orders=(3,)):
 
     """
     for text in iterable:
-        for each in many_ngrams(tokenize(text), orders):
+        for each in many_ngrams(sentence(tokenize(text)), orders):
             yield each
 
 
@@ -60,6 +95,11 @@ def transactions(generator):
 
     if len(pending) > 0:
         logging.warn("Skipping incomplete ngram transaction at end")
+
+
+def build_index(ngrams):
+    # 
+    pass
 
 
 def merge_counts(*iters):

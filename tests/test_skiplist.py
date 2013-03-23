@@ -13,7 +13,7 @@ class TestSkiplist(unittest.TestCase):
             ("quux", "quuux")
         ]
 
-        skip = skiplist.Skiplist(maxsize=10)
+        skip = skiplist.Skiplist(maxsize=10, use_finger=True)
         for key, value in items:
             skip.insert(key, value)
 
@@ -25,6 +25,18 @@ class TestSkiplist(unittest.TestCase):
 
         skip.delete("foo")
         self.assertEqual([], list(skip.items()))
+
+    def test_delete_two(self):
+        skip = skiplist.Skiplist(maxsize=10)
+        skip.insert("foo", "bar")
+        skip.insert("quux", "quuux")
+
+        skip.delete("foo")
+        self.assertEqual([("quux", "quuux")], list(skip.items()))
+
+        skip.insert("foo", "bar")
+        skip.delete("quux")
+        self.assertEqual([("foo", "bar")], list(skip.items()))
 
     def test_delete(self):
         items = [

@@ -6,11 +6,16 @@ import random
 
 class Skiplist(object):
     """A dict-like data structure storing its data in a skiplist"""
-    def __init__(self, maxsize=65535):
+    def __init__(self, maxsize=65535, use_finger=False):
         self.max_level = max(1, int(math.floor(math.log(maxsize, 2))))
         self.level = 1
 
         self.head = self._make_node(self.max_level, None, None)
+        self.finger = self._make_update()
+
+        self._find_prev = self._find_prev_from_head
+        if use_finger:
+            self._find_prev = self._find_prev_with_finger
 
     def _make_node(self, level, key, value):
         # each node is a list with this layout:
@@ -22,8 +27,7 @@ class Skiplist(object):
         return node
 
     def _make_update(self):
-        # update is 1-indexed by level, so give this an extra item
-        return [None] * (1 + self.max_level)
+        return [None] * self.max_level
 
     def _random_level(self):
         # assume p=0.5; use each successive bit of r as a uniformly
@@ -40,16 +44,35 @@ class Skiplist(object):
 
         return ret
 
+    def _find_prev_from_head(self, key, update):
+        node = self.head
+        for i in reversed(xrange(self.level)):
+            while node[2 + i] is not None and node[2 + i][0] < key:
+                node = node[2 + i]
+            update[i] = node
+
+        return node
+
+#    def _find_prev_with_finger(self, key, update):
+#        finger = self.finger
+#        for i in reversed(xrange(self.level)):
+#            node = finger[i]
+#            if node is not None and node[0] < key:
+#                node = 
+
+    def get(self, key, default=None):
+        update = self._make_update()
+
+        node = self._find_prev(key, update)[2]
+        if node is not None and node[0] == key:
+            return node[1]
+
+        return default
+
     def insert(self, key, value):
         update = self._make_update()
 
-        node = self.head
-        for i in xrange(self.level, 0, -1):
-            while node[1 + i] is not None and node[1 + i][0] < key:
-                node = node[1 + i]
-            update[i] = node
-
-        node = node[2]
+        node = self._find_prev(key, update)[2]
         if node is not None and node[0] == key:
             node[1] = value
             return
@@ -58,31 +81,25 @@ class Skiplist(object):
         assert level <= self.max_level
 
         if level > self.level:
-            for i in xrange(self.level + 1, level - 1, -1):
+            for i in reversed(xrange(level, self.level + 1)):
                 update[i] = self.head
             self.level = level
 
         x = self._make_node(level, key, value)
-        for i in xrange(1, level + 1):
+        for i in xrange(level):
             if update[i] is not None:
-                x[1 + i] = update[i][1 + i]
-                update[i][1 + i] = x
+                x[2 + i] = update[i][2 + i]
+                update[i][2 + i] = x
 
     def delete(self, key):
         update = self._make_update()
 
-        node = self.head
-        for i in xrange(self.level, 0, -1):
-            while node[1 + i] is not None and node[1 + i][0] < key:
-                node = node[1 + i]
-            update[i] = node
-
-        node = node[2]
+        node = self._find_prev(key, update)[2]
         if node is None or node[0] != key:
             return
 
         # Remove node from any item in update where it's next
-        for i in xrange(1, self.level + 1):
+        for i in xrange(self.level):
             if update[i][2] != node:
                 break
             update[i][2] = node[2]

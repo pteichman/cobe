@@ -5,8 +5,10 @@ import heapq
 import logging
 import operator
 import tempfile
+import types
 
-from . import varint
+from cobe import ng
+from cobe import varint
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +63,8 @@ class MergeCounter(object):
         left = self.max_len
 
         for item, count in items:
+            assert type(item) is types.StringType
+
             if item not in counts:
                 counts[item] = count
                 left -= len(item)
@@ -81,21 +85,21 @@ class MergeCounter(object):
         # Merge in-memory counts with the overflow files
         logger.debug("merging %d overflow files", len(fds))
 
-        sources = [self.dict_counts(counts)]
+        sources = [ng.dict_counts(counts)]
         for fd in fds:
             sources.append(self.file_counts(fd))
 
-        return self._sum_merge(*sources)
+        return ng.merge_counts(*sources)
 
     def _overflow(self, counts, fds):
         fd = tempfile.TemporaryFile()
 
-        source = self.dict_counts(counts)
+        source = ng.dict_counts(counts)
         if len(fds) > self.max_fds:
             # If we've run out of file descriptors, merge the
             # in-memory counts with the oldest fd in the list.
             file_source = self.file_counts(fds.pop(0))
-            source = self._sum_merge(source, file_source)
+            source = ng.merge_counts(source, file_source)
 
         write = fd.write
         for item, count in source:
@@ -106,26 +110,6 @@ class MergeCounter(object):
             write(item)
 
         fds.append(fd)
-
-    def _sum_merge(self, *iters):
-        # Merge together several already-sorted iterators, summing
-        # the counts of any identical items.
-        merge = heapq.merge(*iters)
-        prev, accum = next(merge)
-
-        for item, count in merge:
-            if item != prev:
-                yield prev, accum
-                prev = item
-                accum = count
-            else:
-                accum += count
-
-        yield prev, accum
-
-    def dict_counts(self, dictionary):
-        """Return sorted item, count tuples from a dict of item -> count"""
-        return sorted(dictionary.iteritems(), key=operator.itemgetter(0))
 
     def _read_varints(self, fd, buf, count):
         # varint decoding should be made stream based so this isn't
@@ -169,6 +153,15 @@ class MergeCounter(object):
         buf.close()
 
 
+def count_ngrams(tokenizer, texts, orders=(3,)):
+    """Extract lexically sorted n-gram counts from text."""
+    local_join = "\t".join
+    items = ((local_join(ngram), 1)
+             for ngram in ng.iter_ngrams(tokenizer, texts, orders))
+
+    return MergeCounter().count(items)
+
+
 class NgramCounter(object):
     """Extract lexically sorted n-gram counts from generated text."""
     def __init__(self, tokenizer):
@@ -181,30 +174,5 @@ class NgramCounter(object):
         """
         self.tokenizer = tokenizer
 
-    def _ngrams(self, grams, n):
-        for i in xrange(0, len(grams) - n + 1):
-            yield grams[i:i + n]
-
     def count(self, iterable, orders=(3,)):
-        """Count the n-grams found in iterable.
-
-        Args:
-            iterable: an interable of tokenizable text
-            orders: a tuple of n-gram orders to extract
-
-        """
-        ngrams = self._ngrams
-        split = self.tokenizer.split
-        join = "\t".join
-
-        def items(lines):
-            for line in lines:
-                tokens = split(line)
-
-                for n in orders:
-                    for ngram in ngrams(tokens, n):
-                        item = join(ngram)
-                        yield item, 1
-
-        counter = MergeCounter()
-        return counter.count(items(iterable))
+        return count_ngrams(self.tokenizer.split, iterable, orders)

@@ -1,55 +1,72 @@
-# Copyright (C) 2012 Peter Teichman
+# Copyright (C) 2013 Peter Teichman
+# coding=utf-8
 
+import abc
+import array
+import bisect
+import codecs
 import collections
+import itertools
 import logging
 import math
+import os
 import random
+import struct
 import types
 import varint
 
-from .counter import MergeCounter
+from cobe import ng
 
 logger = logging.getLogger(__name__)
 
 
 class TokenRegistry(object):
-    """Token registry for mapping strings to shorter values.
+    """Token registry for mapping tokens to integer ids.
 
-    TokenRegistry assigns each unique token it sees an opaque token
-    id. These are allocated in the order the tokens are registered,
-    and they will increase in length as more tokens are known.
+    TokenRegistry assigns each unique token it sees an integer token
+    id. These are allocated in the order the tokens are registered.
 
-    The opaque token ids are currently strings.
+    New tokens are immediately logged to the registry file.
 
     """
 
-    def __init__(self):
+    def __init__(self, filename):
+        self.filename = filename
+
         # Two-way maps: token text to token id and back.
         self.token_ids = {}
-        self.tokens = {}
+        self.tokens = []
 
-        # Maintain a list of all the token texts, so a random walk can
-        # quickly pick a random learned token. This skips the empty
-        # token "", used for signaling the end of trained text.
-        self.all_tokens = []
+        # Replay the token log and leave it ready for appending new tokens
+        self.token_log = self._replay_token_log(filename)
 
-        # Log newly created tokens, so they can be flushed to the
-        # database. This class handles converting the Unicode tokens
-        # to and from bytes.
-        self.token_log = []
+    def _replay_token_log(self, filename):
+        if os.path.exists(filename):
+            with open(filename, "r") as fd:
+                for i, text in enumerate(fd):
+                    assert text[-1] == "\n"
+                    token = unicode(text[:-1], "utf-8")
 
-    def load(self, tokens):
-        """Load (token_id, token) pairs from an iterable."""
-        for token_id, token in tokens:
-            self._put(token_id, token.decode("utf-8"))
+                    assert token not in self.token_ids
 
-    def _put(self, token_id, token):
+                    token_id = self._append(token)
+                    assert token_id == i
+
+                    logger.debug("%s: replayed %d tokens", filename,
+                                 len(self.tokens))
+
+        return open(filename, "a")
+
+    def _append(self, token):
+        # Register the token, assigning the next available integer
+        # as its id.
+        assert token not in self.token_ids
+
+        token_id = len(self.tokens)
         self.token_ids[token] = token_id
-        self.tokens[token_id] = token
+        self.tokens.append(token)
 
-        # Skip the empty token in all_tokens
-        if token != "":
-            self.all_tokens.append(token)
+        return token_id
 
     def get_id(self, token):
         """Get the id associated with a token.
@@ -65,12 +82,9 @@ class TokenRegistry(object):
             raise TypeError("token must be Unicode")
 
         if token not in self.token_ids:
-            # Register the token, assigning the next available integer
-            # as its id.
-            token_id = varint.encode_one(len(self.tokens))
-
-            self._put(token_id, token)
-            self.token_log.append((token.encode("utf-8"), token_id))
+            self._append(token)
+            self.token_log.write(token.encode("utf-8") + "\n")
+            self.token_log.flush()
 
         return self.token_ids[token]
 
@@ -84,11 +98,226 @@ class TokenRegistry(object):
         return self.tokens[token_id]
 
 
+class Tokenizer(object):
+    def split(self, text):
+        return text.split()
+
+    def join(self, tokens):
+        return " ".join(tokens)
+
+
 class Model(object):
+    """An ngram language model.
+
+    Model is trained via its API and will reload itself on restart. It
+    can be compactly frozen to disk.
+
+    """
+    def __init__(self, path, order):
+        self.path = path
+        self.order = order
+        self.tokenizer = Tokenizer()
+
+        self.counts = [collections.defaultdict(int) for _ in xrange(order)]
+
+        # next / previous ngram adjacency lists
+        self.next = []
+        self.prev = []
+
+        if not os.path.exists(path):
+            os.makedirs(path)
+
+        self.tokens = TokenRegistry(os.path.join(path, "tokens.log"))
+
+        self.ngram_log = self._replay_ngram_log()
+
+    def _replay_ngram_log(self):
+        # replay the ngram log file and leave it open for appending
+        filename = os.path.join(self.path, "ngram.log")
+
+        def split(line):
+            assert line[-1] == "\n"
+            return line.split("\t")
+
+        if os.path.exists(filename):
+            with open(filename, "r") as fd:
+                for ngrams in ng.transactions(itertools.imap(split, fd)):
+                    map(self._train_ngrams, ngrams)
+
+                self.next.sort()
+                self.prev.sort()
+
+        return codecs.open(filename, "a", "utf-8")
+
+    def _seen_ngram(self, ngram):
+        # counts object for this ngram's length
+        counts = self.counts[len(ngram) - 1]
+
+        t = tuple(ngram)
+        if t not in counts:
+            # train the next/prev adjacency lists
+            self.next.append(t)
+            self.prev.append(t[::-1])
+
+        counts[t] += 1
+
+    def _train_ngrams(self, grams):
+        # Train the language model
+        for ngram in ng.many_ngrams(grams, range(1, self.order + 1)):
+            self._seen_ngram(ngram)
+
+    def logprob(self, token, context):
+        """The negative log probability of this token in this context."""
+        def logcount(tokens):
+            return math.log(self.get_ngram_count(tokens), 2)
+
+        return logcount(context) - logcount(context + [token])
+
+    def prob(self, token, context):
+        """The negative log probability of this token in this context."""
+        def count(tokens):
+            return self.get_ngram_count(tokens)
+
+        c1, c2 = count(context + [token]), count(context)
+        if c2 == 0:
+            return 0.0
+
+        return float(c1) / c2
+
+    def _wrap_split(self, text):
+        # add beginning & end tokens and extract ngrams from text
+        return [ng.START_TOKEN] + self.tokenizer.split(text) + [ng.END_TOKEN]
+
+    def entropy(self, text):
+        tokens = self._wrap_split(text)
+
+        order = self.order
+        context_len = order - 1
+
+        entropy = 0.
+        for index in xrange(len(tokens) - order):
+            token = tokens[index + context_len]
+            context = tokens[index:index + context_len]
+
+            try:
+                entropy += self.logprob(token, context)
+            except ValueError:
+                return 0.0
+
+        return entropy
+
+    def get_ngram_count(self, ngram):
+        order = len(ngram)
+        if not 0 < order <= self.order:
+            raise ValueError("count for untracked ngram length: %d" % order)
+
+        return self.counts[order - 1][tuple(ngram)]
+
+    def train(self, text):
+        if type(text) is not types.UnicodeType:
+            raise TypeError("can only train Unicode text")
+
+        tokens = self._wrap_split(text)
+
+        for token in tokens:
+            # Make sure all tokens are in the token registry
+            self.tokens.get_id(token)
+
+        # Write the highest order ngrams to the log. The rest can be
+        # recovered from those.
+        for ngram in ng.ngrams(tokens, self.order):
+            # If we want to make the log robust to arbitrarily removed
+            # lines, add an ngram sequence number to each line.
+            self.ngram_log.write(u"\t".join(ngram) + "\n")
+
+        self._train_ngrams(tokens)
+
+    def train_counts(self, ngram_counts):
+        """Train from ngrams directly"""
+        pass
+
+    def counts(self):
+        return heapq.merge(self.mem_counts(), self.disk_counts())
+
+    def disk_counts(self):
+        return iter([])
+
+    def mem_counts(self):
+        iters = [sorted(counts.iteritems()) for counts in self.counts]
+        return heapq.merge(*iters)
+
+    def freeze(self, ngram_counts):
+        rec = struct.Struct(">III")
+        buf = array.array("c", " " * rec.size)
+
+        # Open a file for each set of n-grams and track the current
+        # line number on each (1-indexed)
+        def open_grams(n):
+            fd = open(os.path.join(self.path, "%dgrams" % n), "w")
+
+            # write a header record, junk for now
+            head = "".join(itertools.islice(itertools.cycle("cobe"), rec.size))
+            fd.write(head)
+            return fd
+
+        fds = [open_grams(n+1) for n in xrange(self.order)]
+
+        # Current record number for each ngram file
+        recnos = [0 for _ in xrange(self.order)]
+
+        for ngram, count in ngram_counts:
+            n = len(ngram)
+
+            # write unigrams to 1grams.txt, bigrams to 2grams.txt, etc
+            fd = fds[n-1]
+
+            # increment the record count of the current file
+            recnos[n-1] += 1
+
+            # 1-grams have no context, but write zero for convenience.
+            context = 0
+            if len(ngram) > 1:
+                # For 2-grams and above, this ngram's context is the
+                # previous order's current record.
+                context = recnos[n-2]
+
+            token = ngram[-1]
+
+            token_id = self.tokens.get_id(token)
+            s = rec.pack_into(buf, 0, context, token_id, count)
+            buf.tofile(fd)
+
+        for fd in fds:
+            fd.close()
+
+
+class LanguageModel(object):
+    __metaclass__ = abc.ABCMeta
+
+    @abc.abstractmethod
+    def prob(self, token, context):
+        """Calculate the conditional probability P(token|context)."""
+        pass
+
+    @abc.abstractmethod
+    def logprob(self, token, context):
+        """The negative log probability of this token in this context."""
+        pass
+
+    @abc.abstractmethod
+    def entropy(self, text):
+        """Evaluate the total entropy of a text with respect to the model.
+
+        This is the sum of the log probability of each token in the text.
+
+        """
+        pass
+
+
+class OldModel(object):
     """An n-gram language model for online learning and text generation.
 
-    cobe's Model is an unsmoothed n-gram language model keptb in a
-    key-value store.
+    cobe's Model is an unsmoothed n-gram language model.
 
     Most language models focus on fast lookup and compact
     representation after a single massive training session. This one
@@ -106,55 +335,23 @@ class Model(object):
     # Reserve two tokens that will be inserted before & after every
     # bit of trained text. These can be used by a search to find the
     # beginning or end of trained data.
+    TRAIN_START = u"<∅>"
+    TRAIN_END = u"</∅>"
 
-    # Use binary values 0x02 (start of text) and 0x03 (end of text)
-    # since they're unlikely to be used in this otherwise
-    # text-oriented language model.
-    TRAIN_START = u"\x02"
-    TRAIN_END = u"\x03"
-
-    def __init__(self, analyzer, store, n=3):
+    def __init__(self, analyzer, path, n=3):
         self.analyzer = analyzer
-        self.store = store
+        self.path = path
 
         # Count n-grams, (n-1)-grams, ..., bigrams, unigrams
         # P(wordN|word1,word2,...,wordN-1)
         self.orders = tuple(range(n, 0, -1))
 
-        self.tokens = TokenRegistry()
+        if not os.path.exists(path):
+            os.makedirs(path)
 
-        # Leverage LevelDB's sorting to extract all tokens (the things
-        # prefixed with the token key for an empty string)
-        token_prefix = self._token_key("")
-        all_tokens = self.store.prefix_items(token_prefix, strip_prefix=True)
+        self.tokens = TokenRegistry("tokens.log")
 
-        self.tokens.load(all_tokens)
-
-    def _token_key(self, token_id):
-        return "t" + token_id
-
-    def _tokens_count_key(self, token_ids, n=None):
-        # Allow n to be overridden to look for keys of higher orders
-        # that begin with these token_ids
-        if n is None:
-            n = len(token_ids)
-        return str(n) + "".join(token_ids)
-
-    def _tokens_reverse_train_key(self, token_ids):
-        # token_ids are e.g. [ token1, token2, token3 ]. Rotate the
-        # tokens to [ token2, token3, token1 ] so the tokens that
-        # precede [ token2, token3 ] can be enumerated.
-        return "r" + "".join(token_ids[1:]) + token_ids[0]
-
-    def _tokens_reverse_key(self, token_ids):
-        # token_ids are e.g. [ token1, token2, token3 ]. Rotate the
-        # tokens to [ token2, token3, token1 ] so the tokens that
-        # precede [ token2, token3 ] can be enumerated.
-        return "r" + "".join(token_ids)
-
-    def _ngrams(self, grams, n):
-        for i in xrange(0, len(grams) - n + 1):
-            yield grams[i:i + n]
+        # FIXME: create a memory model that includes an ngram log
 
     def _save(self, counts):
         def kv_pairs():
