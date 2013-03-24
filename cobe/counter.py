@@ -63,7 +63,7 @@ class MergeCounter(object):
         left = self.max_len
 
         for item, count in items:
-            assert type(item) is types.StringType
+            assert isinstance(item, types.StringTypes)
 
             if item not in counts:
                 counts[item] = count

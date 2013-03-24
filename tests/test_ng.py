@@ -5,6 +5,9 @@ import unittest2 as unittest
 
 from cobe import ng
 
+def tuplesplit(text):
+    return tuple(text.split())
+
 
 class TestNgrams(unittest.TestCase):
     def test_ngrams(self):
@@ -12,29 +15,29 @@ class TestNgrams(unittest.TestCase):
 
         # Test n=3
         ngrams = list(ng.ngrams(tokens, 3))
-        expected = [["this", "is", "a"],
-                    ["is", "a", "test"],
-                    ["a", "test", "string"],
-                    ["test", "string", "for"],
-                    ["string", "for", "n-grams"]]
+        expected = [("this", "is", "a"),
+                    ("is", "a", "test"),
+                    ("a", "test", "string"),
+                    ("test", "string", "for"),
+                    ("string", "for", "n-grams")]
 
         self.assertEquals(expected, ngrams)
 
         # Test n=2
         ngrams = list(ng.ngrams(tokens, 2))
-        expected = [["this", "is"],
-                    ["is", "a"],
-                    ["a", "test"],
-                    ["test", "string"],
-                    ["string", "for"],
-                    ["for", "n-grams"]]
+        expected = [("this", "is"),
+                    ("is", "a"),
+                    ("a", "test"),
+                    ("test", "string"),
+                    ("string", "for"),
+                    ("for", "n-grams")]
 
         self.assertEquals(expected, ngrams)
 
         # Test unigrams
         ngrams = list(ng.ngrams(tokens, 1))
-        expected = [["this"], ["is"], ["a"], ["test"], ["string"],
-                    ["for"], ["n-grams"]]
+        expected = [("this",), ("is",), ("a",), ("test",), ("string",),
+                    ("for",), ("n-grams",)]
 
         self.assertEquals(expected, ngrams)
 
@@ -100,9 +103,9 @@ class TestTransaction(unittest.TestCase):
         ngrams = ng.ngrams(u"<∅> these are ngrams </∅>".split(), 3)
 
         expected = [
-            [u"<∅> these are".split(),
-             u"these are ngrams".split(),
-             u"are ngrams </∅>".split()]
+            [tuplesplit(u"<∅> these are"),
+             tuplesplit(u"these are ngrams"),
+             tuplesplit(u"are ngrams </∅>")]
             ]
 
         self.assertEqual(expected, list(ng.transactions(ngrams)))
@@ -111,12 +114,12 @@ class TestTransaction(unittest.TestCase):
             u"<∅> these are ngrams </∅> <∅> these are more </∅>".split(), 3)
 
         expected = [
-            [u"<∅> these are".split(),
-             u"these are ngrams".split(),
-             u"are ngrams </∅>".split()],
-            [u"<∅> these are".split(),
-             u"these are more".split(),
-             u"are more </∅>".split()]
+            [tuplesplit(u"<∅> these are"),
+             tuplesplit(u"these are ngrams"),
+             tuplesplit(u"are ngrams </∅>")],
+            [tuplesplit(u"<∅> these are"),
+             tuplesplit(u"these are more"),
+             tuplesplit(u"are more </∅>")]
             ]
 
         self.assertEqual(expected, list(ng.transactions(ngrams)))
@@ -132,9 +135,9 @@ class TestTransaction(unittest.TestCase):
         ngrams = ng.ngrams(u"<∅> these <∅> these are ngrams </∅>".split(), 3)
 
         expected = [
-            [u"<∅> these are".split(),
-             u"these are ngrams".split(),
-             u"are ngrams </∅>".split()]
+            [tuplesplit(u"<∅> these are"),
+             tuplesplit(u"these are ngrams"),
+             tuplesplit(u"are ngrams </∅>")]
             ]
 
         self.assertEqual(expected, list(ng.transactions(ngrams)))

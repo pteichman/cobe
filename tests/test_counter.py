@@ -130,7 +130,7 @@ class TestNgramCounter(unittest.TestCase):
     def setUp(self):
         class TestTokenizer(object):
             def split(self, text):
-                return text.split()
+                return tuple(text.split())
 
         self.tokenizer = TestTokenizer()
 
@@ -138,25 +138,25 @@ class TestNgramCounter(unittest.TestCase):
         ext = cobe.counter.NgramCounter(self.tokenizer)
 
         items = [
-            "foo bar",
-            "foo bar baz",
-            "foo bar baz",
-            "foo bar baz",
-            "foo bar baz",
-            "foo bar baz2",
-            "foo bar baz2"
+            u"foo bar",
+            u"foo bar baz",
+            u"foo bar baz",
+            u"foo bar baz",
+            u"foo bar baz",
+            u"foo bar baz2",
+            u"foo bar baz2"
         ]
 
         expected = [
-            ("bar", 7),
-            ("bar\tbaz", 4),
-            ("bar\tbaz2", 2),
-            ("baz", 4),
-            ("baz2", 2),
-            ("foo", 7),
-            ("foo\tbar", 7),
-            ("foo\tbar\tbaz", 4),
-            ("foo\tbar\tbaz2", 2)
+            (u"bar", 7),
+            (u"bar\tbaz", 4),
+            (u"bar\tbaz2", 2),
+            (u"baz", 4),
+            (u"baz2", 2),
+            (u"foo", 7),
+            (u"foo\tbar", 7),
+            (u"foo\tbar\tbaz", 4),
+            (u"foo\tbar\tbaz2", 2)
         ]
 
         self.assertEqual(expected, list(ext.count(items, orders=(3, 2, 1))))

@@ -13,7 +13,7 @@ class TestSkiplist(unittest.TestCase):
             ("quux", "quuux")
         ]
 
-        skip = skiplist.Skiplist(maxsize=10, use_finger=True)
+        skip = skiplist.Skiplist(maxsize=10)
         for key, value in items:
             skip.insert(key, value)
 

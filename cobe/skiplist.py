@@ -6,7 +6,7 @@ import random
 
 class Skiplist(object):
     """A dict-like data structure storing its data in a skiplist"""
-    def __init__(self, maxsize=65535, use_finger=False):
+    def __init__(self, maxsize=65535):
         self.max_level = max(1, int(math.floor(math.log(maxsize, 2))))
         self.level = 1
 
@@ -14,8 +14,6 @@ class Skiplist(object):
         self.finger = self._make_update()
 
         self._find_prev = self._find_prev_from_head
-        if use_finger:
-            self._find_prev = self._find_prev_with_finger
 
     def _make_node(self, level, key, value):
         # each node is a list with this layout:
@@ -52,13 +50,6 @@ class Skiplist(object):
             update[i] = node
 
         return node
-
-#    def _find_prev_with_finger(self, key, update):
-#        finger = self.finger
-#        for i in reversed(xrange(self.level)):
-#            node = finger[i]
-#            if node is not None and node[0] < key:
-#                node = 
 
     def get(self, key, default=None):
         update = self._make_update()

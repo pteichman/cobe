@@ -20,7 +20,28 @@ NgramCount = collections.namedtuple("NgramCount", "ngram count")
 
 
 def ngrams(grams, n):
-    """Yield successive n-length ranges from grams"""
+    """Yield successive n-length ranges from grams
+
+    Args:
+        grams: sliceable list of tokens
+        n: integer
+
+    >>> list(ngrams(["row", "row", "row", "your", "boat"], 3))
+    [('row', 'row', 'row'), ('row', 'row', 'your'), ('row', 'your', 'boat')]
+
+    >>> list(ngrams(["row", "row", "row", "your", "boat"], 2))
+    [('row', 'row'), ('row', 'row'), ('row', 'your'), ('your', 'boat')]
+
+    >>> list(ngrams(["row", "row", "row", "your", "boat"], 1))
+    [('row',), ('row',), ('row',), ('your',), ('boat',)]
+
+    If grams is too short to supply an n-length slice, nothing will be
+    returned:
+
+    >>> list(ngrams(["row", "row", "row", "your", "boat"], 6))
+    []
+
+    """
     for i in xrange(0, len(grams) - n + 1):
         yield tuple(grams[i:i+n])
 
@@ -32,7 +53,12 @@ def ngram_counts(grams, orders):
 
 
 def sentence(grams):
-    """Wrap a sequence of grams in sentence start and end tokens"""
+    """Wrap a sequence of grams in sentence start and end tokens
+
+    >>> sentence(("row", "row", "row", "your", "boat"))
+    (u'<\u2205>', 'row', 'row', 'row', 'your', 'boat', u'</\u2205>')
+
+    """
     return (START_TOKEN,) + grams + (END_TOKEN,)
 
 
@@ -69,7 +95,7 @@ def iter_ngrams(tokenize, iterable, orders=(3,)):
 
     """
     for text in iterable:
-        for each in many_ngrams(sentence(tokenize(text)), orders):
+        for each in many_ngrams(tokenize(text), orders):
             yield each
 
 
