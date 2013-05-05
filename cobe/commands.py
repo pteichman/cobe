@@ -2,7 +2,9 @@
 
 import atexit
 import fileinput
+import itertools
 import logging
+import ng
 import os
 import park
 import re
@@ -16,6 +18,30 @@ from .model import Model
 from .varint import decode, decode_one, encode_one
 
 log = logging.getLogger(__name__)
+
+
+class NgramCountsCommand(object):
+    @classmethod
+    def add_subparser(cls, parser):
+        subparser = parser.add_parser("ngram-counts")
+        subparser.add_argument("files", nargs="+")
+        subparser.set_defaults(run=cls.run)
+
+    @staticmethod
+    def run(args):
+        fi = fileinput.input(args.files)
+
+        def line_ngrams(line):
+            line = line.decode("utf-8", errors="replace")
+            return ng.ngrams(ng.tokenize(line), 3)
+
+        def all_ngrams(lines):
+            for ngram_seq in itertools.imap(line_ngrams, lines):
+                for ngram in ngram_seq:
+                    yield (ngram, 1)
+
+        for ngram, count in ng.merge_counts(sorted(all_ngrams(fi))):
+            print u"\t".join(ngram + (str(count),)).encode("utf-8")
 
 
 class DumpCommand(object):

@@ -49,3 +49,13 @@ Usage:
   $ cobe init
   $ cobe learn <text file>
   $ cobe console
+
+
+Analyzer notes from ES:
+
+CharFilter -> Tokenizer -> TokenFilter
+(e.g. strip html) -> (e.g. whitespace) -> (e.g. filter stop words)
+
+synonym lists are a TokenFilter 
+
+Allan Smith -> [allan, al] smith

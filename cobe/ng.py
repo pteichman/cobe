@@ -3,20 +3,90 @@
 
 import collections
 import heapq
+import functools
 import io
 import itertools
 import logging
 import math
 import operator
 import os
+import random
+import re
+import struct
 import tempfile
 import varint
+
+from cobe import mem
 
 START_TOKEN = u"<∅>"
 END_TOKEN = u"</∅>"
 
-Brain = collections.namedtuple("Brain", "model tokenizer")
+Terms = collections.namedtuple("Terms", "tid_by_term term_by_tid")
+Adjmap = collections.namedtuple("Adjmap", "next prev")
+
+Brain = collections.namedtuple("Brain", "model tokenizer joiner")
 NgramCount = collections.namedtuple("NgramCount", "ngram count")
+QueryTerm = collections.namedtuple("QueryTerm", "term pos")
+
+
+def register(terms, term):
+    tid_by_term, term_by_tid = terms
+
+    if term not in tid_by_term:
+        tid = len(term_by_tid)
+        term_by_tid.append(term)
+        tid_by_term[term] = tid
+
+    return tid_by_term[term]
+
+
+def adjmap_add(adjlist, terms, ngram):
+    """Add an ngram (if not already present) to an adjacency map
+
+    add(("foo", "bar", "baz")) -> adjlist[("foo", "bar")].add("baz")
+
+    """
+    one, two = tuple(ngram[:-1]), tuple(ngram[1:])
+
+    def listadd(l, elt):
+        if elt not in l:
+            l.append(elt)
+
+    listadd(adjlist.next.setdefault(one, []), two)
+    listadd(adjlist.prev.setdefault(two, []), one)
+
+    return adjlist
+
+
+def search_bfs(chain, costfunc, context, end):
+    """A breadth-first search across an adjacency list
+
+    Args:
+        chain: a map of (n-gram context) -> [(next context 1), (next context 2)]
+        costfunc: a callback to evaluate the cost of a context
+        context: the initial context to start the search
+        end: the end token for the search
+
+    This is a generator, and yields all possible search paths in
+    ascending order of cost. A typical n-gram graph is cyclic, so this
+    can mean infinite results.
+
+    """
+    heappop = heapq.heappop
+
+    left = [(0.0, context, [context])]
+    while left:
+        cost, context, path = heappop(left)
+        if end in context:
+            yield path
+            continue
+
+        for newcontext in chain[context]:
+            newpath = path + [newcontext]
+            newcost = costfunc(context, newcontext)
+
+            if newcost is not None:
+                heapq.heappush(left, (cost + newcost, newcontext, newpath))
 
 
 def ngrams(grams, n):
@@ -52,6 +122,10 @@ def ngram_counts(grams, orders):
     return frozenset(itertools.starmap(NgramCount, c.iteritems()))
 
 
+def tokenize(text):
+    return sentence(text.split())
+
+
 def sentence(grams):
     """Wrap a sequence of grams in sentence start and end tokens
 
@@ -80,6 +154,81 @@ def entropy(brain, text):
         return log(count(ngram[:-1])) - log(count(ngram))
 
     return sum(map(logprob, ngrams(t, brain.model.order)))
+
+
+def query(brain, text):
+    t = brain.tokenizer(unicode(text))
+
+    base = (QueryTerm(term=term, pos=i) for i, term in enumerate(t))
+
+    # TODO: conflate terms to synonyms (filtering unknown words)
+    # TODO: filter stop words
+
+    return frozenset(base)
+
+
+def replies(adjmap, context):
+    random_walk = lambda a, b: random.random()
+
+    # Search the forward graph until END_TOKEN and reverse until START_TOKEN
+    fwd = search_bfs(adjmap.next, random_walk, context, END_TOKEN)
+    rev = search_bfs(adjmap.prev, random_walk, context, START_TOKEN)
+
+    for fwdparts, revparts in itertools.izip(fwd, rev):
+        # Generate one search result forward and one in reverse
+        yield join(fwdparts, revparts)
+
+
+def join(fwd, rev):
+    """Join together the forward and reverse paths of a search result
+
+    Each argument is a sequence of n-grams visited on the way to the
+    search end.
+
+    Example: "The quick brown fox jumps over the lazy dog"
+
+    If the initial search context was "jumps over", join() would be
+    passed these lists:
+
+    fwd: [('jumps', 'over'), ('over', 'the'), ('the', 'lazy'),
+          ('lazy', 'dog'), ('dog', '</∅>')]
+    rev: [('jumps', 'over'), ('fox', 'jumps'), ('brown', 'fox'),
+          ('quick', 'brown'), ('The', 'quick'), ('<∅>', 'The')]
+
+    This function reverses rev and joins the terms together, returning:
+    ('<∅>', 'The', 'quick', 'brown', 'fox', 'jumps', 'over', 'the',
+     'lazy', 'dog', '</∅>')
+
+    """
+    def terms(contexts):
+        # yield the first term from each context
+        for context in contexts:
+            yield context[0]
+
+        # yield everything remaining in the last context
+        for term in context[1:]:
+            yield term
+
+    # Skip the first element of rev because it's also in fwd.
+    return tuple(terms(itertools.chain(reversed(rev[1:]), fwd)))
+
+
+def reply_one(brain, query):
+    pivot = random.choice(list(query))
+
+    # choose a random ngram starting with pivot
+    # follow that context to the end
+    # follow that context to the beginning
+
+    return [pivot.term]
+
+
+def reply(brain, text):
+    q = query(brain, text)
+
+    reply = reply_one(brain, q)
+
+    return brain.joiner(reply)
 
 
 def many_ngrams(grams, orders):
@@ -124,7 +273,7 @@ def transactions(generator):
 
 
 def build_index(ngrams):
-    # 
+    #
     pass
 
 
@@ -185,11 +334,10 @@ def sorted_external(strs):
                 c.close()
 
     for s in strs:
-        memitems.append(s)
-#        if len(memitems) > 10000000:
-#            print "chunk"
-#            chunks.append(_flush_chunk(sorted(memitems)))
-#            memitems = []
+        if len(memitems) > 10000000:
+            print "chunk"
+            chunks.append(_flush_chunk(sorted(memitems)))
+            memitems = []
 
     print "sorting"
     iters = [sorted(memitems)]
@@ -197,3 +345,7 @@ def sorted_external(strs):
 
     print "merging"
     return close_after(heapq.merge(*iters), chunks)
+
+
+def is_irssi_message(line):
+    return re.match(r"\d\d:\d\d <", line)
