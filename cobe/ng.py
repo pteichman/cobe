@@ -133,7 +133,7 @@ def sentence(grams):
     (u'<\u2205>', 'row', 'row', 'row', 'your', 'boat', u'</\u2205>')
 
     """
-    return (START_TOKEN,) + grams + (END_TOKEN,)
+    return (START_TOKEN,) + tuple(grams) + (END_TOKEN,)
 
 
 def train(brain, text):

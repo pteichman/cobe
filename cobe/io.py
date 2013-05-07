@@ -23,9 +23,18 @@ def token_ngrams(f, token):
     prefix = line_prefix((token,))
 
     def line_ngram(line):
-        return tuple(line_split(line).ngram.split("\t"))
+        return line_split(line).ngram
 
-    return frozenset(prefix_map(f, line_ngram, prefix))
+    return tuple(prefix_map(f, line_ngram, prefix))
+
+
+def following(f, ngram):
+    prefix = line_prefix(ngram)
+
+    def line_ngram(line):
+        return line_split(line).ngram
+
+    return tuple(prefix_map(f, line_ngram, prefix))
 
 
 def next_tokens(f, ngram):
@@ -33,12 +42,12 @@ def next_tokens(f, ngram):
     prefix_len = len(prefix)
 
     def next_token(line):
-        rest = line[prefix_len:]
-        return rest.split("\t", 1)[0]
+        end = line.find("\t", prefix_len)
+        return line[prefix_len:end]
 
     tokens = prefix_map(f, next_token, prefix)
 
-    return frozenset(tokens)
+    return tuple(set(tokens))
 
 
 def count(f, ngram):
@@ -67,7 +76,7 @@ def line_prefix(ngram):
 
 def line_split(line):
     prefix, count = line.rsplit("\t", 1)
-    return Line(prefix, int(count))
+    return Line(tuple(prefix.split("\t")), int(count))
 
 
 def search(f, prefix):
