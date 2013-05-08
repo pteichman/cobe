@@ -13,7 +13,9 @@
 # the counts for any line beginning "n1<tab>n2<tab>")
 
 import collections
+import itertools
 import operator
+import os
 
 Line = collections.namedtuple("Line", "ngram count")
 
@@ -28,13 +30,36 @@ def token_ngrams(f, token):
     return tuple(prefix_map(f, line_ngram, prefix))
 
 
-def following(f, ngram):
+def follow(f, ngram):
     prefix = line_prefix(ngram)
 
     def line_ngram(line):
         return line_split(line).ngram
 
     return tuple(prefix_map(f, line_ngram, prefix))
+
+
+def open_ngram_counts(fwdfile):
+    revfile = "%s.rev" % fwdfile
+    ensure_revfile(fwdfile, revfile)
+
+    return open(fwdfile, "r"), open(revfile, "r")
+
+
+def ensure_revfile(fwdfile, revfile):
+    if not os.path.exists(revfile) \
+            or os.path.getctime(fwdfile) > os.path.getctime(revfile):
+        with open(fwdfile, "r") as fwd:
+            with open(revfile, "w+b") as rev:
+                rev.writelines(sorted(itertools.imap(reverse_ngram, fwd)))
+
+
+def reverse_ngram(line):
+    # "foo\tbar\tbaz\t1" => "bar\tbaz\tfoo\t0""
+    token_end = line.find("\t")
+    count_start = line.rfind("\t")
+
+    return line[token_end+1:count_start+1] + line[:token_end] + "\t0\n"
 
 
 def next_tokens(f, ngram):
@@ -52,12 +77,15 @@ def next_tokens(f, ngram):
 
 def count(f, ngram):
     """Count the times an ngram has been seen"""
-    def line_count(line):
-        return line_split(line).count
+    return sum(prefix_map(f, line_count, line_prefix(ngram)))
 
-    counts = prefix_map(f, line_count, line_prefix(ngram))
 
-    return sum(counts)
+def line_count(line):
+    return int(line[line.rfind("\t")+1:-1])
+
+
+def line_ngram(line):
+    return line[:line.rfind("\t")]
 
 
 def prefix_map(f, func, prefix):
@@ -90,7 +118,7 @@ def search(f, prefix):
         f.readline()
 
         line = f.readline()
-        if line >= prefix:
+        if line == "" or line >= prefix:
             end = mid - 1
         else:
             beg = mid + 1
