@@ -56,10 +56,10 @@ def ensure_revfile(fwdfile, revfile):
 
 def reverse_ngram(line):
     # "foo\tbar\tbaz\t1" => "bar\tbaz\tfoo\t0""
-    token_end = line.find("\t")
-    count_start = line.rfind("\t")
+    token = line.find("\t")
+    count = line.rfind("\t")
 
-    return line[token_end+1:count_start+1] + line[:token_end] + "\t0\n"
+    return line[token+1:count+1] + line[:token] + line[count:]
 
 
 def next_tokens(f, ngram):
