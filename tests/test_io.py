@@ -97,5 +97,5 @@ class TestIo(unittest.TestCase):
         ]
 
         for num, (test, expected) in enumerate(tests):
-            self.assertEqual(expected, io.line_prefix(test),
+            self.assertEqual(expected, io.ngram_join(test),
                              "[%d] wrong line prefix for ngram")

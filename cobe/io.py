@@ -22,7 +22,7 @@ Line = collections.namedtuple("Line", "ngram count")
 
 def token_ngrams(f, token):
     """Return all the ngrams starting with <token>"""
-    prefix = line_prefix((token,))
+    prefix = ngram_join((token,))
 
     def line_ngram(line):
         return line_split(line).ngram
@@ -31,7 +31,7 @@ def token_ngrams(f, token):
 
 
 def follow(f, ngram):
-    prefix = line_prefix(ngram)
+    prefix = ngram_join(ngram)
 
     def line_ngram(line):
         return line_split(line).ngram
@@ -55,7 +55,7 @@ def ensure_revfile(fwdfile, revfile):
 
 
 def reverse_ngram(line):
-    # "foo\tbar\tbaz\t1" => "bar\tbaz\tfoo\t0""
+    # "foo\tbar\tbaz\t1" => "bar\tbaz\tfoo\t1"
     token = line.find("\t")
     count = line.rfind("\t")
 
@@ -63,7 +63,7 @@ def reverse_ngram(line):
 
 
 def next_tokens(f, ngram):
-    prefix = line_prefix(ngram)
+    prefix = ngram_join(ngram)
     prefix_len = len(prefix)
 
     def next_token(line):
@@ -77,15 +77,27 @@ def next_tokens(f, ngram):
 
 def count(f, ngram):
     """Count the times an ngram has been seen"""
-    return sum(prefix_map(f, line_count, line_prefix(ngram)))
+    return sum(prefix_map(f, line_count, ngram_join(ngram)))
 
 
 def line_count(line):
+    """foo\tbar\tbaz\t10\n -> int(10)"""
     return int(line[line.rfind("\t")+1:-1])
 
 
 def line_ngram(line):
+    """foo\tbar\tbaz\t10\n -> foo\tbar\tbaz"""
     return line[:line.rfind("\t")]
+
+
+def ngram_split(joined):
+    """foo\tbar\tbaz -> tuple("foo", "bar", "baz")"""
+    return tuple(joined.split("\t"))
+
+
+def ngram_join(ngram):
+    """tuple("foo", "bar", "baz") -> foo\tbar\tbaz\t"""
+    return "\t".join(ngram) + "\t"
 
 
 def prefix_map(f, func, prefix):
@@ -98,13 +110,8 @@ def prefix_map(f, func, prefix):
         cur = f.readline()
 
 
-def line_prefix(ngram):
-    return "\t".join(ngram) + "\t"
-
-
 def line_split(line):
-    prefix, count = line.rsplit("\t", 1)
-    return Line(tuple(prefix.split("\t")), int(count))
+    return Line(line_ngram(line), line_count(line))
 
 
 def search(f, prefix):
