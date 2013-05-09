@@ -102,7 +102,7 @@ def ngram_join(ngram):
 
 def prefix_map(f, func, prefix):
     # Map func over the lines in fd that start with <prefix>
-    search(f, prefix)
+    f.seek(search(f, prefix))
 
     cur = f.readline()
     while cur.startswith(prefix):
