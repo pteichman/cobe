@@ -39,6 +39,10 @@ def follow(f, ngram):
     return tuple(prefix_map(f, line_ngram, prefix))
 
 
+def follow_ngrams(f, ngram):
+    return prefix_map(f, line_ngram, ngram + "\t")
+
+
 def open_ngram_counts(fwdfile):
     revfile = "%s.rev" % fwdfile
     ensure_revfile(fwdfile, revfile)
@@ -51,15 +55,20 @@ def ensure_revfile(fwdfile, revfile):
             or os.path.getctime(fwdfile) > os.path.getctime(revfile):
         with open(fwdfile, "r") as fwd:
             with open(revfile, "w+b") as rev:
-                rev.writelines(sorted(itertools.imap(reverse_ngram, fwd)))
+                rev.writelines(sorted(itertools.imap(reverse_line, fwd)))
 
 
-def reverse_ngram(line):
+def reverse_line(line):
     # "foo\tbar\tbaz\t1" => "bar\tbaz\tfoo\t1"
     token = line.find("\t")
     count = line.rfind("\t")
 
     return line[token+1:count+1] + line[:token] + line[count:]
+
+
+def unreverse_ngram(ngram):
+    index = ngram.rfind("\t")
+    return ngram[index+1:] + "\t" + ngram[:index]
 
 
 def next_tokens(f, ngram):

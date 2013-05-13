@@ -58,7 +58,7 @@ def adjmap_add(adjlist, terms, ngram):
     return adjlist
 
 
-def search_bfs(chain, costfunc, context, end):
+def search_bfs(followfunc, costfunc, context, end):
     """A breadth-first search across an adjacency list
 
     Args:
@@ -81,7 +81,7 @@ def search_bfs(chain, costfunc, context, end):
             yield path
             continue
 
-        for newcontext in chain[context]:
+        for newcontext in followfunc(context):
             newpath = path + [newcontext]
             newcost = costfunc(context, newcontext)
 
@@ -291,6 +291,10 @@ def merge_counts(*iters):
             accum = count
 
     yield prev, accum
+
+
+def choice(collection):
+    return random.choice(list(collection))
 
 
 def _flush_chunk(strs):
