@@ -93,8 +93,22 @@ def reverse_ngram(ngram):
 
 def unreverse_ngram(ngram):
     """bar\tbaz\tfoo\t -> foo\tbar\tbaz\t"""
-    start = ngram.rfind("\t") + 1
+    start = ngram.rfind("\t", 0, -1) + 1
     return ngram[start:] + ngram[:start]
+
+
+def reply_join(fwd, rev):
+    def terms(contexts):
+        # yield the first term from each context
+        for context in contexts:
+            yield context[:context.find("\t")]
+
+        # yield everything remaining in the last context
+        for term in context[context.find("\t")+1:-1].split("\t"):
+            yield term
+
+    # Skip the first element of rev because it's also in fwd.
+    return tuple(terms(itertools.chain(reversed(rev[1:]), fwd)))
 
 
 def f_count(f, ngram):

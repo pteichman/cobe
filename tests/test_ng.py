@@ -91,7 +91,7 @@ class TestCounts(unittest.TestCase):
             self.assertEqual(expected, ng.line_count(test),
                              "[%d] unexpected count" % num)
 
-    def test_reverse_ngram(self):
+    def test_line_reverse(self):
         # input, expected
         tests = [
             ("foo\tbar\tbaz\t100\n", "bar\tbaz\tfoo\t100\n"),
@@ -103,7 +103,32 @@ class TestCounts(unittest.TestCase):
 
         for num, (test, expected) in enumerate(tests):
             self.assertEqual(expected, ng.line_reverse(test),
-                             "[%d] wrong reversed ngram")
+                             "[%d] wrong reversed line" % num)
+
+    def test_reverse_ngram(self):
+        # input, expected
+        tests = [
+            ("foo\tbar\tbaz\t", "bar\tbaz\tfoo\t"),
+            ("foo\tbar\t", "bar\tfoo\t"),
+            ("foo\t", "foo\t"),
+        ]
+
+        for num, (test, expected) in enumerate(tests):
+            self.assertEqual(expected, ng.reverse_ngram(test),
+                             "[%d] wrong reversed ngram" % num)
+        
+
+    def test_unreverse_ngram(self):
+        # input, expected
+        tests = [
+            ("bar\tbaz\tfoo\t", "foo\tbar\tbaz\t"),
+            ("bar\tfoo\t", "foo\tbar\t"),
+            ("foo\t", "foo\t"),
+        ]
+
+        for num, (test, expected) in enumerate(tests):
+            self.assertEqual(expected, ng.unreverse_ngram(test),
+                             "[%d] wrong unreversed ngram" % num)
 
     def test_complete(self):
         tests = [

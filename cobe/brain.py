@@ -1,99 +1,72 @@
-# Copyright (C) 2012 Peter Teichman
+# Copyright (C) 2013 Peter Teichman
 
 import itertools
+import functools
 import logging
 import math
-import park
+import os
+import random
 
-from cobe.analysis import (
-    AccentNormalizer, StemNormalizer, WhitespaceAnalyzer)
-from cobe.model import Model
-from cobe.search import RandomWalkSearcher
-from cobe.utils import itime
-
-log = logging.getLogger(__name__)
-
-
-class StandardAnalyzer(WhitespaceAnalyzer):
-    """A basic analyzer for test purposes.
-
-    This combines a whitespace tokenizer with an AccentNormalizer and
-    English stemmer.
-
-    """
-    def __init__(self):
-        super(StandardAnalyzer, self).__init__()
-
-        self.add_token_normalizer(AccentNormalizer())
-        self.add_token_normalizer(StemNormalizer("english"))
+import cobe.ng as ng
 
 
 class Brain(object):
-    """A simplified, cobe 2.x style interface.
+    def __init__(self, path):
+        if not os.path.isdir(path):
+            os.mkdirs(path)
 
-    This behaves roughly like cobe 2.x with an English stemmer for
-    now; more flexibility will come as the API is fleshed out.
+        fwd_fd, rev_fd = ng.open_ngram_counts(os.path.join(path, "ngrams"))
 
-    It generates replies with a random walk across the language model
-    and scores candidate replies by entropy, with a penalty for
-    too-long replies.
+        def complete(fd):
+            return functools.partial(ng.f_complete, fd)
 
-    """
-    def __init__(self, filename):
-        self.analyzer = StandardAnalyzer()
-
-        store = park.SQLiteStore(filename)
-
-        self.model = Model(self.analyzer, store)
-        self.searcher = RandomWalkSearcher(self.model)
+        self.fwd_follow = frozenset([complete(fwd_fd)])
+        self.rev_follow = frozenset([complete(rev_fd)])
 
     def reply(self, text):
-        # Create a search query from the input
-        query = self.analyzer.query(text, self.model)
+        tokens = text.split()
 
-        # Track (and don't re-score) replies that have already been
-        # seen. These are expected when using a random walk searcher,
-        # but they're also useful when debugging searches.
-        seen = set()
+        fwd_follow = self.follow_all(self.fwd_follow)
+        rev_follow = self.follow_all(self.rev_follow)
 
-        join = self.analyzer.join
-        entropy = self.model.entropy
+        pivot = ng.choice(tokens)
+        pivot_ngram = ng.choice(fwd_follow(pivot))
 
-        def score(reply):
-            joined = join(reply)
-            if joined in seen:
-                return -1.0, joined
+        # random walk
+        scorer = lambda ng1, ng2: random.random()
 
-            seen.add(joined)
-            n_tokens = len(reply)
+        fwd_iter = ng.search_bfs(self.fwd_chain_follow(fwd_follow), scorer,
+                                 pivot_ngram, ng.END_TOKEN)
+        rev_iter = ng.search_bfs(self.rev_chain_follow(rev_follow), scorer,
+                                 pivot_ngram, ng.START_TOKEN)
 
-            # Penalize longer replies (cobe 2.x compatibility)
-            penalty = 1.0
-            if n_tokens > 16:
-                penalty = math.sqrt(n_tokens)
-            elif n_tokens > 32:
-                penalty = n_tokens
+        fwd = next(fwd_iter)
+        rev = next(rev_iter)
 
-            joined = join(reply)
-            return entropy(joined) / penalty, joined
+        return " ".join(ng.reply_join(fwd, rev)).decode("utf-8")
 
-        # This search is a generator; it doesn't start evaluating until read
-        search = itime(self.searcher.search(query), 0.5)
+    def follow_all(self, funcs):
+        def follow(ngram):
+            all_ngrams = itertools.chain.from_iterable(
+                func(ngram) for func in funcs)
 
-        # Generate and score the search results.
-        results = sorted(itertools.imap(score, search))
+            return frozenset(all_ngrams)
 
-        if log.isEnabledFor(logging.DEBUG):
-            for score, text in results:
-                log.debug("%.4f %s", score, text)
+        return follow
 
-            log.debug("made %d replies (%d unique)", len(results), len(seen))
+    def fwd_chain_follow(self, followfunc):
+        def chain_follow(ngram):
+            return followfunc(ngram[ngram.find("\t") + 1:])
 
-        score, reply = results[-1]
-        return reply
+        return chain_follow
 
-    def train(self, text):
-        return self.model.train(text)
+    def rev_chain_follow(self, followfunc):
+        @functools.wraps(followfunc)
+        def unreverse_set(ngram):
+            return frozenset(map(ng.unreverse_ngram, followfunc(ngram)))
 
-    def train_many(self, text_gen):
-        return self.model.train_many(text_gen)
+        def chain_follow(ngram):
+            return unreverse_set(ngram[:ngram.rfind("\t", 0, -1) + 1])
+
+        return chain_follow
+
