@@ -1,4 +1,4 @@
-# Copyright (C) 2012 Peter Teichman
+# Copyright (C) 2013 Peter Teichman
 
 import collections
 import itertools
@@ -194,7 +194,7 @@ with its two nodes"""
         if not self._learning:
             self.graph.commit()
 
-    def reply(self, text, loop_ms=500):
+    def reply(self, text, loop_ms=500, max_len=None):
         """Reply to a string of text. If the input is not already
         Unicode, it will be decoded as utf-8."""
         if type(text) != types.UnicodeType:
@@ -235,6 +235,9 @@ with its two nodes"""
         _start = time.time()
         for edges, pivot_node in self._generate_replies(pivot_set):
             reply = Reply(self.graph, tokens, input_ids, pivot_node, edges)
+
+            if max_len and self._too_long(max_len, reply):
+                continue
 
             key = reply.edge_ids
             if key not in score_cache:
@@ -304,6 +307,12 @@ with its two nodes"""
             text = best_reply.to_text()
 
         return text
+
+    def _too_long(self, max_len, reply):
+        text = reply.to_text()
+        if len(text) > max_len:
+            log.debug("over max_len [%d]: %s", len(text), text)
+            return True
 
     def _conflate_stems(self, pivot_set, tokens):
         for token in tokens:
