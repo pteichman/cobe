@@ -413,17 +413,20 @@ class Reply:
         self.token_ids = token_ids
         self.pivot_node = pivot_node
         self.edge_ids = edge_ids
+        self.text = None
 
     def to_text(self):
-        text = []
+        if self.text is None:
+            parts = []
+            for word, has_space in map(self.graph.get_text_by_edge,
+                                       self.edge_ids):
+                parts.append(word)
+                if has_space:
+                    parts.append(" ")
 
-        for word, has_space in map(self.graph.get_text_by_edge,
-                                   self.edge_ids):
-            text.append(word)
-            if has_space:
-                text.append(" ")
+            self.text = "".join(parts)
 
-        return "".join(text)
+        return self.text
 
 
 class Graph:
