@@ -15,11 +15,6 @@ setup(
     packages = ["cobe"],
     test_suite = "tests",
 
-    setup_requires = [
-        "nose==1.1.2",
-        "coverage==3.5"
-        ],
-
     install_requires = [
         "PyStemmer==1.2.0",
         "argparse==1.2.1",
