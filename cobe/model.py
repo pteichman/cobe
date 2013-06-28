@@ -52,6 +52,18 @@ class TokenLog(object):
             local_add(unicode(line[:-seplen], "utf-8"))
 
 
+class Model(object):
+    def __init__(self):
+        self.token_log = None
+
+    @classmethod
+    def open(cls, path):
+        if not os.path.exists(path):
+            os.makedirs(path)
+
+        self.token_log = TokenLog.open(os.path.join(path, "tokens"))
+
+
 class TokenRegistry(object):
     """Token registry for mapping strings to shorter values.
 
