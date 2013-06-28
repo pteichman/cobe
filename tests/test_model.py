@@ -1,11 +1,49 @@
-# Copyright (C) 2012 Peter Teichman
+# Copyright (C) 2013 Peter Teichman
+# encoding: utf-8
 
+import os
 import park
 import random
+import tempfile
 import unittest2 as unittest
 
 from cobe.analysis import LowercaseNormalizer, WhitespaceAnalyzer
-from cobe.model import Model, TokenRegistry
+from cobe.model import Model, TokenLog, TokenRegistry
+
+
+class TestTokenSet(unittest.TestCase):
+    def setUp(self):
+        self.filename = tempfile.NamedTemporaryFile(delete=False).name
+
+    def tearDown(self):
+        os.remove(self.filename)
+
+    def test_persist(self):
+        test_tokens = [u"foo", u"bar", u"baz", u"qüüx"]
+
+        token_log = TokenLog.open(self.filename)
+        self.assertEqual(set(), token_log.tokens)
+
+        for token in test_tokens:
+            token_log.add(token)
+        self.assertItemsEqual(test_tokens, token_log.tokens)
+
+        for token in test_tokens:
+            token_log.add(token)
+        self.assertItemsEqual(test_tokens, token_log.tokens)
+
+        # make sure the log is flushed
+        token_log.close()
+
+        with open(self.filename, "r") as fd:
+            text = fd.read()
+            self.assertEqual(u"foo\nbar\nbaz\nqüüx\n".encode("utf-8"), text)
+
+        # make sure the log is replayed correctly on open
+        token_log = TokenLog.open(self.filename)
+        self.assertItemsEqual(test_tokens, token_log.tokens)
+
+        token_log.close()
 
 
 class TestTokenRegistry(unittest.TestCase):

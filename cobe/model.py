@@ -1,8 +1,9 @@
-# Copyright (C) 2012 Peter Teichman
+# Copyright (C) 2013 Peter Teichman
 
 import collections
 import logging
 import math
+import os
 import random
 import types
 import varint
@@ -10,6 +11,45 @@ import varint
 from .counter import MergeCounter
 
 logger = logging.getLogger(__name__)
+
+
+class TokenLog(object):
+    """An on-disk persisted set of Unicode token strings"""
+    def __init__(self):
+        self.tokens = set()
+        self.log = None
+
+    @classmethod
+    def open(cls, filename):
+        log = open(filename, "a+")
+        log.seek(0, os.SEEK_SET)
+
+        ret = cls()
+        ret.replay(log)
+        ret.log = log
+
+        return ret
+
+    def close(self):
+        if self.log is not None:
+            self.log.close()
+            self.log = None
+
+    def add(self, token):
+        if not isinstance(token, unicode):
+            raise TypeError("token must be unicode")
+
+        if token not in self.tokens:
+            self.tokens.add(token)
+            self.log.write(token.encode("utf-8") + "\n")
+            return True
+
+    def replay(self, log):
+        local_add = self.tokens.add
+        seplen = len(os.linesep)
+
+        for line in log:
+            local_add(unicode(line[:-seplen], "utf-8"))
 
 
 class TokenRegistry(object):
