@@ -7,8 +7,9 @@ import random
 import tempfile
 import unittest2 as unittest
 
+from cobe import ng
 from cobe.analysis import LowercaseNormalizer, WhitespaceAnalyzer
-from cobe.model import Model, TokenLog, TokenRegistry
+from cobe.model import MemCounts, Model, TokenLog, TokenRegistry
 
 
 class TestTokenSet(unittest.TestCase):
@@ -44,6 +45,34 @@ class TestTokenSet(unittest.TestCase):
         self.assertItemsEqual(test_tokens, token_log.tokens)
 
         token_log.close()
+
+
+class TestMemCounts(unittest.TestCase):
+    def test_observed_counts(self):
+        mc = MemCounts()
+
+        def ngram_str(tokens):
+            return "\t".join(tokens) + "\t"
+
+        tokens_and_counts = {
+            ("one", "two", "three"): 1,
+            ("one", "two", "four"): 1,
+            ("four", "five", "six"): 2,
+        }
+
+        for tokens, count in tokens_and_counts.items():
+            for _ in xrange(count):
+                mc.observe(ngram_str(tokens))
+
+        for tokens, count in tokens_and_counts.items():
+            ngram = ngram_str(tokens)
+            self.assertEqual(mc.count(ngram), count)
+
+            # and make sure the right counts are stored in the skiplists
+            self.assertEqual(mc.fwd.get(ngram), count)
+            self.assertEqual(mc.rev.get(ng.reverse_ngram(ngram)), count)
+
+        self.assertEqual(mc.count("unobserved\tngram\t"), 0)
 
 
 class TestTokenRegistry(unittest.TestCase):

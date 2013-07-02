@@ -2,20 +2,28 @@
 
 import atexit
 import fileinput
+import itertools
 import logging
 import os
 import park
 import re
 import readline
+import string
 import sys
 
 from . import analysis
+from . import ng
 
 from .brain import Brain
 from .model import Model
 from .varint import decode, decode_one, encode_one
 
 log = logging.getLogger(__name__)
+
+
+def safe_utf8_open(filename, mode):
+    import codecs
+    return codecs.open(filename, mode, "utf-8", errors="replace")
 
 
 class DumpCommand(object):
@@ -180,3 +188,86 @@ class ConsoleCommand:
 
             brain.train(text)
             print brain.reply(text)
+
+
+class NgramsCommand:
+    @classmethod
+    def add_subparser(cls, parser):
+        subparser = parser.add_parser("ngrams", help="Dump ngrams from input")
+        subparser.add_argument("files", nargs="+")
+        subparser.set_defaults(run=cls.run)
+
+    @staticmethod
+    def run(args):
+        utf8_lines = fileinput.FileInput(args.files, openhook=safe_utf8_open)
+
+        start = [ng.START_TOKEN] * 3
+        end = [ng.END_TOKEN] * 3
+
+        def tokenize(text):
+            return start + string.split(text) + end
+
+        all_ngrams = ng.iter_ngrams(tokenize, utf8_lines, (3,))
+
+        for ngram, count in ng.merge_counts(sorted(ng.one_counts(all_ngrams))):
+            print "\t".join(ngram) + "\t" + str(count)
+
+
+class FilterIrcLogCommand:
+    @classmethod
+    def add_subparser(cls, parser):
+        subparser = parser.add_parser("filter-irc-log", help="Filter IRC logs")
+        subparser.add_argument("-i", "--ignore-nick", action="append",
+                               dest="ignored_nicks",
+                               help="Ignore an IRC nick")
+        subparser.add_argument("-o", "--only-nick", action="append",
+                               dest="only_nicks",
+                               help="Only print messages from specified nicks")
+        subparser.add_argument("files", nargs="+")
+        subparser.set_defaults(run=cls.run)
+
+    @classmethod
+    def run(cls, args):
+        utf8_lines = fileinput.FileInput(args.files, openhook=safe_utf8_open)
+
+        lines = cls._irc_lines(utf8_lines, ignored_nicks=args.ignored_nicks,
+                               only_nicks=args.only_nicks)
+
+        for line in lines:
+            print line.encode("utf-8")
+
+    @classmethod
+    def _irc_lines(cls, files, ignored_nicks=None, only_nicks=None):
+        for line in files:
+            msg = cls._parse_irc_message(line, ignored_nicks=ignored_nicks,
+                                         only_nicks=only_nicks)
+
+            if msg is not None:
+                yield msg
+
+    @classmethod
+    def _parse_irc_message(cls, msg, ignored_nicks=None, only_nicks=None):
+        # only match lines of the form "HH:MM <nick> message"
+        match = re.match("\d+:\d+\s+<(.+?)>\s+(.*)", msg)
+        if not match:
+            return None
+
+        nick = match.group(1)
+        msg = match.group(2)
+
+        if ignored_nicks is not None and nick in ignored_nicks:
+            return None
+
+        if only_nicks is not None and nick not in only_nicks:
+            return None
+
+        # strip "username: " at the beginning of messages
+        match = re.search("^\S+[,:]\s+(\S.*)", msg)
+        if match:
+            msg = match.group(1)
+
+        # strip kibot style '"asdf" --user, 06-oct-09' quotes
+        msg = re.sub("\"(.*)\" --\S+,\s+\d+-\S+-\d+",
+                     lambda m: m.group(1), msg)
+
+        return msg

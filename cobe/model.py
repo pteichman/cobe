@@ -8,9 +8,21 @@ import random
 import types
 import varint
 
+import cobe.ng as ng
+import cobe.skiplist as skiplist
+
 from .counter import MergeCounter
 
 logger = logging.getLogger(__name__)
+
+
+def touch(filename):
+    with open(filename, "w") as fd:
+        pass
+
+def lines(filename):
+    with open(filename, "r") as fd:
+        return fd.readlines()
 
 
 class TokenLog(object):
@@ -21,7 +33,7 @@ class TokenLog(object):
 
     @classmethod
     def open(cls, filename):
-        log = open(filename, "a+")
+        log = open(filename, "a+b")
         log.seek(0, os.SEEK_SET)
 
         ret = cls()
@@ -46,22 +58,87 @@ class TokenLog(object):
 
     def replay(self, log):
         local_add = self.tokens.add
-        seplen = len(os.linesep)
 
         for line in log:
-            local_add(unicode(line[:-seplen], "utf-8"))
+            local_add(unicode(line[:-1], "utf-8"))
 
 
-class Model(object):
+class MemCounts(object):
+    """An in-memory data structure for online counting of observed ngrams
+
+    This must be able to provide the same data as a sorted ngram file:
+
+    1) observed counts of each ngram
+    2) given a prefix (n-1)-gram, the list of ngrams with that prefix
+    3) given a suffix (n-1)-gram, the list of ngrams with that suffix
+
+    It's currently implemented with two skiplists: one for prefix
+    queries and one for suffix queries. This provides O(lg N) lookups
+    for counts and O(n) ngram enumeration after an O(lg N) search for
+    the prefix/suffix queries.
+
+    """
     def __init__(self):
-        self.token_log = None
+        self.fwd = skiplist.Skiplist()
+        self.rev = skiplist.Skiplist()
+
+    def observe(self, ngram):
+        assert ng.is_ngram(ngram)
+
+        self._incr(self.fwd, ngram)
+        self._incr(self.rev, ng.reverse_ngram(ngram))
+
+    @staticmethod
+    def _incr(skiplist, key):
+        skiplist.insert(key, skiplist.get(key, 0) + 1)
+
+    def count(self, ngram):
+        return self.fwd.get(ngram, 0)
+
+
+class Ngrams(object):
+    def __init__(self):
+        self.mem_counts = MemCounts()
+
+        self.log = None
+        self.files = []
+        self.fds = []
 
     @classmethod
-    def open(cls, path):
-        if not os.path.exists(path):
-            os.makedirs(path)
+    def open(cls, ngrams_log, files):
+        self = cls()
 
-        self.token_log = TokenLog.open(os.path.join(path, "tokens"))
+        self.files = files
+        self.fds = map(ng.f_mmap, self.files)
+
+        # replay any logged ngrams into MemCounts
+        self.log = open(ngrams_log, "a+b")
+        self.log.seek(0, os.SEEK_SET)
+        self.replay(self.log)
+
+        return self
+
+    def replay(self, log):
+        for ngram in self.log:
+            self.mem_counts.observe(ngram[:-1].decode("utf-8"))
+
+    def close(self):
+        self.log.close()
+        for fd in self.fds:
+            fd.close()
+
+    def observe(self, ngram):
+        assert ng.is_ngram(ngram)
+
+        self.mem_counts.observe(ngram)
+        self.log.write(ngram.encode("utf-8") + "\n")
+
+    def count(self, ngram):
+        return self.fwd.get(ngram, 0) + \
+            sum(ng.f_count(fd, ngram) for fd in self.fds)
+
+    def complete(self, ngram):
+        return set(ng.f_complete(fd, ngram) for fd in self.fds)
 
 
 class TokenRegistry(object):
@@ -136,7 +213,7 @@ class TokenRegistry(object):
         return self.tokens[token_id]
 
 
-class Model(object):
+class OldModel(object):
     """An n-gram language model for online learning and text generation.
 
     cobe's Model is an unsmoothed n-gram language model keptb in a

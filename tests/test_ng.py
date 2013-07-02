@@ -2,6 +2,7 @@
 # coding=utf-8
 
 import cStringIO as StringIO
+import mmap
 import os
 import unittest2 as unittest
 
@@ -13,7 +14,7 @@ def datafile(filename):
 
 
 # ngram counts from cobe's README
-with open(datafile("README.ngrams")) as fd:
+with ng.f_open(datafile("README.ngrams")) as fd:
     README = fd.read()
 
 
@@ -38,8 +39,9 @@ class TestCounts(unittest.TestCase):
         self.fwd.close()
 
     def test_length(self):
-        with open(datafile("README.ngrams"), "r") as fd:
-            self.assertEqual(5520, ng.f_length(fd))
+        fd = ng.f_open(datafile("README.ngrams"))
+        self.assertEqual(5520, ng.f_length(fd))
+        fd.close()
 
     def test_count(self):
         def ngram(s):
@@ -140,3 +142,11 @@ class TestCounts(unittest.TestCase):
 
         for num, (test, expected) in enumerate(tests):
             self.assertSequenceEqual(expected, ng.f_complete(self.fwd, test))
+
+
+class TestMmapCounts(TestCounts):
+    def setUp(self):
+        self.fwd = ng.f_mmap(datafile("README.ngrams"))
+
+    def tearDown(self):
+        self.fwd.close()

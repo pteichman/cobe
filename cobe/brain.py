@@ -6,11 +6,54 @@ import logging
 import math
 import os
 import random
+import string
 
-import cobe.ng as ng
+from cobe import model
+from cobe import ng
+
+
+def touch(filename):
+    with open(filename, "a"):
+        os.utime(filename, None)
+
+
+def lines(filename):
+    with open(filename, "r") as fd:
+        return fd.readlines()
 
 
 class Brain(object):
+    def __init__(self):
+        self.path = None
+        self.ngrams = model.Ngrams()
+
+    @classmethod
+    def open(cls, path):
+        self = cls()
+        self.path = os.path.normpath(path)
+
+        def ensure(filename):
+            fullpath = os.path.join(path, filename)
+            touch(fullpath)
+            return fullpath
+
+        if not os.path.exists(path):
+            os.makedirs(path)
+
+        ngrams_log, ngrams_idx = map(ensure, ("ngrams.log", "ngrams.idx"))
+
+        self.ngrams = model.Ngrams.open(ngrams_log, lines(ngrams_idx))
+
+        return self
+
+    def learn(self, text):
+        tokens = unicode.split(text)
+
+        for ngram in ng.ngrams(ng.sentence(tokens, 3), 3):
+            self.ngrams.observe(ng.ngram(ngram))
+
+
+class OldBrain(object):
     def __init__(self, path):
         if not os.path.isdir(path):
             os.mkdirs(path)
@@ -69,4 +112,3 @@ class Brain(object):
             return unreverse_set(ngram[:ngram.rfind("\t", 0, -1) + 1])
 
         return chain_follow
-

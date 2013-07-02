@@ -3,6 +3,7 @@
 
 import heapq
 import itertools
+import mmap
 import os
 import random
 
@@ -48,7 +49,42 @@ END_TOKEN = u"</∅>".encode("utf-8")
 
 def is_ngram(ngram):
     """True if ngram looks like a cobe ngram string"""
-    return isinstance(ngram, str) and ngram.endswith("\t")
+    return isinstance(ngram, unicode) and ngram.endswith("\t")
+
+
+def ngrams(grams, n):
+    """Yield successive n-length ranges from grams
+
+    Args:
+        grams: sliceable list of tokens
+        n: integer
+
+    >>> list(ngrams(["row", "row", "row", "your", "boat"], 3))
+    [('row', 'row', 'row'), ('row', 'row', 'your'), ('row', 'your', 'boat')]
+
+    >>> list(ngrams(["row", "row", "row", "your", "boat"], 2))
+    [('row', 'row'), ('row', 'row'), ('row', 'your'), ('your', 'boat')]
+
+    >>> list(ngrams(["row", "row", "row", "your", "boat"], 1))
+    [('row',), ('row',), ('row',), ('your',), ('boat',)]
+
+    If grams is too short to supply an n-length slice, nothing will be
+    returned:
+
+    >>> list(ngrams(["row", "row", "row", "your", "boat"], 6))
+    []
+
+    """
+    for i in xrange(0, len(grams) - n + 1):
+        yield tuple(grams[i:i+n])
+
+
+def ngram(tokens):
+    return u"\t".join(tokens) + u"\t"
+
+
+def sentence(tokens, n):
+    return [START_TOKEN] * n + tokens + [END_TOKEN] * n
 
 
 def choice(collection):
@@ -80,7 +116,7 @@ def ensure_revfile(fwdfile, revfile):
 
     if not os.path.exists(revfile) \
             or os.path.getctime(fwdfile) > os.path.getctime(revfile):
-        with open(fwdfile, "r") as fwd:
+        with open(fwdfile, "rb") as fwd:
             with open(revfile, "w+b") as rev:
                 rev.writelines(sorted(itertools.imap(reverse_line, fwd)))
 
@@ -97,7 +133,27 @@ def unreverse_ngram(ngram):
     return ngram[start:] + ngram[:start]
 
 
-def reply_join(fwd, rev):
+def join(fwd, rev):
+    """Join together the forward and reverse paths of a search result
+
+    Each argument is a sequence of n-grams visited on the way to the
+    search end.
+
+    Example: "The quick brown fox jumps over the lazy dog"
+
+    If the initial search context was "jumps over", join() would be
+    passed these lists:
+
+    fwd: [('jumps', 'over'), ('over', 'the'), ('the', 'lazy'),
+          ('lazy', 'dog'), ('dog', '</∅>')]
+    rev: [('jumps', 'over'), ('fox', 'jumps'), ('brown', 'fox'),
+          ('quick', 'brown'), ('The', 'quick'), ('<∅>', 'The')]
+
+    This function reverses rev and joins the terms together, returning:
+    ('<∅>', 'The', 'quick', 'brown', 'fox', 'jumps', 'over', 'the',
+     'lazy', 'dog', '</∅>')
+
+    """
     def terms(contexts):
         # yield the first term from each context
         for context in contexts:
@@ -109,6 +165,38 @@ def reply_join(fwd, rev):
 
     # Skip the first element of rev because it's also in fwd.
     return tuple(terms(itertools.chain(reversed(rev[1:]), fwd)))
+
+
+def many_ngrams(grams, orders):
+    return itertools.chain(*(ngrams(grams, o) for o in orders))
+
+
+def iter_ngrams(tokenize, iterable, orders=(3,)):
+    """Yield the ngrams found in iterable.
+
+    Args:
+        tokenize: a function that takes a string and returns a token list
+        iterable: an iterable of tokenizable text
+
+    """
+    for text in iterable:
+        for each in many_ngrams(tokenize(text), orders):
+            yield each
+
+
+def one_counts(iter):
+    return ((item, 1) for item in iter)
+
+
+def f_open(filename):
+    """open a read-only ngram file"""
+    return open(filename, "rb")
+
+
+def f_mmap(filename):
+    """mmap a read-only ngram file"""
+    with f_open(filename) as fd:
+        return mmap.mmap(fd.fileno(), 0, prot=mmap.PROT_READ)
 
 
 def f_count(f, ngram):
@@ -210,3 +298,19 @@ def search_bfs(followfunc, costfunc, context, end):
 
             if newcost is not None:
                 heapq.heappush(left, (cost + newcost, newcontext, newpath))
+
+
+def merge_counts(*iters):
+    """Merge the counts of already-sorted iterators of (item, count) pairs"""
+    merge = heapq.merge(*iters)
+    prev, accum = next(merge)
+
+    for item, count in merge:
+        if item == prev:
+            accum += count
+        else:
+            yield prev, accum
+            prev = item
+            accum = count
+
+    yield prev, accum
