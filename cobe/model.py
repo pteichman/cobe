@@ -1,6 +1,7 @@
 # Copyright (C) 2013 Peter Teichman
 
 import collections
+import itertools
 import logging
 import math
 import os
@@ -8,8 +9,9 @@ import random
 import types
 import varint
 
-import cobe.ng as ng
-import cobe.skiplist as skiplist
+from cobe import io
+from cobe import ng
+from cobe import skiplist
 
 from .counter import MergeCounter
 
@@ -20,9 +22,14 @@ def touch(filename):
     with open(filename, "w") as fd:
         pass
 
+
 def lines(filename):
     with open(filename, "r") as fd:
         return fd.readlines()
+
+
+def flatten(iters):
+    return (elem for item in iters for elem in item)
 
 
 class TokenLog(object):
@@ -33,18 +40,12 @@ class TokenLog(object):
 
     @classmethod
     def open(cls, filename):
-        log = open(filename, "a+b")
-        log.seek(0, os.SEEK_SET)
-
-        ret = cls()
-        ret.replay(log)
-        ret.log = log
-
-        return ret
+        self = cls()
+        self.log = io.open_linelog(filename, self.tokens.add)
+        return self
 
     def close(self):
         if self.log is not None:
-            self.log.close()
             self.log = None
 
     def add(self, token):
@@ -53,17 +54,11 @@ class TokenLog(object):
 
         if token not in self.tokens:
             self.tokens.add(token)
-            self.log.write(token.encode("utf-8") + "\n")
+            self.log(token)
             return True
 
-    def replay(self, log):
-        local_add = self.tokens.add
 
-        for line in log:
-            local_add(unicode(line[:-1], "utf-8"))
-
-
-class MemCounts(object):
+class MemCounts(skiplist.Skiplist):
     """An in-memory data structure for online counting of observed ngrams
 
     This must be able to provide the same data as a sorted ngram file:
@@ -78,67 +73,70 @@ class MemCounts(object):
     the prefix/suffix queries.
 
     """
-    def __init__(self):
-        self.fwd = skiplist.Skiplist()
-        self.rev = skiplist.Skiplist()
-
     def observe(self, ngram):
         assert ng.is_ngram(ngram)
+        self.insert(ngram, self.get(ngram, 0) + 1)
 
-        self._incr(self.fwd, ngram)
-        self._incr(self.rev, ng.reverse_ngram(ngram))
+    def get_count(self, ngram):
+        return self.get(ngram, 0)
 
-    @staticmethod
-    def _incr(skiplist, key):
-        skiplist.insert(key, skiplist.get(key, 0) + 1)
+    def complete(self, prefix):
+        node = self._find_prev(prefix)
 
-    def count(self, ngram):
-        return self.fwd.get(ngram, 0)
+        while node is not None and node[0].startswith(prefix):
+            yield node[0]
+            node = node[2]
 
 
 class Ngrams(object):
     def __init__(self):
-        self.mem_counts = MemCounts()
-
         self.log = None
+        self.fwd_mem = MemCounts()
+        self.rev_mem = MemCounts()
+
         self.files = []
-        self.fds = []
+        self.fwd_fds = []
+        self.rev_fds = []
 
     @classmethod
     def open(cls, ngrams_log, files):
         self = cls()
 
         self.files = files
-        self.fds = map(ng.f_mmap, self.files)
+        self.fwd_fds, self.rev_fds = zip(*map(ng.open_ngram_counts, self.files))
 
         # replay any logged ngrams into MemCounts
-        self.log = open(ngrams_log, "a+b")
-        self.log.seek(0, os.SEEK_SET)
-        self.replay(self.log)
+        def insert_ngram(ngram):
+            self.fwd_mem.observe(ngram)
+            self.rev_mem.observe(ng.reverse_ngram(ngram))
+
+        self.log = io.open_linelog(ngrams_log, insert_ngram)
 
         return self
 
-    def replay(self, log):
-        for ngram in self.log:
-            self.mem_counts.observe(ngram[:-1].decode("utf-8"))
-
     def close(self):
         self.log.close()
-        for fd in self.fds:
+        for fd in self.fwd_fds:
             fd.close()
 
     def observe(self, ngram):
         assert ng.is_ngram(ngram)
 
-        self.mem_counts.observe(ngram)
-        self.log.write(ngram.encode("utf-8") + "\n")
+        encoded = ngram.encode("utf-8")
+        self.log(ngram)
+        self.fwd_mem.observe(encoded)
+        self.rev_mem.observe(ng.reverse_ngram(encoded))
 
-    def count(self, ngram):
+    def get_count(self, ngram):
         return self.fwd.get(ngram, 0) + \
-            sum(ng.f_count(fd, ngram) for fd in self.fds)
+            sum(ng.f_count(fd, ngram) for fd in self.fwd_fds)
 
-    def complete(self, ngram):
-        return set(ng.f_complete(fd, ngram) for fd in self.fds)
+    def fwd_complete(self, ngram):
+        return set(ng.f_complete(self.fwd_fds[0], ngram))
+
+    def rev_complete(self, ngram):
+        rev_ngrams = ng.f_complete(self.rev_fds[0], ngram)
+        return set(map(ng.unreverse_ngram, rev_ngrams))
 
 
 class TokenRegistry(object):
@@ -213,7 +211,7 @@ class TokenRegistry(object):
         return self.tokens[token_id]
 
 
-class OldModel(object):
+class Model(object):
     """An n-gram language model for online learning and text generation.
 
     cobe's Model is an unsmoothed n-gram language model keptb in a

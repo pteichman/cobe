@@ -205,9 +205,12 @@ class NgramsCommand:
         end = [ng.END_TOKEN] * 3
 
         def tokenize(text):
-            return start + string.split(text) + end
+            return start + string.split(text.encode("utf-8")) + end
 
-        all_ngrams = ng.iter_ngrams(tokenize, utf8_lines, (3,))
+        def keep(line):
+            return len(string.split(line)) > 2
+
+        all_ngrams = ng.iter_ngrams(tokenize, itertools.ifilter(keep, utf8_lines), (3,))
 
         for ngram, count in ng.merge_counts(sorted(ng.one_counts(all_ngrams))):
             print "\t".join(ngram) + "\t" + str(count)

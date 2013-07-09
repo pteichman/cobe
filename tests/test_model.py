@@ -55,9 +55,9 @@ class TestMemCounts(unittest.TestCase):
             return "\t".join(tokens) + "\t"
 
         tokens_and_counts = {
-            ("one", "two", "three"): 1,
-            ("one", "two", "four"): 1,
-            ("four", "five", "six"): 2,
+            (u"one", u"two", u"three"): 1,
+            (u"one", u"two", u"four"): 1,
+            (u"four", u"five", u"six"): 2,
         }
 
         for tokens, count in tokens_and_counts.items():
@@ -66,13 +66,9 @@ class TestMemCounts(unittest.TestCase):
 
         for tokens, count in tokens_and_counts.items():
             ngram = ngram_str(tokens)
-            self.assertEqual(mc.count(ngram), count)
+            self.assertEqual(mc.get_count(ngram), count)
 
-            # and make sure the right counts are stored in the skiplists
-            self.assertEqual(mc.fwd.get(ngram), count)
-            self.assertEqual(mc.rev.get(ng.reverse_ngram(ngram)), count)
-
-        self.assertEqual(mc.count("unobserved\tngram\t"), 0)
+        self.assertEqual(mc.get_count("unobserved\tngram\t"), 0)
 
 
 class TestTokenRegistry(unittest.TestCase):

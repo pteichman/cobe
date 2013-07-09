@@ -79,6 +79,10 @@ def ngrams(grams, n):
         yield tuple(grams[i:i+n])
 
 
+def one_gram(token):
+    return token + "\t"
+
+
 def ngram(tokens):
     return u"\t".join(tokens) + u"\t"
 
@@ -101,7 +105,7 @@ def open_ngram_counts(fwdfile):
     revfile = "%s.rev" % fwdfile
     ensure_revfile(fwdfile, revfile)
 
-    return open(fwdfile, "r"), open(revfile, "r")
+    return f_mmap(fwdfile), f_mmap(revfile)
 
 
 def ensure_revfile(fwdfile, revfile):
@@ -112,13 +116,25 @@ def ensure_revfile(fwdfile, revfile):
 
     """
     def reverse_line(line):
-        return reverse_ngram(line_ngram(line)) + line_count(line)
+        return reverse_ngram(line_ngram(line)) + str(line_count(line)) + "\n"
 
     if not os.path.exists(revfile) \
             or os.path.getctime(fwdfile) > os.path.getctime(revfile):
         with open(fwdfile, "rb") as fwd:
             with open(revfile, "w+b") as rev:
                 rev.writelines(sorted(itertools.imap(reverse_line, fwd)))
+
+    return revfile
+
+
+def next_ngram_prefix(ngram):
+    start = ngram.find("\t") + 1
+    return ngram[start:]
+
+
+def prev_ngram_prefix(ngram):
+    end = ngram.rfind("\t", 0, -1)
+    return ngram[:end]
 
 
 def reverse_ngram(ngram):
@@ -269,7 +285,7 @@ def f_complete(f, prefix):
     return tuple(f_prefix_map(f, line_ngram, prefix))
 
 
-def search_bfs(followfunc, costfunc, context, end):
+def search_bfs(followfunc, costfunc, contexts, finishfunc):
     """A breadth-first search across an adjacency list
 
     Args:
@@ -285,10 +301,11 @@ def search_bfs(followfunc, costfunc, context, end):
     """
     heappop = heapq.heappop
 
-    left = [(0.0, context, [context])]
+    left = [(0.0, context, [context]) for context in contexts]
     while left:
         cost, context, path = heappop(left)
-        if end in context:
+
+        if finishfunc(context):
             yield path
             continue
 

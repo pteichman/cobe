@@ -20,9 +20,21 @@ with ng.f_open(datafile("README.ngrams")) as fd:
 
 class TestNgrams(unittest.TestCase):
     def test_is_ngram(self):
-        self.assertFalse(ng.is_ngram("foo"))
-        self.assertTrue(ng.is_ngram("foo\t"))
-        self.assertTrue(ng.is_ngram("foo\tbar\tbaz\t"))
+        ngrams = [
+            u"foo\t",
+            u"foo\tbar\tbaz\t",
+        ]
+
+        not_ngrams = [
+            "foo",
+            u"foo",
+        ]
+
+        for ngram in ngrams:
+            self.assertTrue(ng.is_ngram(ngram))
+
+        for ngram in not_ngrams:
+            self.assertFalse(ng.is_ngram(ngram))
 
     def test_choice(self):
         items = frozenset(["one", "two", "three"])
