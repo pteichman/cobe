@@ -49,7 +49,7 @@ END_TOKEN = u"</∅>".encode("utf-8")
 
 def is_ngram(ngram):
     """True if ngram looks like a cobe ngram string"""
-    return isinstance(ngram, unicode) and ngram.endswith("\t")
+    return isinstance(ngram, str) and ngram.endswith("\t")
 
 
 def ngrams(grams, n):
@@ -84,7 +84,11 @@ def one_gram(token):
 
 
 def ngram(tokens):
-    return u"\t".join(tokens) + u"\t"
+    return "\t".join(tokens) + "\t"
+
+
+def pretty(ngram):
+    return tuple(ngram.split("\t")[:-1])
 
 
 def sentence(tokens, n):
@@ -300,6 +304,7 @@ def search_bfs(followfunc, costfunc, contexts, finishfunc):
 
     """
     heappop = heapq.heappop
+    heappush = heapq.heappush
 
     left = [(0.0, context, [context]) for context in contexts]
     while left:
@@ -314,7 +319,7 @@ def search_bfs(followfunc, costfunc, contexts, finishfunc):
             newcost = costfunc(context, newcontext)
 
             if newcost is not None:
-                heapq.heappush(left, (cost + newcost, newcontext, newpath))
+                heappush(left, (cost + newcost, newcontext, newpath))
 
 
 def merge_counts(*iters):

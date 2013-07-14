@@ -122,10 +122,9 @@ class Ngrams(object):
     def observe(self, ngram):
         assert ng.is_ngram(ngram)
 
-        encoded = ngram.encode("utf-8")
         self.log(ngram)
-        self.fwd_mem.observe(encoded)
-        self.rev_mem.observe(ng.reverse_ngram(encoded))
+        self.fwd_mem.observe(ngram)
+        self.rev_mem.observe(ng.reverse_ngram(ngram))
 
     def get_count(self, ngram):
         return self.fwd.get(ngram, 0) + \
