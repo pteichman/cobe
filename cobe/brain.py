@@ -4,10 +4,12 @@ import itertools
 import functools
 import logging
 import math
+import operator
 import os
 import random
 import string
 
+from cobe import io
 from cobe import model
 from cobe import ng
 from cobe import utils
@@ -27,6 +29,7 @@ class Brain(object):
     def __init__(self):
         self.path = None
         self.ngrams = model.Ngrams()
+        self.tokens = model.TokenLog()
 
     @classmethod
     def open(cls, path):
@@ -46,13 +49,26 @@ class Brain(object):
         ngram_files = [os.path.join(path, line) for line in lines(ngrams_idx)]
         self.ngrams = model.Ngrams.open(ngrams_log, ngram_files)
 
+        tokens_log = ensure("tokens.log")
+        self.tokens = model.TokenLog.open(tokens_log)
+
+        # temporary: ensure the tokens log has all the items it needs
+        local_add = self.tokens.add
+        def add_first_token(line):
+            token = line[:line.find("\t")]
+            local_add(token)
+
+        for f in ngram_files:
+            io.open_linelog(f, add_first_token)
+
         return self
 
-    def learn(self, text):
+    def train(self, text):
         tokens = unicode.split(text)
 
-        for ngram in ng.ngrams(ng.sentence(tokens, 3), 3):
-            self.ngrams.observe(ng.ngram(ngram))
+        if len(tokens) > 3:
+            for ngram in ng.ngrams(ng.sentence(tokens, 3), 3):
+                self.ngrams.observe(ng.ngram(ngram))
 
     def replies(self, starts):
         # generate replies with a random walk
@@ -81,11 +97,15 @@ class Brain(object):
         fwd_iter = ng.search_bfs(fwd_complete, scorer, starts, fwd_finish)
         rev_iter = ng.search_bfs(rev_complete, scorer, path[0], rev_finish)
 
-    def random_walk(self, context, newcontext):
+    def random_cost(self, context, newcontext):
         return random.random()
 
     def reply(self, text):
         tokens = unicode.split(text)
+        print "tokens are", tokens
+        tokens = filter(functools.partial(operator.contains,
+                                          self.tokens.tokens), tokens)
+        print "filtered", tokens
 
         pivot = ng.choice(tokens).encode("utf-8")
         pivots = self.ngrams.fwd_complete(ng.one_gram(pivot))
@@ -115,7 +135,7 @@ class Brain(object):
         finish = lambda ngram: ngram == end
 
         for path in ng.search_bfs(
-            next_ngrams, self.random_walk, [ngram], finish):
+            next_ngrams, self.random_cost, [ngram], finish):
             yield path
 
     def rev_replies(self, ngram):
@@ -127,7 +147,7 @@ class Brain(object):
         finish = lambda ngram: ngram == end
 
         for path in ng.search_bfs(
-            next_ngrams, self.random_walk, [ngram], finish):
+            next_ngrams, self.random_cost, [ngram], finish):
             yield list(reversed(path))
 
     def join(self, rev, fwd):

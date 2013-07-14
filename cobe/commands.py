@@ -170,7 +170,7 @@ class ConsoleCommand:
 
     @staticmethod
     def run(args):
-        brain = Brain("cobe.store")
+        brain = Brain.open("model")
 
         history = os.path.expanduser("~/.cobe_history")
         try:
