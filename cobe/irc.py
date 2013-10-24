@@ -96,7 +96,7 @@ class Bot(irclib.SimpleIRCClient):
             text = msg
 
         # convert message to unicode
-        text = text.decode("utf-8").strip()
+        text = text.decode("utf-8", "replace").strip()
 
         if not self.only_nicks or user in self.only_nicks:
             self.brain.learn(text)
