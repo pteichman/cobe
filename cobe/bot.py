@@ -1,16 +1,16 @@
-# Copyright (C) 2010 Peter Teichman
+# Copyright (C) 2014 Peter Teichman
 
-import irclib
+import irc.client
 import logging
 import re
 
-log = logging.getLogger("cobe.irc")
+log = logging.getLogger("cobe.bot")
 
 
-class Bot(irclib.SimpleIRCClient):
+class Bot(irc.client.SimpleIRCClient):
     def __init__(self, brain, nick, channel, log_channel, ignored_nicks,
                  only_nicks):
-        irclib.SimpleIRCClient.__init__(self)
+        irc.client.SimpleIRCClient.__init__(self)
 
         self.brain = brain
         self.nick = nick
@@ -27,9 +27,8 @@ class Bot(irclib.SimpleIRCClient):
             logging.root.addHandler(handler)
 
     def _dispatcher(self, c, e):
-        log.debug("on_%s %s", e.eventtype(), (e.source(), e.target(),
-                                              e.arguments()))
-        irclib.SimpleIRCClient._dispatcher(self, c, e)
+        log.debug("on_%s %s", e.type, (e.source, e.target, e.arguments))
+        irc.client.SimpleIRCClient._dispatcher(self, c, e)
 
     def _delayed_check(self, delay=120):
         self.connection.execute_delayed(delay, self._check_connection)
@@ -46,7 +45,7 @@ class Bot(irclib.SimpleIRCClient):
             conn.connect(conn.server, conn.port, conn.nickname, conn.password,
                          conn.username, conn.ircname, conn.localaddress,
                          conn.localport)
-        except irclib.ServerConnectionError:
+        except irc.client.ServerConnectionError:
             log.info("failed reconnection, rescheduling", exc_info=True)
             self._delayed_check()
 
@@ -61,9 +60,9 @@ class Bot(irclib.SimpleIRCClient):
             self.connection.join(self.log_channel)
 
     def on_pubmsg(self, conn, event):
-        user = irclib.nm_to_n(event.source())
+        user = irc.client.NickMask(event.source).nick
 
-        if event.target() == self.log_channel:
+        if event.target == self.log_channel:
             # ignore input in the log channel
             return
 
@@ -72,10 +71,10 @@ class Bot(irclib.SimpleIRCClient):
             return
 
         # only respond on channels
-        if not irclib.is_channel(event.target()):
+        if not irc.client.is_channel(event.target):
             return
 
-        msg = event.arguments()[0]
+        msg = event.arguments[0].strip()
 
         # strip pasted nicks from messages
         msg = re.sub("<\S+>\s+", "", msg)
@@ -95,15 +94,12 @@ class Bot(irclib.SimpleIRCClient):
             to = None
             text = msg
 
-        # convert message to unicode
-        text = text.decode("utf-8", "replace").strip()
-
         if not self.only_nicks or user in self.only_nicks:
             self.brain.learn(text)
 
-        if to == self.nick:
-            reply = self.brain.reply(text).encode("utf-8")
-            conn.privmsg(event.target(), "%s: %s" % (user, reply))
+        if to == conn.nickname:
+            reply = self.brain.reply(text)
+            conn.privmsg(event.target, "%s: %s" % (user, reply))
 
 
 class Runner:

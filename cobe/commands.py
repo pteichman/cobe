@@ -1,4 +1,4 @@
-# Copyright (C) 2011 Peter Teichman
+# Copyright (C) 2014 Peter Teichman
 
 import atexit
 import logging
@@ -9,8 +9,8 @@ import Stemmer
 import sys
 import time
 
+from .bot import Runner
 from .brain import Brain
-from .irc import Runner
 
 log = logging.getLogger("cobe")
 
