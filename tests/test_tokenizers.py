@@ -1,52 +1,48 @@
 import unittest
 
-from cobe.tokenizers import (
-    CobeTokenizer, MegaHALTokenizer, WhitespaceTokenizer)
+from cobe.tokenizers import CobeStemmer, CobeTokenizer, MegaHALTokenizer
 
-
-class TestMegaHALTokenizer(unittest.TestCase):
+class testMegaHALTokenizer(unittest.TestCase):
     def setUp(self):
         self.tokenizer = MegaHALTokenizer()
 
-    def test_split_empty(self):
+    def testSplitEmpty(self):
         self.assertEquals(len(self.tokenizer.split(u"")), 0)
 
-    def test_split_sentence(self):
+    def testSplitSentence(self):
         words = self.tokenizer.split(u"hi.")
         self.assertEquals(words, ["HI", "."])
 
-    def test_split_comma(self):
+    def testSplitComma(self):
         words = self.tokenizer.split(u"hi, cobe")
         self.assertEquals(words, ["HI", ", ", "COBE", "."])
 
-    def test_split_implicit_stop(self):
+    def testSplitImplicitStop(self):
         words = self.tokenizer.split(u"hi")
         self.assertEquals(words, ["HI", "."])
 
-    def test_split_url(self):
+    def testSplitUrl(self):
         words = self.tokenizer.split(u"http://www.google.com/")
-        self.assertEquals(words, ["HTTP", "://", "WWW", ".", "GOOGLE",
-                                  ".", "COM", "/."])
+        self.assertEquals(words, ["HTTP", "://", "WWW", ".", "GOOGLE", ".", "COM", "/."])
 
-    def test_split_non_unicode(self):
+    def testSplitNonUnicode(self):
         self.assertRaises(TypeError, self.tokenizer.split, "foo")
 
-    def test_split_apostrophe(self):
+    def testSplitApostrophe(self):
         words = self.tokenizer.split(u"hal's brain")
         self.assertEquals(words, ["HAL'S", " ", "BRAIN", "."])
 
         words = self.tokenizer.split(u"',','")
         self.assertEquals(words, ["'", ",", "'", ",", "'", "."])
 
-    def test_split_alpha_and_numeric(self):
+    def testSplitAlphaAndNumeric(self):
         words = self.tokenizer.split(u"hal9000, test blah 12312")
-        self.assertEquals(words, ["HAL", "9000", ", ", "TEST", " ",
-                                  "BLAH", " ", "12312", "."])
+        self.assertEquals(words, ["HAL", "9000", ", ", "TEST", " ", "BLAH", " ", "12312", "."])
 
         words = self.tokenizer.split(u"hal9000's test")
         self.assertEquals(words, ["HAL", "9000", "'S", " ", "TEST", "."])
 
-    def test_capitalize(self):
+    def testCapitalize(self):
         words = self.tokenizer.split(u"this is a test")
         self.assertEquals(u"This is a test.", self.tokenizer.join(words))
 
@@ -57,49 +53,48 @@ class TestMegaHALTokenizer(unittest.TestCase):
         words = self.tokenizer.split(u"2nd place test")
         self.assertEquals(u"2Nd place test.", self.tokenizer.join(words))
 
-
-class TestCobeTokenizer(unittest.TestCase):
+class testCobeTokenizer(unittest.TestCase):
     def setUp(self):
         self.tokenizer = CobeTokenizer()
 
-    def test_split_empty(self):
+    def testSplitEmpty(self):
         self.assertEquals(len(self.tokenizer.split(u"")), 0)
 
-    def test_split_sentence(self):
+    def testSplitSentence(self):
         words = self.tokenizer.split(u"hi.")
         self.assertEquals(words, ["hi", "."])
 
-    def test_split_comma(self):
+    def testSplitComma(self):
         words = self.tokenizer.split(u"hi, cobe")
         self.assertEquals(words, ["hi", ",", " ", "cobe"])
 
-    def test_split_dash(self):
+    def testSplitDash(self):
         words = self.tokenizer.split(u"hi - cobe")
         self.assertEquals(words, ["hi", " ", "-", " ", "cobe"])
 
-    def test_split_multiple_spaces_with_dash(self):
+    def testSplitMultipleSpacesWithDash(self):
         words = self.tokenizer.split(u"hi  -  cobe")
         self.assertEquals(words, ["hi", " ", "-", " ", "cobe"])
 
-    def test_split_leading_dash(self):
+    def testSplitLeadingDash(self):
         words = self.tokenizer.split(u"-foo")
         self.assertEquals(words, ["-foo"])
 
-    def test_split_leading_space(self):
+    def testSplitLeadingSpace(self):
         words = self.tokenizer.split(u" foo")
         self.assertEquals(words, ["foo"])
 
         words = self.tokenizer.split(u"  foo")
         self.assertEquals(words, ["foo"])
 
-    def test_split_trailing_space(self):
+    def testSplitTrailingSpace(self):
         words = self.tokenizer.split(u"foo ")
         self.assertEquals(words, ["foo"])
 
         words = self.tokenizer.split(u"foo  ")
         self.assertEquals(words, ["foo"])
 
-    def test_split_smiles(self):
+    def testSplitSmiles(self):
         words = self.tokenizer.split(u":)")
         self.assertEquals(words, [":)"])
 
@@ -113,7 +108,7 @@ class TestCobeTokenizer(unittest.TestCase):
         words = self.tokenizer.split(u";(")
         self.assertEquals(words, [";("])
 
-    def test_split_url(self):
+    def testSplitUrl(self):
         words = self.tokenizer.split(u"http://www.google.com/")
         self.assertEquals(words, ["http://www.google.com/"])
 
@@ -130,11 +125,11 @@ class TestCobeTokenizer(unittest.TestCase):
         words = self.tokenizer.split(u":foo")
         self.assertEquals(words, [":", "foo"])
 
-    def test_split_multiple_spaces(self):
+    def testSplitMultipleSpaces(self):
         words = self.tokenizer.split(u"this is  a test")
         self.assertEquals(words, ["this", " ", "is", " ", "a", " ", "test"])
 
-    def test_split_very_sad_frown(self):
+    def testSplitVerySadFrown(self):
         words = self.tokenizer.split(u"testing :    (")
         self.assertEquals(words, ["testing", " ", ":    ("])
 
@@ -144,7 +139,7 @@ class TestCobeTokenizer(unittest.TestCase):
         words = self.tokenizer.split(u"testing          :    (  foo")
         self.assertEquals(words, ["testing", " ", ":    (", " ", "foo"])
 
-    def test_split_hyphenated_word(self):
+    def testSplitHyphenatedWord(self):
         words = self.tokenizer.split(u"test-ing")
         self.assertEquals(words, ["test-ing"])
 
@@ -154,31 +149,34 @@ class TestCobeTokenizer(unittest.TestCase):
         words = self.tokenizer.split(u"test-ing :-) 1-2-3")
         self.assertEquals(words, ["test-ing", " ", ":-)", " ", "1-2-3"])
 
-    def test_split_apostrophes(self):
+    def testSplitApostrophes(self):
         words = self.tokenizer.split(u"don't :'(")
         self.assertEquals(words, ["don't", " ", ":'("])
 
-    def test_split_non_unicode(self):
+    def testSplitNonUnicode(self):
         self.assertRaises(TypeError, self.tokenizer.split, "foo")
 
-    def test_join(self):
+    def testJoin(self):
         self.assertEquals("foo bar baz",
                           self.tokenizer.join(["foo", " ", "bar", " ", "baz"]))
 
 
-class TestWhitespaceTokenizer(unittest.TestCase):
-    def test_split(self):
-        tok = WhitespaceTokenizer()
+class testCobeStemmer(unittest.TestCase):
+    def setUp(self):
+        self.stemmer = CobeStemmer("english")
 
-        self.assertEquals([], tok.split(""))
+    def testStemmer(self):
+        self.assertEquals("foo", self.stemmer.stem("foo"))
+        self.assertEquals("jump", self.stemmer.stem("jumping"))
+        self.assertEquals("run", self.stemmer.stem("running"))
 
-        self.assertEquals(["this", "is", "a", "test"],
-                          tok.split("this is a test"))
+    def testStemmerCase(self):
+        self.assertEquals("foo", self.stemmer.stem("Foo"))
+        self.assertEquals("foo", self.stemmer.stem("FOO"))
 
-    def test_join(self):
-        tok = WhitespaceTokenizer()
+        self.assertEquals("foo", self.stemmer.stem("FOO'S"))
+        self.assertEquals("foo", self.stemmer.stem("FOOING"))
+        self.assertEquals("foo", self.stemmer.stem("Fooing"))
 
-        self.assertEquals("", tok.join([]))
-
-        self.assertEquals("this is a test",
-                          tok.join(["this", "is", "a", "test"]))
+if __name__ == '__main__':
+    unittest.main()

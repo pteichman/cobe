@@ -1,44 +1,46 @@
 import unittest
 
-from cobe.commands import TrainIrcLogCommand
+from cobe.commands import LearnIrcLogCommand
 
-
-class TestIrcLogParsing(unittest.TestCase):
+class testIrcLogParsing(unittest.TestCase):
     def setUp(self):
-        self.command = TrainIrcLogCommand()
+        self.command = LearnIrcLogCommand()
 
-    def test_non_pubmsg(self):
+    def testNonPubmsg(self):
         msg = "this is some non-pubmsg text found in a log"
         cmd = self.command
 
         self.assertEqual(None, cmd._parse_irc_message(msg))
 
-    def test_normal_pubmsg(self):
+    def testNormalPubmsg(self):
         msg = "12:00 <foo> bar baz"
         cmd = self.command
 
-        self.assertEqual("bar baz", cmd._parse_irc_message(msg))
+        self.assertEqual("bar baz", cmd._parse_irc_message(msg)[1])
 
-    def test_pubmsg_to_cobe(self):
+    def testPubmsgToCobe(self):
         msg = "12:00 <foo> cobe: bar baz"
         cmd = self.command
 
-        self.assertEqual("bar baz", cmd._parse_irc_message(msg))
+        self.assertEqual(("cobe", "bar baz"), cmd._parse_irc_message(msg))
 
-    def test_normal_pubmsg_with_wpaces(self):
+    def testNormalPubmsgWithSpaces(self):
         msg = "12:00 < foo> bar baz"
         cmd = self.command
 
-        self.assertEqual("bar baz", cmd._parse_irc_message(msg))
+        self.assertEqual("bar baz", cmd._parse_irc_message(msg)[1])
 
-    def test_kibot_quote_pubmsg(self):
+    def testKibotQuotePubmsg(self):
         msg = "12:00 <foo> \"bar baz\" --user, 01-oct-09"
         cmd = self.command
 
-        self.assertEqual("bar baz", cmd._parse_irc_message(msg))
+        self.assertEqual("bar baz", cmd._parse_irc_message(msg)[1])
 
-    def test_ignored_nick_pubmsg(self):
+    def testIgnoredNickPubmsg(self):
         msg = "12:00 <foo> bar baz"
         cmd = self.command
 
         self.assertEqual(None, cmd._parse_irc_message(msg, ["foo"]))
+
+if __name__ == '__main__':
+    unittest.main()
