@@ -33,16 +33,16 @@ class Brain:
     # in the tokens table
     SPACE_TOKEN_ID = -1
 
-    def __init__(self, filename):
+    def __init__(self, filename, **kwargs):
         """Construct a brain for the specified filename. If that file
         doesn't exist, it will be initialized with the default brain
         settings."""
         if not os.path.exists(filename):
             log.info("File does not exist. Assuming defaults.")
-            Brain.init(filename)
+            Brain.init(filename, **kwargs)
 
         with trace_us("Brain.connect_us"):
-            self.graph = graph = Graph(sqlite3.connect(filename))
+            self.graph = graph = Graph(sqlite3.connect(filename, **kwargs))
 
         version = graph.get_info_text("version")
         if version != "2":
@@ -392,7 +392,7 @@ with its two nodes"""
                         yield prev + n, node
 
     @staticmethod
-    def init(filename, order=3, tokenizer=None):
+    def init(filename, order=3, tokenizer=None, **kwargs):
         """Initialize a brain. This brain's file must not already exist.
 
 Keyword arguments:
@@ -408,7 +408,7 @@ tokenizer -- One of Cobe, MegaHAL (default Cobe). See documentation
             log.info("Unknown tokenizer: %s. Using CobeTokenizer", tokenizer)
             tokenizer = "Cobe"
 
-        graph = Graph(sqlite3.connect(filename))
+        graph = Graph(sqlite3.connect(filename, **kwargs))
 
         with trace_us("Brain.init_time_us"):
             graph.init(order, tokenizer)
