@@ -12,6 +12,9 @@ class Bot(irc.client.SimpleIRCClient):
                  only_nicks):
         irc.client.SimpleIRCClient.__init__(self)
 
+        # Fall back to latin-1 if invalid utf-8 is provided.
+        irc.client.ServerConnection.buffer_class = irc.buffer.LenientDecodingLineBuffer
+
         self.brain = brain
         self.nick = nick
         self.channel = channel
