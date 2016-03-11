@@ -66,7 +66,7 @@ class Brain:
             try:
                 self.stemmer = tokenizers.CobeStemmer(stemmer_name)
                 log.debug("Initialized a stemmer: %s" % stemmer_name)
-            except Exception, e:
+            except Exception as e:
                 log.error("Error creating stemmer: %s", str(e))
 
         self._end_token_id = \
