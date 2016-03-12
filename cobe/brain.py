@@ -137,7 +137,7 @@ found between the two tokens."""
 
         context = []
 
-        for i in xrange(len(chain)):
+        for i in range(len(chain)):
             context.append(chain[i])
 
             if len(context) == self.order:
@@ -327,7 +327,7 @@ with its two nodes"""
 
     def _babble(self):
         token_ids = []
-        for i in xrange(5):
+        for i in range(5):
             # Generate a few random tokens that can be used as pivots
             token_id = self.graph.get_random_token()
 
@@ -451,10 +451,10 @@ class Graph:
             self.order = int(self.get_info_text("order"))
 
             self._all_tokens = ",".join(["token%d_id" % i
-                                         for i in xrange(self.order)])
+                                         for i in range(self.order)])
             self._all_tokens_args = " AND ".join(
-                ["token%d_id = ?" % i for i in xrange(self.order)])
-            self._all_tokens_q = ",".join(["?" for i in xrange(self.order)])
+                ["token%d_id = ?" % i for i in range(self.order)])
+            self._all_tokens_q = ",".join(["?" for i in range(self.order)])
             self._last_token = "token%d_id" % (self.order - 1)
 
             # Disable the SQLite cache. Its pages tend to get swapped
@@ -729,7 +729,7 @@ CREATE TABLE tokens (
     is_word INTEGER NOT NULL)""")
 
         tokens = []
-        for i in xrange(order):
+        for i in range(order):
             tokens.append("token%d_id INTEGER REFERENCES token(id)" % i)
 
         log.debug("Creating table: token_stems")
@@ -786,7 +786,7 @@ CREATE INDEX IF NOT EXISTS learn_index ON edges
         # remove the temporary learning index if it exists
         c.execute("DROP INDEX IF EXISTS learn_index")
 
-        token_ids = ",".join(["token%d_id" % i for i in xrange(self.order)])
+        token_ids = ",".join(["token%d_id" % i for i in range(self.order)])
         c.execute("""
 CREATE UNIQUE INDEX IF NOT EXISTS nodes_token_ids on nodes
     (%s)""" % token_ids)
