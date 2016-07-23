@@ -114,7 +114,7 @@ class Brain:
     def learn(self, text):
         """Learn a string of text. If the input is not already
         Unicode, it will be decoded as utf-8."""
-        if type(text) != types.UnicodeType:
+        if type(text) != str:
             # Assume that non-Unicode text is encoded as utf-8, which
             # should be somewhat safe in the modern world.
             text = text.decode("utf-8", "ignore")
@@ -137,7 +137,7 @@ found between the two tokens."""
 
         context = []
 
-        for i in xrange(len(chain)):
+        for i in range(len(chain)):
             context.append(chain[i])
 
             if len(context) == self.order:
@@ -197,13 +197,13 @@ with its two nodes"""
     def reply(self, text, loop_ms=500, max_len=None):
         """Reply to a string of text. If the input is not already
         Unicode, it will be decoded as utf-8."""
-        if type(text) != types.UnicodeType:
+        if type(text) != str:
             # Assume that non-Unicode text is encoded as utf-8, which
             # should be somewhat safe in the modern world.
             text = text.decode("utf-8", "ignore")
 
         tokens = self.tokenizer.split(text)
-        input_ids = map(self.graph.get_token_by_text, tokens)
+        input_ids = list(map(self.graph.get_token_by_text, tokens))
 
         # filter out unknown words and non-words from the potential pivots
         pivot_set = self._filter_pivots(input_ids)
@@ -327,7 +327,7 @@ with its two nodes"""
 
     def _babble(self):
         token_ids = []
-        for i in xrange(5):
+        for i in range(5):
             # Generate a few random tokens that can be used as pivots
             token_id = self.graph.get_random_token()
 
@@ -338,7 +338,7 @@ with its two nodes"""
 
     def _filter_pivots(self, pivots):
         # remove pivots that might not give good results
-        tokens = set(filter(None, pivots))
+        tokens = set([_f for _f in pivots if _f])
 
         filtered = self.graph.get_word_tokens(tokens)
         if not filtered:
@@ -349,7 +349,7 @@ with its two nodes"""
     def _pick_pivot(self, pivot_ids):
         pivot = random.choice(tuple(pivot_ids))
 
-        if type(pivot) is types.TupleType:
+        if type(pivot) is tuple:
             # the input word was stemmed to several things
             pivot = random.choice(pivot)
 
@@ -375,7 +375,7 @@ with its two nodes"""
             pivot_id = self._pick_pivot(pivot_ids)
             node = graph.get_random_node_with_token(pivot_id)
 
-            parts = itertools.izip_longest(search(node, end, 1),
+            parts = itertools.zip_longest(search(node, end, 1),
                                            search(node, end, 0),
                                            fillvalue=None)
 
@@ -451,10 +451,10 @@ class Graph:
             self.order = int(self.get_info_text("order"))
 
             self._all_tokens = ",".join(["token%d_id" % i
-                                         for i in xrange(self.order)])
+                                         for i in range(self.order)])
             self._all_tokens_args = " AND ".join(
-                ["token%d_id = ?" % i for i in xrange(self.order)])
-            self._all_tokens_q = ",".join(["?" for i in xrange(self.order)])
+                ["token%d_id = ?" % i for i in range(self.order)])
+            self._all_tokens_q = ",".join(["?" for i in range(self.order)])
             self._last_token = "token%d_id" % (self.order - 1)
 
             # Disable the SQLite cache. Its pages tend to get swapped
@@ -524,7 +524,7 @@ class Graph:
         if len(seq) == 1:
             # Grab the first item from seq. Use an iterator so this works
             # with sets as well as lists.
-            return "(%s)" % iter(seq).next()
+            return "(%s)" % next(iter(seq))
 
         return str(tuple(seq))
 
@@ -558,7 +558,7 @@ class Graph:
         q = "SELECT token_id FROM token_stems WHERE token_stems.stem = ?"
         rows = self._conn.execute(q, (stem,))
         if rows:
-            return map(operator.itemgetter(0), rows)
+            return list(map(operator.itemgetter(0), rows))
 
     def get_word_tokens(self, token_ids):
         q = "SELECT id FROM tokens WHERE id IN %s AND is_word = 1" % \
@@ -566,7 +566,7 @@ class Graph:
 
         rows = self._conn.execute(q)
         if rows:
-            return map(operator.itemgetter(0), rows)
+            return list(map(operator.itemgetter(0), rows))
 
     def get_tokens(self, token_ids):
         q = "SELECT id FROM tokens WHERE id IN %s" % \
@@ -574,7 +574,7 @@ class Graph:
 
         rows = self._conn.execute(q)
         if rows:
-            return map(operator.itemgetter(0), rows)
+            return list(map(operator.itemgetter(0), rows))
 
     def get_node_by_tokens(self, tokens):
         c = self.cursor()
@@ -641,7 +641,7 @@ class Graph:
     def add_edge(self, prev_node, next_node, has_space):
         c = self.cursor()
 
-        assert type(has_space) == types.BooleanType
+        assert type(has_space) == bool
 
         update_q = "UPDATE edges SET count = count + 1 " \
             "WHERE prev_node = ? AND next_node = ? AND has_space = ?"
@@ -729,7 +729,7 @@ CREATE TABLE tokens (
     is_word INTEGER NOT NULL)""")
 
         tokens = []
-        for i in xrange(order):
+        for i in range(order):
             tokens.append("token%d_id INTEGER REFERENCES token(id)" % i)
 
         log.debug("Creating table: token_stems")
@@ -786,7 +786,7 @@ CREATE INDEX IF NOT EXISTS learn_index ON edges
         # remove the temporary learning index if it exists
         c.execute("DROP INDEX IF EXISTS learn_index")
 
-        token_ids = ",".join(["token%d_id" % i for i in xrange(self.order)])
+        token_ids = ",".join(["token%d_id" % i for i in range(self.order)])
         c.execute("""
 CREATE UNIQUE INDEX IF NOT EXISTS nodes_token_ids on nodes
     (%s)""" % token_ids)

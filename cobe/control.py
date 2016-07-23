@@ -41,7 +41,7 @@ def main():
     try:
         args.run(args)
     except KeyboardInterrupt:
-        print
+        print()
         sys.exit(1)
 
 if __name__ == "__main__":
