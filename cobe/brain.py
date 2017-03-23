@@ -268,12 +268,6 @@ with its two nodes"""
 
         _time = time.time() - _start
 
-        if best_reply is None:
-            # we couldn't find any pivot words in _babble(), so we're
-            # working with an essentially empty brain. Use the classic
-            # MegaHAL reply:
-            return "I don't know enough to answer you yet!"
-
         self.scorer.end(best_reply)
 
         if log.isEnabledFor(logging.DEBUG):
