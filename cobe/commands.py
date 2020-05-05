@@ -48,8 +48,13 @@ def progress_generator(filename):
     s = os.stat(filename)
     size_left = s.st_size
 
-    fd = open(filename)
+    fd = open(filename, "rb")
     for line in fd:
+        # Try to interpret any binary data as utf-8, but ignore
+        # errors. This tries to make as good use of corrupt input as
+        # possible.
+        line = line.decode("utf-8", errors="ignore")
+
         size_left = size_left - len(line)
         progress = 100 * (1. - (float(size_left) / float(s.st_size)))
 
