@@ -26,7 +26,7 @@ def main():
     args = parser.parse_args()
 
     formatter = logging.Formatter("%(levelname)s: %(message)s")
-    console = logging.StreamHandler(codecs.getwriter('utf8')(sys.stderr))
+    console = logging.StreamHandler(sys.stderr)
     console.setFormatter(formatter)
     logging.root.addHandler(console)
 
@@ -41,7 +41,7 @@ def main():
     try:
         args.run(args)
     except KeyboardInterrupt:
-        print
+        print()
         sys.exit(1)
 
 if __name__ == "__main__":

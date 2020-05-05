@@ -7,18 +7,18 @@ from setuptools import setup, find_packages
 
 setup(
     name = "cobe",
-    version = "2.1.2",
+    version = "3.0.0",
     author = "Peter Teichman",
     author_email = "peter@teichman.org",
-    url = "http://wiki.github.com/pteichman/cobe/",
+    url = "https://github.com/pteichman/cobe/wiki",
     description = "Markov chain based text generator library and chatbot",
     packages = ["cobe"],
     test_suite = "tests",
 
     install_requires = [
-        "PyStemmer==1.3.0",
-        "argparse==1.2.1",
-        "irc==12.1.1"
+        "Cython==0.29.17",
+        "PyStemmer==2.0.0.1",
+        "irc==18.0.0"
         ],
 
     classifiers = [
@@ -28,7 +28,7 @@ setup(
         "Intended Audience :: End Users/Desktop",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
-        "Programming Language :: Python",
+        "Programming Language :: Python :: 3",
         "Topic :: Scientific/Engineering :: Artificial Intelligence"
         ],
 
