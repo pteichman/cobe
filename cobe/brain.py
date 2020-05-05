@@ -10,7 +10,6 @@ import random
 import re
 import sqlite3
 import time
-import types
 
 from .instatrace import trace, trace_ms, trace_us
 from . import scoring

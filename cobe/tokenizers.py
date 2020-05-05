@@ -2,7 +2,6 @@
 
 import re
 import Stemmer
-import types
 
 
 class MegaHALTokenizer:
