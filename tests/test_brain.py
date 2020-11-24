@@ -38,7 +38,7 @@ class testInit(unittest.TestCase):
         Brain.init(TEST_BRAIN_FILE)
 
         brain = Brain(TEST_BRAIN_FILE)
-        self.assertTrue(brain.reply("") is not "")
+        self.assertTrue(brain.reply("") != "")
 
     def testWrongVersion(self):
         Brain.init(TEST_BRAIN_FILE)

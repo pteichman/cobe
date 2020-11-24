@@ -7,7 +7,7 @@ from setuptools import setup, find_packages
 
 setup(
     name = "cobe",
-    version = "3.0.0",
+    version = "3.0.1",
     author = "Peter Teichman",
     author_email = "peter@teichman.org",
     url = "https://github.com/pteichman/cobe/wiki",
@@ -16,9 +16,8 @@ setup(
     test_suite = "tests",
 
     install_requires = [
-        "Cython==0.29.17",
-        "PyStemmer==2.0.0.1",
-        "irc==18.0.0"
+        "PyStemmer==2.0.1",
+        "irc==19.0.1"
         ],
 
     classifiers = [

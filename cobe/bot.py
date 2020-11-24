@@ -1,19 +1,20 @@
 # Copyright (C) 2014 Peter Teichman
 
-import irc.client
+import irc.bot
+from jaraco.stream import buffer
 import logging
 import re
 
 log = logging.getLogger("cobe.bot")
 
 
-class Bot(irc.client.SimpleIRCClient):
-    def __init__(self, brain, nick, channel, log_channel, ignored_nicks,
+class Bot(irc.bot.SingleServerIRCBot):
+    def __init__(self, brain, servers, nick, channel, log_channel, ignored_nicks,
                  only_nicks):
-        irc.client.SimpleIRCClient.__init__(self)
+        irc.bot.SingleServerIRCBot.__init__(self, servers, nick, nick)
 
         # Fall back to latin-1 if invalid utf-8 is provided.
-        irc.client.ServerConnection.buffer_class = irc.buffer.LenientDecodingLineBuffer
+        irc.client.ServerConnection.buffer_class = buffer.LenientDecodingLineBuffer
 
         self.brain = brain
         self.nick = nick
@@ -29,34 +30,7 @@ class Bot(irc.client.SimpleIRCClient):
 
             logging.root.addHandler(handler)
 
-    def _dispatcher(self, c, e):
-        log.debug("on_%s %s", e.type, (e.source, e.target, e.arguments))
-        irc.client.SimpleIRCClient._dispatcher(self, c, e)
-
-    def _delayed_check(self, delay=120):
-        self.connection.execute_delayed(delay, self._check_connection)
-
-    def _check_connection(self):
-        conn = self.connection
-        if conn.is_connected():
-            log.debug("connection: ok")
-            self._delayed_check()
-            return
-
-        try:
-            log.debug("reconnecting to %s:%p", conn.server, conn.port)
-            conn.connect(conn.server, conn.port, conn.nickname, conn.password,
-                         conn.username, conn.ircname, conn.localaddress,
-                         conn.localport)
-        except irc.client.ServerConnectionError:
-            log.info("failed reconnection, rescheduling", exc_info=True)
-            self._delayed_check()
-
-    def on_disconnect(self, conn, event):
-        self._check_connection()
-
     def on_endofmotd(self, conn, event):
-        self._delayed_check()
         self.connection.join(self.channel)
 
         if self.log_channel:
@@ -107,11 +81,9 @@ class Bot(irc.client.SimpleIRCClient):
 
 class Runner:
     def run(self, brain, args):
-        bot = Bot(brain, args.nick, args.channel, args.log_channel,
-                  args.ignored_nicks, args.only_nicks)
-        bot.connect(args.server, args.port, args.nick)
-        log.info("connected to %s:%s", args.server, args.port)
-
+        log.info("connecting to %s:%s", args.server, args.port)
+        bot = Bot(brain, [(args.server, args.port)], args.nick, args.channel,
+                  args.log_channel, args.ignored_nicks, args.only_nicks)
         bot.start()
 
 
