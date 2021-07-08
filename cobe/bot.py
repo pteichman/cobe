@@ -98,4 +98,4 @@ class IrcLogHandler(logging.Handler):
         conn = self.connection
 
         if conn.is_connected():
-            conn.privmsg(self.channel, record.getMessage().encode("utf-8"))
+            conn.privmsg(self.channel, record.getMessage())
